@@ -7,6 +7,7 @@ import { Star, Plus, Search, X, Edit2, Archive, Printer, Sparkles } from 'lucide
 import { getLocalDateString, formatDate } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import SearchableSelect from '@/components/SearchableSelect';
+import { generateContentWithFallback } from '@/lib/ai';
 
 function ElogiosContent() {
   const { students, praises, addPraise, updatePraise, archivePraise } = useAppContext();
@@ -43,10 +44,6 @@ function ElogiosContent() {
 
     setIsImproving(true);
     try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
       const student = students.find(s => s.id === selectedStudent);
 
       const prompt = `
@@ -61,7 +58,7 @@ function ElogiosContent() {
         Retorne APENAS o texto melhorado, sem introduções ou explicações.
       `;
 
-      const result = await model.generateContent(prompt);
+      const result = await generateContentWithFallback(apiKey, prompt);
       const response = await result.response;
       setDescription(response.text().trim());
     } catch (error) {

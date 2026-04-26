@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, X, Send, Sparkles, MessageSquare, History, ShieldAlert, BookOpen, PenTool } from 'lucide-react';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getWorkingModelWithFallback } from '@/lib/ai';
 import { useAppContext } from '@/lib/store';
 
 export default function AIAssistant() {
@@ -34,8 +34,7 @@ export default function AIAssistant() {
     setIsLoading(true);
 
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = await getWorkingModelWithFallback(apiKey);
 
       // Context construction
       const context = `

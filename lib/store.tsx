@@ -24,6 +24,8 @@ interface AppState {
   isGuest: boolean;
   currentUserRole: AppUserRole | 'GUEST';
   isAuthRestored: boolean;
+  isDebugMode: boolean;
+  setIsDebugMode: (v: boolean) => void;
   setGuestMode: () => void;
   setMockUser: (username: string) => void;
   logout: () => Promise<void>;
@@ -116,7 +118,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isAuthRestored, setIsAuthRestored] = useState(false);
 
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isDebugMode, setIsDebugMode] = useState(false);
 
+  useEffect(() => {
+    const stored = localStorage.getItem('eecm_debug_mode');
+    if (stored === 'true') setIsDebugMode(true);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('eecm_debug_mode', isDebugMode.toString());
+  }, [isDebugMode]);
   useEffect(() => {
     try {
       const storedUsers = localStorage.getItem('eecm_app_users');
@@ -1036,7 +1047,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider value={{
       students, occurrences, accidents, praises, rules, summons, conductTerms, auditLogs, staffMembers, appUsers, isSupabaseConnected, isSyncing,
-      user, isGuest, currentUserRole, isAuthRestored, setGuestMode, setMockUser, logout,
+      user, isGuest, currentUserRole, isAuthRestored, isDebugMode, setIsDebugMode, setGuestMode, setMockUser, logout,
       logAction, refreshData,
       addAppUser, updateAppUser, deleteAppUser,
       addStudent, importStudents, updateStudent, archiveStudent, restoreStudent, deleteAllStudents,

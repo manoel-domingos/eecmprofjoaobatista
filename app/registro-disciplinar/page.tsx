@@ -8,6 +8,7 @@ import SearchableSelect from '@/components/SearchableSelect';
 import { Occurrence, StaffMember } from '@/lib/data';
 import { getLocalDateString, getLocalTimeString, formatDate, formatPhoneForWhatsApp } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
+import { generateContentWithFallback } from '@/lib/ai';
 
 function RegistroDisciplinarContent() {
   const { 
@@ -68,10 +69,6 @@ function RegistroDisciplinarContent() {
 
     setIsImproving(true);
     try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
       const student = students.find(s => s.id === selectedStudent);
       const rule = rules.find(r => r.code === parseInt(selectedRule, 10));
 
@@ -87,7 +84,7 @@ function RegistroDisciplinarContent() {
         Retorne APENAS o texto melhorado, sem introduções ou explicações.
       `;
 
-      const result = await model.generateContent(prompt);
+      const result = await generateContentWithFallback(apiKey, prompt);
       const response = await result.response;
       setObservations(response.text().trim());
     } catch (error) {

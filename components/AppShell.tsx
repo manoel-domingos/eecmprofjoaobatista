@@ -9,12 +9,13 @@ import {
   BarChart, AlertTriangle, Star, CheckSquare, FileBadge,
   UserPlus, Award, Menu, X, LogOut, ShieldAlert,
   Sun, Moon, RefreshCw, CloudCheck, CloudOff, MessageCircle, Settings,
-  PanelsTopLeft, PanelLeft, ChevronDown,
+  PanelsTopLeft, PanelLeft, ChevronDown, Terminal,
   GraduationCap, Gavel, Smile, Cog,
 } from 'lucide-react';
 import versionData from '@/lib/version.json';
 import ChatWidget from '@/components/ChatWidget';
 import AIAssistant from '@/components/AIAssistant';
+import DebugAIPanel from '@/components/DebugAIPanel';
 
 type MenuItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 type MenuGroup = { label: string; icon: React.ComponentType<{ className?: string }>; href?: string; children?: MenuItem[] };
@@ -74,7 +75,7 @@ type LayoutMode = 'sidebar' | 'topbar';
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isGuest, currentUserRole, isAuthRestored, logout, isSyncing, isSupabaseConnected, refreshData } = useAppContext();
+  const { user, isGuest, currentUserRole, isAuthRestored, isDebugMode, setIsDebugMode, logout, isSyncing, isSupabaseConnected, refreshData } = useAppContext();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -147,6 +148,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       userInitials={userInitials}
       userRole={userRole}
       currentUserRole={currentUserRole}
+      isDebugMode={isDebugMode}
+      setIsDebugMode={setIsDebugMode}
       logout={logout}
       setIsChatOpen={setIsChatOpen}
       layoutMode={layoutMode}
@@ -195,6 +198,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {isChatOpen && <ChatWidget forceOpen={true} forceOnClose={() => setIsChatOpen(false)} />}
       <AIAssistant />
+      {isDebugMode && <DebugAIPanel />}
     </div>
   );
 }
@@ -571,6 +575,8 @@ type RightControlsProps = {
   setIsChatOpen: (v: boolean) => void;
   layoutMode: LayoutMode;
   toggleLayout: () => void;
+  isDebugMode: boolean;
+  setIsDebugMode: (v: boolean) => void;
 };
 
 function RightControls(props: RightControlsProps) {
@@ -578,6 +584,7 @@ function RightControls(props: RightControlsProps) {
     isSupabaseConnected, isSyncing, refreshData, isDarkMode, toggleTheme,
     isProfileOpen, setIsProfileOpen, user, userName, userInitials, userRole,
     currentUserRole, logout, setIsChatOpen, layoutMode, toggleLayout,
+    isDebugMode, setIsDebugMode,
   } = props;
 
   return (
@@ -691,6 +698,13 @@ function RightControls(props: RightControlsProps) {
                 className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-3"
               >
                 <MessageCircle className="w-4 h-4 text-blue-500" /> Suporte
+              </button>
+              <button
+                onClick={() => { setIsDebugMode(!isDebugMode); setIsProfileOpen(false); }}
+                className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-3"
+              >
+                <Terminal className={`w-4 h-4 ${isDebugMode ? 'text-blue-500' : 'text-slate-400'}`} /> 
+                {isDebugMode ? 'Desativar Depuração' : 'Ativar Depuração IA'}
               </button>
               <button
                 onClick={() => { logout(); setIsProfileOpen(false); }}
