@@ -62,6 +62,9 @@ function RegistroDisciplinarContent() {
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
   const [signedDocUrls, setSignedDocUrls] = useState<string[]>([]);
   const [durationDays, setDurationDays] = useState(1);
+  const [attenuatingFactors, setAttenuatingFactors] = useState<string[]>([]);
+  const [aggravatingFactors, setAggravatingFactors] = useState<string[]>([]);
+  const [graveMeasureType, setGraveMeasureType] = useState<'Suspensão Escolar' | 'Suspensão de Recreação' | 'Ação Educativa' | 'Transferência Educativa'>('Suspensão Escolar');
   const [isImproving, setIsImproving] = useState(false);
 
   const handleImproveObservations = async () => {
@@ -174,6 +177,9 @@ function RegistroDisciplinarContent() {
     setVideoUrls([]);
     setSignedDocUrls([]);
     setDurationDays(1);
+    setAttenuatingFactors([]);
+    setAggravatingFactors([]);
+    setGraveMeasureType('Suspensão Escolar');
     setIsModalOpen(true);
   };
 
@@ -193,6 +199,8 @@ function RegistroDisciplinarContent() {
     setVideoUrls(o.videoUrls || []);
     setSignedDocUrls(o.signedDocUrls || []);
     setDurationDays(o.durationDays || 1);
+    setAttenuatingFactors(o.attenuatingFactors || []);
+    setAggravatingFactors(o.aggravatingFactors || []);
     setIsModalOpen(true);
   };
 
@@ -311,6 +319,9 @@ function RegistroDisciplinarContent() {
        }
     }
 
+    const escalation = getEscalationStatus(selectedStudent, parseInt(selectedRule, 10));
+    const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
+
     if (editingOccurrence) {
       updateOccurrence(editingOccurrence, {
         studentId: selectedStudent,
@@ -321,9 +332,12 @@ function RegistroDisciplinarContent() {
         ruleCode: parseInt(selectedRule, 10),
         registeredBy,
         observations,
+        measure: measureToSave,
         videoUrls,
         signedDocUrls,
-        durationDays: activeRule?.severity === 'Grave' ? durationDays : undefined
+        durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
+        attenuatingFactors,
+        aggravatingFactors
       });
     } else {
       addOccurrence({
@@ -335,9 +349,12 @@ function RegistroDisciplinarContent() {
         ruleCode: parseInt(selectedRule, 10),
         registeredBy,
         observations,
+        measure: measureToSave,
         videoUrls,
         signedDocUrls,
-        durationDays: activeRule?.severity === 'Grave' ? durationDays : undefined
+        durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
+        attenuatingFactors,
+        aggravatingFactors
       });
     }
 
@@ -916,22 +933,65 @@ function RegistroDisciplinarContent() {
                         </div>
 
                         {escalation.severity === 'Grave' && (
-                          <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                            <label className="block text-[11px] font-bold text-blue-700 uppercase mb-2">Duração da Suspensão (Dias Letivos)</label>
-                            <div className="flex items-center gap-4">
-                              <input 
-                                type="range" 
-                                min="1" 
-                                max="3" 
-                                value={durationDays}
-                                onChange={(e) => setDurationDays(parseInt(e.target.value))}
-                                className="flex-1 h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
-                              />
-                              <span className="text-sm font-bold text-blue-700 w-12 text-center bg-white px-2 py-1 rounded border border-blue-200">
-                                {durationDays} {durationDays === 1 ? 'dia' : 'dias'}
-                              </span>
+                          <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl space-y-4">
+                            <div>
+                              <label className="block text-[11px] font-bold text-blue-700 uppercase mb-2 tracking-wider">Tipo de Resposta Educativa (Grave)</label>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {[
+                                  'Suspensão Escolar',
+                                  'Suspensão de Recreação',
+                                  'Ação Educativa',
+                                  'Transferência Educativa'
+                                ].map(type => (
+                                  <button
+                                    key={type}
+                                    type="button"
+                                    onClick={() => {
+                                      if (type === 'Transferência Educativa' && !confirm('⚠️ A Transferência Educativa é uma medida extrema que exige aprovação do Conselho de Ensino Disciplinar. Deseja prosseguir com a solicitação?')) return;
+                                      setGraveMeasureType(type as any);
+                                    }}
+                                    className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                                      graveMeasureType === type 
+                                        ? 'bg-blue-600 border-blue-600 text-white shadow-md' 
+                                        : 'bg-white border-blue-100 text-blue-600 hover:bg-blue-50'
+                                    }`}
+                                  >
+                                    {type}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
-                            <p className="text-[10px] text-blue-600 mt-2 italic">* Conforme Art. 16 § 4º (Máximo 3 dias letivos corridos)</p>
+
+                            {graveMeasureType === 'Suspensão Escolar' && (
+                              <div className="animate-in fade-in slide-in-from-top-1">
+                                <label className="block text-[10px] font-bold text-blue-700 uppercase mb-2">Duração (Dias Letivos)</label>
+                                <div className="flex items-center gap-4">
+                                  <input 
+                                    type="range" 
+                                    min="1" 
+                                    max="3" 
+                                    value={durationDays}
+                                    onChange={(e) => setDurationDays(parseInt(e.target.value))}
+                                    className="flex-1 h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                                  />
+                                  <span className="text-sm font-bold text-blue-700 w-12 text-center bg-white px-2 py-1 rounded border border-blue-200">
+                                    {durationDays} {durationDays === 1 ? 'dia' : 'dias'}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {graveMeasureType === 'Ação Educativa' && (
+                              <div className="p-2 bg-white/50 rounded border border-blue-100 text-[10px] text-blue-600 italic">
+                                * Envolve reparação de dano, ação social ou preservação ambiental.
+                              </div>
+                            )}
+
+                            {graveMeasureType === 'Transferência Educativa' && (
+                              <div className="p-2 bg-red-100 rounded border border-red-200 text-[10px] text-red-700 font-bold">
+                                ⚠️ BLOQUEADO: Exige deliberação do Conselho de Ensino Disciplinar.
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1000,6 +1060,63 @@ function RegistroDisciplinarContent() {
                     className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[80px] text-sm overflow-hidden"
                     placeholder="Descreva o que ocorreu..."
                   />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <div>
+                    <label className="block text-[11px] font-bold text-emerald-700 uppercase mb-2 tracking-wider flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> Fatores Atenuantes
+                    </label>
+                    <div className="space-y-1.5">
+                      {[
+                        'Primeira infração',
+                        'Aluno novato',
+                        'Arrependimento eficaz',
+                        'Bom comportamento anterior',
+                        'Colaboração imediata'
+                      ].map(factor => (
+                        <label key={factor} className="flex items-center gap-2 cursor-pointer group">
+                          <input 
+                            type="checkbox"
+                            checked={attenuatingFactors.includes(factor)}
+                            onChange={(e) => {
+                              if (e.target.checked) setAttenuatingFactors([...attenuatingFactors, factor]);
+                              else setAttenuatingFactors(attenuatingFactors.filter(f => f !== factor));
+                            }}
+                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+                          />
+                          <span className="text-[11px] text-slate-600 group-hover:text-emerald-700 transition">{factor}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-red-700 uppercase mb-2 tracking-wider flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> Fatores Agravantes
+                    </label>
+                    <div className="space-y-1.5">
+                      {[
+                        'Premeditação',
+                        'Chefia de turma/grêmio',
+                        'Recidiva específica',
+                        'Praticado em público',
+                        'Coação de colegas'
+                      ].map(factor => (
+                        <label key={factor} className="flex items-center gap-2 cursor-pointer group">
+                          <input 
+                            type="checkbox"
+                            checked={aggravatingFactors.includes(factor)}
+                            onChange={(e) => {
+                              if (e.target.checked) setAggravatingFactors([...aggravatingFactors, factor]);
+                              else setAggravatingFactors(aggravatingFactors.filter(f => f !== factor));
+                            }}
+                            className="rounded border-slate-300 text-red-600 focus:ring-red-500 w-3.5 h-3.5"
+                          />
+                          <span className="text-[11px] text-slate-600 group-hover:text-red-700 transition">{factor}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

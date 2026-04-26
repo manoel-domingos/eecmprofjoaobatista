@@ -1004,12 +1004,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 // Recidivism in same media rule -> Suspensão (0.5 * days)
                 pointsToDeduct = 0.50 * (o.durationDays || 1);
             } else {
-                // 1st time media -> Repreensão (1.0)
+                // 1st time media -> Repreensão/Ação Educativa (1.0)
                 pointsToDeduct = 1.00;
             }
         } else if (rule.severity === 'Grave') {
              // Grave is always Suspensão (0.5 * days)
              pointsToDeduct = 0.50 * (o.durationDays || 1);
+        }
+
+        // Apply Attenuating and Aggravating Factors (User request)
+        if (o.attenuatingFactors && o.attenuatingFactors.length > 0) {
+            const reduction = Math.min(0.5, o.attenuatingFactors.length * 0.25);
+            pointsToDeduct *= (1 - reduction);
+        }
+        if (o.aggravatingFactors && o.aggravatingFactors.length > 0) {
+            const increase = o.aggravatingFactors.length * 0.25;
+            pointsToDeduct *= (1 + increase);
         }
         
         deductions += pointsToDeduct;

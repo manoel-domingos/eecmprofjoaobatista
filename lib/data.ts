@@ -41,7 +41,9 @@ export interface Occurrence {
   archived?: boolean;
   videoUrls?: string[];
   signedDocUrls?: string[];
-  durationDays?: number; // Added for correct suspension points (Art. 46 III)
+  durationDays?: number;
+  attenuatingFactors?: string[];
+  aggravatingFactors?: string[];
 }
 
 export interface StaffMember {
