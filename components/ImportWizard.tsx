@@ -167,7 +167,7 @@ const RGX = {
   SEQUENTIAL_NUMBER: /^\d{1,4}$/,
 };
 
-const COLUMNS = ["Ignorar", "Nome*", "Turma*", "CPF", "Data Nasc.", "Telefone 1", "Telefone 2", "Matrícula", "Email", "Gênero", "Nome Mãe", "Nome Pai", "Endereço", "Observação"];
+const COLUMNS = ["Ignorar", "Nome*", "Turma*", "CPF", "Data Nasc.", "Telefone 1", "Telefone 2", "Matrícula", "Email", "Gênero", "Nome Mãe", "Nome Pai", "Endereço", "Observação"] as const;
 
 export default function ImportWizard({ isOpen, onClose, onImport }: { isOpen: boolean, onClose: () => void, onImport: (data: any[]) => void }) {
   const { geminiApiKey, groqApiKey } = useAppContext();
@@ -177,11 +177,11 @@ export default function ImportWizard({ isOpen, onClose, onImport }: { isOpen: bo
   const [selectedSheet, setSelectedSheet] = useState<string>('');
   
   // Storage for all sheets mapping
-  const [sheetMappings, setSheetMappings] = useState<Record<string, { headerRowIndex: number; columnMapping: Record<number, string> }>>({});
+  const [sheetMappings, setSheetMappings] = useState<Record<string, { headerRowIndex: number; columnMapping: Record<number, FieldOption> }>>({});
   
   // Current view states (synced with sheetMappings[selectedSheet])
   const [headerRowIndex, setHeaderRowIndex] = useState<number>(0);
-  const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
+  const [columnMapping, setColumnMapping] = useState<Record<number, FieldOption>>({});
   
   const [previewData, setPreviewData] = useState<any[][]>([]);
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
@@ -298,7 +298,7 @@ export default function ImportWizard({ isOpen, onClose, onImport }: { isOpen: bo
 
   const scoreHeaderRow = (row: any[]) => {
     let score = 0; let penalty = 0;
-    const mapping: Record<number, string> = {};
+    const mapping: Record<number, ColumnType> = {};
     let knownCount = 0;
 
     row.forEach((cell, colIdx) => {
@@ -370,7 +370,7 @@ export default function ImportWizard({ isOpen, onClose, onImport }: { isOpen: bo
     
     let bestRow = 0;
     let maxScore = -999;
-    let bestMapping: Record<number, string> = {};
+    let bestMapping: Record<number, ColumnType> = {};
 
     for (let i = 0; i < Math.min(regionRows.length, 20); i++) {
       const { score, mapping } = scoreHeaderRow(regionRows[i] || []);
@@ -485,8 +485,8 @@ Responda apenas em JSON: {"headerRowIndex": number, "mapping": {"índice_coluna"
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         setHeaderRowIndex(parsed.headerRowIndex);
-        setColumnMapping(parsed.mapping);
-        setSheetMappings(prev => ({ ...prev, [selectedSheet]: { headerRowIndex: parsed.headerRowIndex, columnMapping: parsed.mapping } }));
+        setColumnMapping(parsed.mapping as Record<number, FieldOption>);
+        setSheetMappings(prev => ({ ...prev, [selectedSheet]: { headerRowIndex: parsed.headerRowIndex, columnMapping: parsed.mapping as Record<number, FieldOption> } }));
       }
     } catch (err) {
       setAutoDetectError("Falha na análise por IA. Tente mapear manualmente.");
@@ -636,7 +636,7 @@ Responda apenas em JSON: {"headerRowIndex": number, "mapping": {"índice_coluna"
                             <select
                               value={columnMapping[colIdx] || 'Ignorar'}
                               onChange={(e) => {
-                                const newMapping = { ...columnMapping, [colIdx]: e.target.value };
+                                const newMapping = { ...columnMapping, [colIdx]: e.target.value as FieldOption };
                                 setColumnMapping(newMapping);
                                 setSheetMappings(prev => ({ ...prev, [selectedSheet]: { ...prev[selectedSheet], columnMapping: newMapping } }));
                               }}
