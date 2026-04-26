@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useAppContext } from '@/lib/store';
 import { AppUser, AppUserRole } from '@/lib/data';
-import { ShieldAlert, Plus, Trash2, Edit2, ShieldCheck, Info } from 'lucide-react';
+import { ShieldAlert, Plus, Trash2, Edit2, ShieldCheck, Info, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function ConfiguracoesPage() {
@@ -25,7 +25,7 @@ export default function ConfiguracoesPage() {
         <ShieldAlert className="w-16 h-16 text-rose-300 mb-4" />
         <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">Acesso Negado</h2>
         <p className="mt-2 text-sm max-w-md">Você não tem permissão para acessar as configurações do sistema. Esta área é restrita aos Gestores.</p>
-        <button onClick={() => router.push('/')} className="mt-6 text-blue-600 hover:underline">Voltar ao Início</button>
+        <button onClick={() => router.back()} className="mt-6 text-blue-600 hover:underline">Voltar</button>
       </div>
     );
   }
@@ -56,23 +56,32 @@ export default function ConfiguracoesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <ShieldCheck className="w-6 h-6 text-purple-600" /> Configuração do Sistema
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 mt-1">Gerenciamento de usuários e níveis de acesso ao sistema.</p>
-        </div>
-        <button
-          onClick={() => {
-            setFormData({ name: '', email: '', role: 'COORD' });
-            setEditingId(null);
-            setIsAdding(!isAdding);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2"
+      <div className="flex items-center gap-4">
+        <button 
+          onClick={() => router.back()}
+          className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-500 transition shadow-sm"
+          title="Voltar"
         >
-          {isAdding ? 'Cancelar' : <><Plus className="w-4 h-4" /> Novo Usuário</>}
+          <ArrowLeft className="w-5 h-5" />
         </button>
+        <div className="flex-1 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <ShieldCheck className="w-6 h-6 text-purple-600" /> Configuração do Sistema
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">Gerenciamento de usuários e níveis de acesso ao sistema.</p>
+          </div>
+          <button
+            onClick={() => {
+              setFormData({ name: '', email: '', role: 'COORD' });
+              setEditingId(null);
+              setIsAdding(!isAdding);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2"
+          >
+            {isAdding ? 'Cancelar' : <><Plus className="w-4 h-4" /> Novo Usuário</>}
+          </button>
+        </div>
       </div>
 
       <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-4 rounded-xl flex gap-3 text-sm border border-blue-100 dark:border-blue-800/50">

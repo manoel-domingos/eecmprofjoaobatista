@@ -773,7 +773,7 @@ export default function Alunos() {
               onClick={handleImport}
               disabled={isImporting || currentUserRole === 'GUEST'}
               title={currentUserRole === 'GUEST' ? 'Apenas leitura — entre como gestor para importar' : undefined}
-              className="bg-white hover:bg-slate-50 text-slate-800 px-4 py-2 rounded-xl font-medium flex items-center justify-center gap-2 transition border border-slate-200 shadow-sm flex-1 sm:flex-none disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/40 dark:border-slate-700/50 hover:bg-white/60 dark:hover:bg-slate-700/60 text-slate-800 dark:text-slate-200 px-6 py-2 rounded-full font-medium flex items-center justify-center gap-2 transition shadow-sm flex-1 sm:flex-none disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Upload className="w-5 h-5" />
               {isImporting ? importMessage : 'Importar Planilha'}
@@ -782,7 +782,7 @@ export default function Alunos() {
               onClick={openAddModal}
               disabled={currentUserRole === 'GUEST'}
               title={currentUserRole === 'GUEST' ? 'Apenas leitura — entre como gestor para cadastrar' : undefined}
-              className="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl font-medium flex items-center justify-center gap-2 transition shadow-sm flex-1 sm:flex-none disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 dark:hover:bg-blue-500 text-white px-6 py-2 rounded-full font-medium flex items-center justify-center gap-2 transition shadow-lg flex-1 sm:flex-none disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="w-5 h-5" /> Cadastrar Aluno
             </button>
@@ -790,16 +790,16 @@ export default function Alunos() {
         </div>
 
         {/* List Card */}
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mt-6 flex flex-col h-[600px]">
-          <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-50/50">
+        <div className="glass-card overflow-hidden mt-6 flex flex-col h-[600px]">
+          <div className="p-4 border-b border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="relative w-full max-w-sm flex items-center gap-3">
               <div className="relative flex-1">
                 <input
                   type="text"
-                  placeholder="Buscar por nome ou turma..."
+                  placeholder="Buscar por nome ou..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="glass-input w-full pl-10 pr-4 py-2 text-sm text-slate-800"
                 />
                 <Search className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
               </div>
@@ -807,15 +807,15 @@ export default function Alunos() {
                 <select
                   value={classFilter}
                   onChange={(e) => setClassFilter(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none"
+                  className="glass-input w-full px-4 py-2 text-sm text-slate-800 appearance-none"
                 >
                   <option value="">Todas as turmas</option>
                   {uniqueClasses.map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center px-2 text-slate-500">
+                  <ChevronDown className="w-4 h-4" />
                 </div>
               </div>
             </div>
@@ -825,7 +825,7 @@ export default function Alunos() {
               </span>
               <button
                 onClick={handleExport}
-                className="text-slate-700 hover:bg-slate-50 px-3 py-2 text-sm font-medium transition flex items-center gap-2 bg-white border border-slate-200 rounded-lg shadow-sm"
+                className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/40 dark:border-slate-700/50 hover:bg-white/60 dark:hover:bg-slate-700/60 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2 shadow-sm"
               >
                 <Download className="w-4 h-4" /> Exportar Dados
               </button>
@@ -833,7 +833,7 @@ export default function Alunos() {
                 onClick={handleDeleteAll}
                 disabled={currentUserRole === 'GUEST'}
                 title={currentUserRole === 'GUEST' ? 'Apenas leitura' : undefined}
-                className="text-rose-600 hover:bg-rose-100 px-3 py-2 text-sm font-medium transition flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-rose-50/40 dark:bg-rose-900/10 backdrop-blur-md border border-rose-200/50 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Trash2 className="w-4 h-4" /> Apagar Todos
               </button>
@@ -842,7 +842,7 @@ export default function Alunos() {
           
           <div className="overflow-auto flex-1">
             <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="sticky top-0 bg-white border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold z-10">
+              <thead className="sticky top-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border-b border-white/10 text-slate-500 dark:text-slate-400 uppercase text-[10px] font-bold z-10">
                 <tr>
                   <th className="px-6 py-3 font-medium">Nome</th>
                   <th className="px-6 py-3 font-medium">Turma</th>

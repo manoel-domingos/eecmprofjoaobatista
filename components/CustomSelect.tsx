@@ -41,7 +41,7 @@ export default function CustomSelect({
     <div className={`relative w-full ${className}`} ref={wrapperRef}>
       <button
         type="button"
-        className="w-full h-9 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-700/50 rounded-lg px-3 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+        className="glass-input w-full h-9 flex items-center justify-between px-3 text-sm text-slate-800 dark:text-slate-200"
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className="truncate">
@@ -57,7 +57,7 @@ export default function CustomSelect({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute z-50 w-full mt-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl dark:bg-[#1e2536] border border-slate-200 dark:border-slate-700 rounded-lg shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] max-h-60 flex flex-col py-1 overflow-hidden"
+            className="glass-card absolute z-50 w-full mt-1 max-h-60 flex flex-col py-1 overflow-hidden"
           >
             <ul className="overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent">
               {options.length === 0 ? (

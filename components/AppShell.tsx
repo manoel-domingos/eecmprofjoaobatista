@@ -154,7 +154,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className={`min-h-screen bg-[#F4F7FB] dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-200 ${layoutMode === 'sidebar' ? 'flex' : 'flex flex-col'}`}>
+    <div className={`min-h-screen bg-[#eef3f9] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-200 ${layoutMode === 'sidebar' ? 'flex' : 'flex flex-col'}`}>
+      {/* Background decoration for liquid glass effect */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-400/10 blur-[120px] rounded-full" />
+      </div>
+
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
@@ -314,12 +320,12 @@ function TopbarLayout({
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200/70 dark:border-slate-700/60">
+      <header className="z-30 px-4 pt-2 pb-1 space-y-2 pointer-events-none">
         {/* top row: logo + right controls */}
-        <div className="flex items-center justify-between gap-4 px-4 md:px-8 py-1.5">
+        <div className="pointer-events-auto bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/40 dark:border-slate-800/50 shadow-sm rounded-full flex items-center justify-between gap-4 px-4 md:px-6 py-1">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              className="p-2 -ml-2 text-slate-500 dark:text-slate-400 md:hidden"
+              className="p-1 -ml-1 text-slate-500 dark:text-slate-400 md:hidden"
               onClick={openMobileMenu}
             >
               <Menu className="w-6 h-6" />
@@ -327,7 +333,7 @@ function TopbarLayout({
             <img
               src="/nova_logo.png"
               alt="EECM"
-              className="w-16 h-16 md:w-[88px] md:h-[88px] object-contain shrink-0 drop-shadow-sm mt-1"
+              className="w-16 h-16 md:w-[88px] md:h-[88px] object-contain shrink-0 drop-shadow-sm"
             />
             <div className="hidden sm:block min-w-0">
               <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
@@ -343,7 +349,7 @@ function TopbarLayout({
         </div>
 
         {/* nav row: grouped pills with hover dropdown */}
-        <div className="hidden md:flex items-center justify-center gap-1 px-4 md:px-10 pb-3 pt-1">
+        <div className="pointer-events-auto hidden md:flex items-center justify-center gap-1 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl border border-white/30 dark:border-slate-800/40 shadow-sm rounded-full px-4 md:px-10 py-1">
           {MENU_GROUPS.map((group) => (
             <GroupPill
               key={group.label}
@@ -398,10 +404,10 @@ function GroupPill({
         className={`shrink-0 group/item flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
           active
             ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500'
         }`}
       >
-        <group.icon className={`w-4 h-4 ${active ? 'text-white' : 'text-slate-400 group-hover/item:text-slate-700 dark:group-hover/item:text-slate-200'}`} />
+        <group.icon className={`w-4 h-4 ${active ? 'text-white' : 'text-slate-400 group-hover/item:text-white'}`} />
         <span className="whitespace-nowrap">{group.label}</span>
       </Link>
     );
@@ -420,17 +426,17 @@ function GroupPill({
         className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
           isActive || open
             ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500'
         }`}
       >
-        <group.icon className={`w-4 h-4 ${isActive || open ? 'text-white' : 'text-slate-400'}`} />
+        <group.icon className={`w-4 h-4 transition-colors ${isActive || open ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
         <span className="whitespace-nowrap">{group.label}</span>
         <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
         <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 z-40 min-w-[240px]">
-          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl overflow-hidden py-1.5">
+          <div className="glass-card absolute z-50 w-full mt-2 max-h-60 flex flex-col py-1.5 overflow-hidden !rounded-3xl">
             {group.children!.map((item) => {
               const active = pathname === item.href;
               return (
@@ -588,7 +594,7 @@ function RightControls(props: RightControlsProps) {
       <button
         onClick={refreshData}
         disabled={isSyncing}
-        className={`w-9 h-9 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition ${
+        className={`w-9 h-9 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/40 dark:border-slate-700/50 hover:bg-white/60 dark:hover:bg-slate-700/60 transition shadow-sm ${
           isSyncing ? 'animate-spin text-blue-500' : ''
         }`}
         title="Sincronizar"
@@ -598,7 +604,7 @@ function RightControls(props: RightControlsProps) {
 
       <button
         onClick={toggleTheme}
-        className="w-9 h-9 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+        className="w-9 h-9 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/40 dark:border-slate-700/50 hover:bg-white/60 dark:hover:bg-slate-700/60 transition shadow-sm"
         title={isDarkMode ? 'Modo claro' : 'Modo escuro'}
       >
         {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -609,7 +615,7 @@ function RightControls(props: RightControlsProps) {
       <div className="relative isolate z-50 ml-1">
         <button
           onClick={() => setIsProfileOpen(!isProfileOpen)}
-          className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
+          className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/40 dark:border-slate-700/50 hover:bg-white/60 dark:hover:bg-slate-700/60 transition shadow-sm"
         >
           {user?.user_metadata?.avatar_url ? (
             <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-7 h-7 rounded-full" referrerPolicy="no-referrer" />

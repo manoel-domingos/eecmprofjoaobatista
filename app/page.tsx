@@ -82,7 +82,7 @@ export default function Dashboard() {
     <AppShell>
       <div className="space-y-6 max-w-[1400px] mx-auto">
         {/* Header & Filters */}
-        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 border-b border-slate-200 dark:border-slate-800 pb-6">
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-end gap-6 border-b border-white/10 pb-6">
           <div>
             <div className="flex items-center gap-2 text-blue-500 dark:text-blue-400 mb-1">
               <Star className="w-4 h-4" />
@@ -147,7 +147,7 @@ export default function Dashboard() {
 
         {/* Row 1: KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white dark:bg-[#141b2d] p-5 rounded-2xl border border-slate-200 dark:border-[#1e293b] shadow-sm flex flex-col justify-between h-36">
+          <div className="glass-card p-5 flex flex-col justify-between h-36">
             <div className="w-9 h-9 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center">
               <FileText className="w-4 h-4" />
             </div>
@@ -160,7 +160,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#2a161a] p-5 rounded-2xl border border-slate-200 dark:border-[#3f1d24] shadow-sm flex flex-col justify-between h-36">
+          <div className="glass-card p-5 flex flex-col justify-between h-36 !bg-red-500/5 dark:!bg-red-900/10 !border-red-200/30">
             <div className="w-9 h-9 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg flex items-center justify-center">
               <AlertTriangle className="w-4 h-4" />
             </div>
@@ -173,7 +173,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#252114] p-5 rounded-2xl border border-slate-200 dark:border-[#38311a] shadow-sm flex flex-col justify-between h-36">
+          <div className="glass-card p-5 flex flex-col justify-between h-36 !bg-amber-500/5 dark:!bg-amber-900/10 !border-amber-200/30">
             <div className="w-9 h-9 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg flex items-center justify-center">
               <Users className="w-4 h-4" />
             </div>
@@ -186,7 +186,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#13251a] p-5 rounded-2xl border border-slate-200 dark:border-[#1a3824] shadow-sm flex flex-col justify-between h-36">
+          <div className="glass-card p-5 flex flex-col justify-between h-36 !bg-emerald-500/5 dark:!bg-emerald-900/10 !border-emerald-200/30">
             <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center">
               <Star className="w-4 h-4" />
             </div>
@@ -231,7 +231,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           
           {/* Disciplina */}
-          <div className="bg-white dark:bg-[#1a1f2e] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+          <div className="glass-card p-5 flex flex-col">
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-50 dark:bg-slate-800/50 rounded-lg">
@@ -251,15 +251,15 @@ export default function Dashboard() {
             </div>
             
             <div className="grid grid-cols-3 gap-2 flex-1 items-center">
-              <div className="bg-emerald-50 dark:bg-[#12281e] p-3 rounded-xl flex flex-col items-center justify-center">
+              <div className="bg-emerald-500/10 dark:bg-emerald-500/20 p-3 rounded-2xl flex flex-col items-center justify-center border border-emerald-500/20">
                 <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{leveCount}</span>
                 <span className="text-[10px] uppercase tracking-wider text-emerald-700 dark:text-emerald-500 font-semibold mt-1">Leve</span>
               </div>
-              <div className="bg-amber-50 dark:bg-[#2e2612] p-3 rounded-xl flex flex-col items-center justify-center">
+              <div className="bg-amber-500/10 dark:bg-amber-500/20 p-3 rounded-2xl flex flex-col items-center justify-center border border-amber-500/20">
                 <span className="text-xl font-bold text-amber-600 dark:text-amber-400">{mediaCount}</span>
                 <span className="text-[10px] uppercase tracking-wider text-amber-700 dark:text-amber-500 font-semibold mt-1">Média</span>
               </div>
-              <div className="bg-red-50 dark:bg-[#2b1616] p-3 rounded-xl flex flex-col items-center justify-center">
+              <div className="bg-red-500/10 dark:bg-red-500/20 p-3 rounded-2xl flex flex-col items-center justify-center border border-red-500/20">
                 <span className="text-xl font-bold text-red-600 dark:text-red-400">{graveCount}</span>
                 <span className="text-[10px] uppercase tracking-wider text-red-700 dark:text-red-500 font-semibold mt-1">Grave</span>
               </div>
@@ -274,7 +274,7 @@ export default function Dashboard() {
           </div>
 
           {/* Elogios e Bonificações */}
-          <div className="bg-white dark:bg-[#1a1f2e] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+          <div className="glass-card p-5 flex flex-col">
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-amber-50 dark:bg-slate-800/50 rounded-lg">
@@ -314,7 +314,7 @@ export default function Dashboard() {
           </div>
 
           {/* Acidentes */}
-          <div className="bg-white dark:bg-[#1a1f2e] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+          <div className="glass-card p-5 flex flex-col">
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-orange-50 dark:bg-slate-800/50 rounded-lg">
@@ -358,7 +358,7 @@ export default function Dashboard() {
 
         {/* Row 3: Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="bg-white dark:bg-[#1a1f2e] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm col-span-1 lg:col-span-2">
+          <div className="glass-card p-5 col-span-1 lg:col-span-2">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-slate-800 dark:text-white font-bold flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-blue-500" />
@@ -393,7 +393,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#1a1f2e] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+          <div className="glass-card p-5 flex flex-col">
             <h3 className="text-slate-800 dark:text-white font-bold mb-6 text-center lg:text-left">Distribuição por Gravidade</h3>
             <div className="flex-1 w-full flex items-center justify-center pb-2">
               <ResponsiveContainer width="100%" height={200}>

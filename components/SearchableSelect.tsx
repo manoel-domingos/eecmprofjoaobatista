@@ -55,7 +55,7 @@ export default function SearchableSelect({
       <div className="relative">
         <input
           type="text"
-          className={`w-full bg-white border border-slate-200 rounded-lg pl-4 pr-10 hover:border-slate-300 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-text ${heightClass}`}
+          className={`glass-input w-full pl-4 pr-10 text-slate-800 ${heightClass}`}
           placeholder={selectedOption ? selectedOption.label : placeholder}
           value={displayValue}
           onChange={(e) => {
@@ -73,7 +73,7 @@ export default function SearchableSelect({
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 flex flex-col">
+        <div className="glass-card absolute z-50 w-full mt-1 max-h-60 flex flex-col">
           <ul className="overflow-y-auto p-1">
             {filteredOptions.length === 0 ? (
               <li className="px-3 py-2 text-sm text-slate-500 text-center">Nenhum resultado</li>
