@@ -9,6 +9,7 @@ import { BookOpen, Search, Edit2, X } from 'lucide-react';
 export default function FaltasDisciplinares() {
   const { rules, updateRule } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSeverity, setSelectedSeverity] = useState('Todas');
   const [editingRule, setEditingRule] = useState<DisciplineRule | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -18,10 +19,12 @@ export default function FaltasDisciplinares() {
   const [points, setPoints] = useState(0);
   const [measure, setMeasure] = useState('');
 
-  const filteredRules = rules.filter(r => 
-    r.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    r.code.toString().includes(searchTerm)
-  );
+  const filteredRules = rules.filter(r => {
+    const matchesSearch = r.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         r.code.toString().includes(searchTerm);
+    const matchesSeverity = selectedSeverity === 'Todas' || r.severity === selectedSeverity;
+    return matchesSearch && matchesSeverity;
+  });
 
   const openEditModal = (r: DisciplineRule) => {
     setEditingRule(r);
@@ -62,19 +65,40 @@ export default function FaltasDisciplinares() {
         </div>
 
         {/* Legend */}
-        <div className="flex gap-4">
-           <div className="px-3 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium">Leve: -0.1 a -0.2 pontos</div>
-           <div className="px-3 py-1.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-medium">Média: -0.3 a -0.4 pontos</div>
-           <div className="px-3 py-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium">Grave: -0.5 ou mais pontos</div>
+        <div className="flex flex-wrap gap-4">
+           <div className="px-3 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium">
+             Leve: -0.1 (Oral) ou -0.3 (Escrita)
+           </div>
+           <div className="px-3 py-1.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-medium">
+             Média: -1.0 (Repreensão)
+           </div>
+           <div className="px-3 py-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium">
+             Grave: -0.5 por dia (Suspensão)
+           </div>
         </div>
 
         {/* List Card */}
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden mt-4">
-          <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-            <div className="relative w-full max-w-md">
+          <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex p-1 bg-slate-100 rounded-lg shrink-0">
+              {['Todas', 'Leve', 'Media', 'Grave'].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSelectedSeverity(s)}
+                  className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-md transition-all ${
+                    selectedSeverity === s
+                      ? 'bg-white text-blue-600 shadow-sm'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {s === 'Media' ? 'Média' : s}
+                </button>
+              ))}
+            </div>
+            <div className="relative w-full max-w-xs">
               <input
                 type="text"
-                placeholder="Buscar falta por código ou descrição..."
+                placeholder="Buscar por código ou texto..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"

@@ -930,19 +930,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!rule) return { isEscalated: false, reason: '', measure: '', severity: '' };
 
     const sameRuleCount = studentOccurrences.filter(o => o.ruleCode === ruleCode).length;
-    if (sameRuleCount > 0) {
-        const measure = rule.severity === 'Leve' ? 'Advertência Escrita (Agravada)' : 'Suspensão (Agravada)';
-        const severity = rule.severity === 'Leve' ? 'Media' : 'Grave';
-        return { isEscalated: true, reason: 'Reincidência na mesma infração', measure, severity };
+    const lightOccurrences = studentOccurrences.filter(o => {
+        const r = rules.find(ru => ru.code === o.ruleCode);
+        return r?.severity === 'Leve';
+    });
+
+    // 1. Check for 3 or more light infractions (Art. 35 § 4º)
+    if (rule.severity === 'Leve' && lightOccurrences.length >= 2) { 
+         return { isEscalated: true, reason: 'Acúmulo de 3 ou mais infrações leves (Art. 35 § 4º)', measure: 'Suspensão (Agravada por acúmulo)', severity: 'Grave' };
     }
 
-    if (rule.severity === 'Leve') {
-        const lightOccurrences = studentOccurrences.filter(o => {
-            const r = rules.find(ru => ru.code === o.ruleCode);
-            return r?.severity === 'Leve';
-        });
-        if (lightOccurrences.length >= 3) {
-             return { isEscalated: true, reason: 'Acúmulo de 3 ou mais infrações leves', measure: 'Advertência Escrita (Agravada por acúmulo)', severity: 'Media' };
+    // 2. Check for recidivism in same rule
+    if (sameRuleCount > 0) {
+        if (rule.severity === 'Leve') {
+            return { isEscalated: true, reason: 'Reincidência em infração leve (Art. 35 § 3º)', measure: 'Advertência Escrita (Agravada)', severity: 'Leve' };
+        } else if (rule.severity === 'Media') {
+            return { isEscalated: true, reason: 'Reincidência em infração média (Art. 35 § 4º)', measure: 'Suspensão (Agravada)', severity: 'Grave' };
         }
     }
 
@@ -950,10 +953,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const getStudentBehavior = (points: number): BehaviorClass => {
-    if (points >= 10) return 'Excepcional';
-    if (points >= 9.0) return 'Ótimo';
-    if (points >= 7.0) return 'Bom';
-    if (points >= 5.0) return 'Regular';
+    if (points >= 9.5) return 'Excepcional';
+    if (points >= 8.0) return 'Ótimo';
+    if (points >= 6.0) return 'Bom';
+    if (points >= 4.0) return 'Regular';
     if (points >= 2.0) return 'Insuficiente';
     return 'Incompatível';
   };
@@ -971,23 +974,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     // 1. Deductions (Art. 46)
     let deductions = 0;
-    studentOccurrences.forEach(o => {
+    studentOccurrences.forEach((o, index) => {
       const rule = rules.find(r => r.code === o.ruleCode);
       if (rule) {
         let pointsToDeduct = Math.abs(rule.points);
         
-        // Art. 46 III: Suspensão is -0.50 per day
-        if (rule.severity === 'Grave' && rule.measure === 'Suspensão') {
-          const days = o.durationDays || 1;
-          pointsToDeduct = 0.50 * days;
-        }
+        // Context for this occurrence
+        const previousOccurrences = studentOccurrences.slice(0, index);
+        const sameRuleCount = previousOccurrences.filter(prev => prev.ruleCode === o.ruleCode).length;
+        const previousLightCount = previousOccurrences.filter(prev => {
+            const r = rules.find(ru => ru.code === prev.ruleCode);
+            return r?.severity === 'Leve';
+        }).length;
 
-        // Check for recidivism (Art. 35 III - Aggravating)
-        const sameRuleCount = studentOccurrences.filter(prev => prev.ruleCode === o.ruleCode && new Date(prev.date) < new Date(o.date)).length;
-        if (sameRuleCount > 0) {
-          // Rule says we should "aggravate the measure". 
-          // In point terms, we'll apply a 50% increase as a standard representation of aggravation.
-          pointsToDeduct *= 1.5; 
+        // Apply Escalation Rules (Art. 35)
+        if (rule.severity === 'Leve') {
+            if (previousLightCount >= 2) {
+                // 3rd or more light -> Suspensão (0.5 * days)
+                pointsToDeduct = 0.50 * (o.durationDays || 1);
+            } else if (sameRuleCount > 0) {
+                // Recidivism in same light rule -> Escrita (0.3)
+                pointsToDeduct = 0.30;
+            } else {
+                // 1st time light -> Oral (0.1)
+                pointsToDeduct = 0.10;
+            }
+        } else if (rule.severity === 'Media') {
+            if (sameRuleCount > 0) {
+                // Recidivism in same media rule -> Suspensão (0.5 * days)
+                pointsToDeduct = 0.50 * (o.durationDays || 1);
+            } else {
+                // 1st time media -> Repreensão (1.0)
+                pointsToDeduct = 1.00;
+            }
+        } else if (rule.severity === 'Grave') {
+             // Grave is always Suspensão (0.5 * days)
+             pointsToDeduct = 0.50 * (o.durationDays || 1);
         }
         
         deductions += pointsToDeduct;
