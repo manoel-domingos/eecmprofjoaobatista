@@ -410,8 +410,8 @@ export default function ImportWizard({ isOpen, onClose, onImport }: { isOpen: bo
   };
 
   const validateColumnMappings = (mappings: Record<number, FieldOption>): MappingValidation => {
-    const values = Object.values(mappings).filter(v => v !== 'Ignorar');
-    const missingRequired = (['Nome*', 'Turma*'] as FieldOption[]).filter(req => !values.includes(req));
+    const values = Object.values(mappings).filter((v): v is Exclude<FieldOption, 'Ignorar'> => v !== 'Ignorar');
+    const missingRequired = (['Nome*', 'Turma*'] as const).filter(req => !values.includes(req as any));
     const seen: Record<string, number> = {};
     const duplicates: string[] = [];
     for (const v of values) {

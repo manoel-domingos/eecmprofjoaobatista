@@ -13,6 +13,8 @@ export const GROQ_MODELS = [
   "mixtral-8x7b-32768"
 ];
 
+export const MODEL_FALLBACK_CHAIN = [...GROQ_MODELS, ...GEMINI_MODELS];
+
 export interface AILog {
   id: string;
   timestamp: string;
