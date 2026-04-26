@@ -7,7 +7,7 @@ import { useAppContext } from '@/lib/store';
 import {
   LayoutDashboard, Users, FileText, Activity,
   BarChart, AlertTriangle, Star, CheckSquare, FileBadge,
-  UserPlus, Award, Bell, Menu, X, LogOut, ShieldAlert,
+  UserPlus, Award, Menu, X, LogOut, ShieldAlert,
   Sun, Moon, RefreshCw, CloudCheck, CloudOff, MessageCircle, Settings,
   PanelsTopLeft, PanelLeft, ChevronDown,
   GraduationCap, Gavel, Smile, Cog,
@@ -604,10 +604,7 @@ function RightControls(props: RightControlsProps) {
         {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
       </button>
 
-      <button className="hidden sm:flex w-9 h-9 rounded-full items-center justify-center text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition relative">
-        <Bell className="w-4 h-4" />
-        <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />
-      </button>
+
 
       <div className="relative isolate z-50 ml-1">
         <button
