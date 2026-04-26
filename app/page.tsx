@@ -200,8 +200,35 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Alerts Section */}
+        {(() => {
+          const criticalStudents = students.map(s => ({...s, currentPoints: getStudentPoints(s.id)})).filter(s => s.currentPoints < 5.0).sort((a,b) => a.currentPoints - b.currentPoints);
+          if (criticalStudents.length === 0) return null;
+          return (
+            <div className="bg-red-50 dark:bg-[#2b1616] border border-red-200 dark:border-red-900/50 rounded-2xl p-5 mb-2 mt-4 shadow-sm">
+              <h3 className="text-red-800 dark:text-red-400 font-bold flex items-center gap-2 mb-4">
+                <AlertTriangle className="w-5 h-5" />
+                Atenção Crítica: Alunos Próximos de Suspensão / Desligamento (Abaixo de 5.0 pts)
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {criticalStudents.slice(0, 8).map(s => (
+                  <div key={s.id} className="bg-white dark:bg-[#1a1f2e] p-3 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm flex justify-between items-center">
+                    <div className="truncate pr-2">
+                      <p className="font-bold text-slate-800 dark:text-white text-sm truncate">{s.name}</p>
+                      <p className="text-xs text-slate-500">{s.class}</p>
+                    </div>
+                    <span className="font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40 px-2 py-1 rounded text-xs shrink-0">
+                      {s.currentPoints.toFixed(1)} pts
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Row 2: Bento Grid Modules */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           
           {/* Disciplina */}
           <div className="bg-white dark:bg-[#1a1f2e] p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">

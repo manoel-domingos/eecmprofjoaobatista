@@ -76,6 +76,7 @@ interface AppContextType extends AppState {
   getStudentBehavior: (points: number) => string;
   getStudentOccurrences: (studentId: string) => Occurrence[];
   checkRecidivism: (studentId: string, ruleCode: number) => boolean;
+  getEscalationStatus: (studentId: string, ruleCode: number) => { isEscalated: boolean, reason: string, measure: string, severity: string };
 }
 
 const INITIAL_STAFF: StaffMember[] = [
@@ -886,7 +887,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const checkRecidivism = (studentId: string, ruleCode: number) => {
     const studentOccurrences = getStudentOccurrences(studentId);
-    return studentOccurrences.filter(o => o.ruleCode === ruleCode).length > 1;
+    return studentOccurrences.filter(o => o.ruleCode === ruleCode).length > 0;
+  };
+
+  const getEscalationStatus = (studentId: string, ruleCode: number) => {
+    const studentOccurrences = getStudentOccurrences(studentId);
+    const rule = rules.find(r => r.code === ruleCode);
+    if (!rule) return { isEscalated: false, reason: '', measure: '', severity: '' };
+
+    const sameRuleCount = studentOccurrences.filter(o => o.ruleCode === ruleCode).length;
+    if (sameRuleCount > 0) {
+        const measure = rule.severity === 'Leve' ? 'Advertência Escrita (Agravada)' : 'Suspensão (Agravada)';
+        const severity = rule.severity === 'Leve' ? 'Media' : 'Grave';
+        return { isEscalated: true, reason: 'Reincidência na mesma infração', measure, severity };
+    }
+
+    if (rule.severity === 'Leve') {
+        const lightOccurrences = studentOccurrences.filter(o => {
+            const r = rules.find(ru => ru.code === o.ruleCode);
+            return r?.severity === 'Leve';
+        });
+        if (lightOccurrences.length >= 3) {
+             return { isEscalated: true, reason: 'Acúmulo de 3 ou mais infrações leves', measure: 'Advertência Escrita (Agravada por acúmulo)', severity: 'Media' };
+        }
+    }
+
+    return { isEscalated: false, reason: '', measure: rule.measure, severity: rule.severity };
   };
 
   const getStudentBehavior = (points: number) => {
@@ -1020,7 +1046,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addSummons, updateSummons, archiveSummons, restoreSummons,
       addConductTerm, updateConductTerm, archiveConductTerm, restoreConductTerm,
       updateRule, addStaffMember,
-      getStudentPoints, getStudentBehavior, getStudentOccurrences, checkRecidivism
+      getStudentPoints, getStudentBehavior, getStudentOccurrences, checkRecidivism, getEscalationStatus
     }}>
       {children}
     </AppContext.Provider>

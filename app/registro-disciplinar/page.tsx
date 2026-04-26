@@ -12,7 +12,7 @@ import { useSearchParams } from 'next/navigation';
 function RegistroDisciplinarContent() {
   const { 
     students, occurrences, rules, staffMembers, user, isGuest, currentUserRole,
-    addOccurrence, updateOccurrence, archiveOccurrence, checkRecidivism,
+    addOccurrence, updateOccurrence, archiveOccurrence, checkRecidivism, getEscalationStatus,
     addStudent, updateStudent, addStaffMember
   } = useAppContext();
   const searchParams = useSearchParams();
@@ -266,6 +266,14 @@ function RegistroDisciplinarContent() {
     e.preventDefault();
     if (!selectedStudent || !selectedRule) return;
 
+    if (!editingOccurrence) {
+       const escalation = getEscalationStatus(selectedStudent, parseInt(selectedRule, 10));
+       if (escalation.isEscalated) {
+          const confirmed = window.confirm(`⚠️ ATENÇÃO: ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
+          if (!confirmed) return; // Cancela se o usuário não confirmar
+       }
+    }
+
     if (editingOccurrence) {
       updateOccurrence(editingOccurrence, {
         studentId: selectedStudent,
@@ -495,6 +503,22 @@ function RegistroDisciplinarContent() {
     const student = students.find(s => s.id === o.studentId);
     const rule = rules.find(r => r.code === o.ruleCode);
     
+    // Calculate if it was escalated at the time
+    const studentOccurrences = occurrences.filter(oc => oc.studentId === o.studentId && new Date(oc.date) <= new Date(o.date));
+    const sameRuleCount = studentOccurrences.filter(oc => oc.ruleCode === o.ruleCode).length;
+    let isEscalated = sameRuleCount > 1;
+    let measure = rule?.measure || '';
+    if (isEscalated) {
+         measure = rule?.severity === 'Leve' ? 'Advertência Escrita (Agravada)' : 'Suspensão (Agravada)';
+    } else if (rule?.severity === 'Leve' && studentOccurrences.filter(oc => rules.find(r => r.code === oc.ruleCode)?.severity === 'Leve').length >= 3) {
+         isEscalated = true;
+         measure = 'Advertência Escrita (Agravada por acúmulo)';
+    }
+
+    const docTitle = measure.includes('Escrita') ? 'TERMO DE ADVERTÊNCIA ESCRITA' : 
+                     measure.includes('Suspensão') ? 'TERMO DE SUSPENSÃO' : 
+                     'REGISTRO DISCIPLINAR';
+
     // We shouldn't use window.open strictly inside an iframe cleanly in all cases, 
     // but a popup for printing usually works. Let's use a nice hidden iframe print or just window popup.
     const printWindow = window.open('', '_blank', 'width=800,height=600');
@@ -503,7 +527,7 @@ function RegistroDisciplinarContent() {
     printWindow.document.write(`
       <h${""}tml lang="pt-BR">
         <head>
-          <title>Registro Disciplinar - ${student?.name}</title>
+          <title>${docTitle} - ${student?.name}</title>
           <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; max-width: 800px; margin: 0 auto; }
             .header { text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
@@ -521,7 +545,7 @@ function RegistroDisciplinarContent() {
         </head>
         <body>
           <div class="header">
-            <h1 class="title">REGISTRO DISCIPLINAR</h1>
+            <h1 class="title">${docTitle}</h1>
             <p class="subtitle">Escola Estadual Cívico-Militar</p>
           </div>
           
@@ -535,7 +559,7 @@ function RegistroDisciplinarContent() {
           <div class="box">
             <div class="row"><span class="label">Infração (Art. ${rule?.code}):</span><span class="value">${rule?.description}</span></div>
             <div class="row"><span class="label">Gravidade:</span><span class="value">${rule?.severity}</span></div>
-            <div class="row"><span class="label">Medida Administrativa:</span><span class="value">${rule?.measure}</span></div>
+            <div class="row"><span class="label">Medida Administrativa:</span><span class="value">${measure}</span></div>
             <div class="row"><span class="label">Impacto na Pontuação:</span><span class="value" style="color: #ef4444;">-${rule?.points} pontos</span></div>
           </div>
           
@@ -811,7 +835,9 @@ function RegistroDisciplinarContent() {
                     </div>
                   )}
                   
-                  {selectedRule && activeRule && (
+                  {selectedRule && activeRule && (() => {
+                    const escalation = selectedStudent ? getEscalationStatus(selectedStudent, activeRule.code) : { isEscalated: false, reason: '', measure: activeRule.measure, severity: activeRule.severity };
+                    return (
                     <div className="bg-white border border-slate-200 rounded-lg p-4 mt-2 flex justify-between items-center relative">
                       <button 
                         type="button"
@@ -823,31 +849,29 @@ function RegistroDisciplinarContent() {
                       <div className="pr-6 w-full">
                         <p className="text-slate-800 text-sm font-medium mb-1">Cód. {activeRule.code} - {activeRule.description}</p>
                         
-                        {selectedStudent && checkRecidivism(selectedStudent, activeRule.code) && (
-                          <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-[11px] text-orange-700 font-bold flex items-center gap-2">
-                             ⚠️ ATENÇÃO: Reincidência detectada para esta infração!
+                        {escalation.isEscalated && (
+                          <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-[11px] text-orange-700 font-bold flex flex-col gap-1">
+                             <div className="flex items-center gap-2">⚠️ ATENÇÃO: {escalation.reason}!</div>
+                             <div className="font-normal">A infração será agravada automaticamente.</div>
                           </div>
                         )}
 
                         <div className="flex flex-wrap items-center gap-3 mt-2">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                              activeRule.severity === 'Leve' ? 'bg-blue-500/10 text-blue-500' :
-                              activeRule.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
+                              escalation.severity === 'Leve' ? 'bg-blue-500/10 text-blue-500' :
+                              escalation.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
                               'bg-red-500/10 text-red-600'
                             }`}>
-                              Gravidade: {activeRule.severity}
+                              Gravidade: {escalation.severity}
                           </span>
                           <span className="text-[11px] text-slate-500">Impacto Base: <strong className="text-red-500">{activeRule.points} pts</strong></span>
                           <span className="text-[11px] text-slate-500">Medida Recomendada: <strong className="text-slate-800">
-                            {selectedStudent && checkRecidivism(selectedStudent, activeRule.code) 
-                              ? (activeRule.severity === 'Leve' ? 'Advertência Escrita (Agravada)' : 'Suspensão (Agravada)')
-                              : activeRule.measure
-                            }
+                            {escalation.measure}
                           </strong></span>
                         </div>
                       </div>
                     </div>
-                  )}
+                  )})()}
                 </div>
 
                 <div className="flex items-end gap-2">
