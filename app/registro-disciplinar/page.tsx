@@ -586,54 +586,87 @@ function RegistroDisciplinarContent() {
       ? 0.50 * (o.durationDays || 1) 
       : Math.abs(rule?.points || 0);
 
+    const headerHtml = `
+      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 20px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+           <div style="display: flex; flex-direction: column; text-align: right; line-height: 1;">
+              <span style="font-size: 8px; font-weight: bold; color: #1e3a8a;">SEDUC</span>
+              <span style="font-size: 6px; color: #1e3a8a;">Secretaria de Estado de Educação</span>
+           </div>
+           <div style="height: 30px; width: 1px; background: #cbd5e1;"></div>
+           <div style="display: flex; flex-direction: column; line-height: 1;">
+              <span style="font-size: 10px; font-weight: bold; color: #1e3a8a;">Governo de</span>
+              <span style="font-size: 14px; font-weight: 900; color: #1e3a8a; margin-top: -2px;">Mato Grosso</span>
+           </div>
+        </div>
+        <div style="text-align: center; flex: 1; padding: 0 20px;">
+          <h2 style="font-size: 16px; font-weight: 800; color: #1e3a8a; margin: 0; text-transform: uppercase;">E.E CÍVICO-MILITAR</h2>
+          <h2 style="font-size: 16px; font-weight: 800; color: #1e3a8a; margin: 0; text-transform: uppercase;">PROF. JOÃO BATISTA</h2>
+        </div>
+        <div style="display: flex; align-items: center; gap: 5px;">
+           <div style="text-align: right; display: flex; flex-direction: column;">
+             <span style="font-size: 6px; font-weight: bold; color: #1e3a8a; text-transform: uppercase;">Escola Estadual</span>
+             <span style="font-size: 6px; font-weight: bold; color: #1e3a8a; text-transform: uppercase;">Cívico-Militar</span>
+           </div>
+           <div style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 4px; display: flex; items-center; justify-content: center;">
+              <svg viewBox="0 0 24 24" fill="#1e3a8a" width="30" height="30"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z"/></svg>
+           </div>
+        </div>
+      </div>
+    `;
+
     printWindow.document.write(`
       <h${""}tml lang="pt-BR">
         <head>
           <title>${docTitle} - ${student?.name}</title>
           <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; line-height: 1.6; max-width: 800px; margin: 0 auto; }
-            .header { text-align: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
-            .title { font-size: 24px; font-weight: bold; margin: 0; color: #0f172a; }
-            .subtitle { font-size: 14px; color: #64748b; margin-top: 5px; }
-            .row { margin-bottom: 12px; font-size: 14px; }
-            .label { font-weight: 600; color: #475569; display: inline-block; width: 150px; }
-            .value { color: #0f172a; font-weight: 500; }
-            .box { border: 1px solid #cbd5e1; padding: 20px; border-radius: 8px; margin-top: 30px; background: #f8fafc; }
-            .box .label { width: 180px; }
-            .signature { margin-top: 80px; display: flex; justify-content: space-between; gap: 40px; }
-            .sig-line { border-top: 1px solid #94a3b8; padding-top: 8px; flex: 1; text-align: center; font-size: 12px; color: #475569; }
-            .obs-box { margin-top: 10px; padding: 15px; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; min-height: 80px; font-size: 14px; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; max-width: 800px; margin: 0 auto; }
+            .header-container { margin-bottom: 30px; }
+            .title-section { text-align: center; margin-bottom: 30px; text-decoration: underline; }
+            .title { font-size: 18px; font-weight: bold; margin: 0; color: #000; text-transform: uppercase; }
+            .row { margin-bottom: 8px; font-size: 14px; display: flex; }
+            .label { font-weight: bold; color: #000; min-width: 150px; }
+            .value { color: #000; flex: 1; border-bottom: 1px dotted #ccc; padding-left: 5px; }
+            .box { border: 1px solid #000; padding: 15px; margin-top: 20px; }
+            .signature { margin-top: 60px; display: flex; justify-content: space-between; gap: 20px; }
+            .sig-line { border-top: 1px solid #000; padding-top: 5px; flex: 1; text-align: center; font-size: 10px; color: #000; font-weight: bold; }
+            .obs-box { margin-top: 5px; padding: 10px; border: 1px solid #000; min-height: 100px; font-size: 13px; }
+            @media print {
+              body { padding: 20px; }
+              .no-print { display: none; }
+            }
           </style>
         </head>
         <body>
-          <div class="header">
+          <div class="header-container">${headerHtml}</div>
+          
+          <div class="title-section">
             <h1 class="title">${docTitle}</h1>
-            <p class="subtitle">Escola Estadual Cívico-Militar</p>
           </div>
           
-          <div class="row"><span class="label">Data do Registro:</span><span class="value">${formatDate(o.date)} ${o.hour || ''}</span></div>
-          <div class="row"><span class="label">Local:</span><span class="value">${o.location || 'Não informado'}</span></div>
-          <div class="row"><span class="label">Aluno:</span><span class="value">${student?.name}</span></div>
-          <div class="row"><span class="label">Turma:</span><span class="value">${student?.class}</span></div>
-          <div class="row"><span class="label">Localizado por:</span><span class="value">${o.locatedBy || 'Não informado'}</span></div>
-          <div class="row"><span class="label">Registrado por:</span><span class="value">${o.registeredBy || 'Sistema'}</span></div>
+          <div class="row"><span class="label">DATA DO REGISTRO:</span><span class="value">${formatDate(o.date)} ${o.hour || ''}</span></div>
+          <div class="row"><span class="label">LOCAL:</span><span class="value">${o.location || 'NÃO INFORMADO'}</span></div>
+          <div class="row"><span class="label">ALUNO:</span><span class="value">${student?.name?.toUpperCase()}</span></div>
+          <div class="row"><span class="label">TURMA:</span><span class="value">${student?.class?.toUpperCase()}</span></div>
+          <div class="row"><span class="label">LOCALIZADO POR:</span><span class="value">${o.locatedBy?.toUpperCase() || 'NÃO INFORMADO'}</span></div>
+          <div class="row"><span class="label">REGISTRADO POR:</span><span class="value">${o.registeredBy?.toUpperCase() || 'SISTEMA'}</span></div>
           
           <div class="box">
-            <div class="row"><span class="label">Infração (Art. ${rule?.code}):</span><span class="value">${rule?.description}</span></div>
-            <div class="row"><span class="label">Gravidade:</span><span class="value">${rule?.severity}</span></div>
-            <div class="row"><span class="label">Medida Administrativa:</span><span class="value">${measure} ${o.durationDays ? `(${o.durationDays} ${o.durationDays === 1 ? 'dia' : 'dias'})` : ''}</span></div>
-            <div class="row"><span class="label">Impacto na Pontuação:</span><span class="value" style="color: #ef4444;">-${pointsToDeduct.toFixed(2)} pontos</span></div>
+            <div class="row"><span class="label">INFRAÇÃO (ART. ${rule?.code}):</span><span class="value">${rule?.description?.toUpperCase()}</span></div>
+            <div class="row"><span class="label">GRAVIDADE:</span><span class="value">${rule?.severity?.toUpperCase()}</span></div>
+            <div class="row"><span class="label">MEDIDA ADMINISTRATIVA:</span><span class="value">${measure?.toUpperCase()} ${o.durationDays ? `(${o.durationDays} ${o.durationDays === 1 ? 'DIA' : 'DIAS'})` : ''}</span></div>
+            <div class="row"><span class="label">IMPACTO NA PONTUAÇÃO:</span><span class="value">-${pointsToDeduct.toFixed(2)} PONTOS</span></div>
           </div>
           
-          <div class="row" style="margin-top: 24px;">
-            <span class="label" style="width: auto;">Observações Adicionais:</span>
+          <div style="margin-top: 20px;">
+            <span class="label">OBSERVAÇÕES ADICIONAIS:</span>
             <div class="obs-box">${o.observations || 'Nenhuma observação detalhada foi fornecida no momento do registro.'}</div>
           </div>
 
           <div class="signature">
-            <div class="sig-line">Gestão Escolar/Militar<br>(Assinatura e Carimbo)</div>
-            <div class="sig-line">Aluno(a)<br>(Assinatura)</div>
-            <div class="sig-line">Responsável Legal<br>(Assinatura)</div>
+            <div class="sig-line">GESTÃO ESCOLAR/MILITAR<br>(ASSINATURA E CARIMBO)</div>
+            <div class="sig-line">ALUNO(A)<br>(ASSINATURA)</div>
+            <div class="sig-line">RESPONSÁVEL LEGAL<br>(ASSINATURA)</div>
           </div>
         </body>
       </h${""}tml>
@@ -643,6 +676,87 @@ function RegistroDisciplinarContent() {
     setTimeout(() => {
       printWindow.print();
     }, 250);
+  };
+
+  const handleExportDocx = (o: Occurrence) => {
+    const student = students.find(s => s.id === o.studentId);
+    const rule = rules.find(r => r.code === o.ruleCode);
+    
+    // Logic similar to handleExport
+    const studentOccurrences = occurrences.filter(oc => oc.studentId === o.studentId && new Date(oc.date) <= new Date(o.date));
+    const sameRuleCount = studentOccurrences.filter(oc => oc.ruleCode === o.ruleCode).length;
+    let isEscalated = sameRuleCount > 1;
+    let measure = rule?.measure || '';
+    if (isEscalated) {
+         measure = rule?.severity === 'Leve' ? 'Advertência Escrita (Agravada)' : 'Suspensão (Agravada)';
+    } else if (rule?.severity === 'Leve' && studentOccurrences.filter(oc => rules.find(r => r.code === oc.ruleCode)?.severity === 'Leve').length >= 3) {
+         isEscalated = true;
+         measure = 'Advertência Escrita (Agravada por acúmulo)';
+    }
+
+    const docTitle = measure.includes('Escrita') ? 'TERMO DE ADVERTÊNCIA ESCRITA' : 
+                     measure.includes('Suspensão') ? 'TERMO DE SUSPENSÃO' : 
+                     'REGISTRO DISCIPLINAR';
+
+    const pointsToDeduct = rule?.severity === 'Grave' && measure.includes('Suspensão') 
+      ? 0.50 * (o.durationDays || 1) 
+      : Math.abs(rule?.points || 0);
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif;">
+        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
+          <h2 style="margin: 0;">E.E CÍVICO-MILITAR PROF. JOÃO BATISTA</h2>
+          <p style="margin: 5px 0;">Governo do Estado de Mato Grosso - SEDUC</p>
+        </div>
+        
+        <h1 style="text-align: center; font-size: 18pt; text-decoration: underline; margin-bottom: 30px;">${docTitle}</h1>
+        
+        <p><strong>DATA DO REGISTRO:</strong> ${formatDate(o.date)} ${o.hour || ''}</p>
+        <p><strong>LOCAL:</strong> ${o.location || 'NÃO INFORMADO'}</p>
+        <p><strong>ALUNO:</strong> ${student?.name?.toUpperCase()}</p>
+        <p><strong>TURMA:</strong> ${student?.class?.toUpperCase()}</p>
+        <p><strong>LOCALIZADO POR:</strong> ${o.locatedBy?.toUpperCase() || 'NÃO INFORMADO'}</p>
+        <p><strong>REGISTRADO POR:</strong> ${o.registeredBy?.toUpperCase() || 'SISTEMA'}</p>
+        
+        <div style="border: 1px solid #000; padding: 10pt; margin: 20pt 0;">
+          <p><strong>INFRAÇÃO (ART. ${rule?.code}):</strong> ${rule?.description?.toUpperCase()}</p>
+          <p><strong>GRAVIDADE:</strong> ${rule?.severity?.toUpperCase()}</p>
+          <p><strong>MEDIDA ADMINISTRATIVA:</strong> ${measure?.toUpperCase()} ${o.durationDays ? `(${o.durationDays} ${o.durationDays === 1 ? 'DIA' : 'DIAS'})` : ''}</p>
+          <p><strong>IMPACTO NA PONTUAÇÃO:</strong> -${pointsToDeduct.toFixed(2)} PONTOS</p>
+        </div>
+        
+        <p><strong>OBSERVAÇÕES ADICIONAIS:</strong></p>
+        <div style="border: 1px solid #000; min-height: 100pt; padding: 10pt;">
+          ${o.observations || 'Nenhuma observação detalhada.'}
+        </div>
+
+        <br><br><br>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="border-top: 1px solid #000; text-align: center; width: 30%;">GESTÃO ESCOLAR/MILITAR</td>
+            <td style="width: 5%;"></td>
+            <td style="border-top: 1px solid #000; text-align: center; width: 30%;">ALUNO(A)</td>
+            <td style="width: 5%;"></td>
+            <td style="border-top: 1px solid #000; text-align: center; width: 30%;">RESPONSÁVEL LEGAL</td>
+          </tr>
+        </table>
+      </div>
+    `;
+
+    const fullHtml = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head><meta charset='utf-8'><title>${docTitle}</title></head>
+      <body>${htmlContent}</body>
+      </html>
+    `;
+
+    const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${docTitle.replace(/ /g, '_')}_${student?.name?.replace(/ /g, '_')}.doc`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (
@@ -1684,7 +1798,13 @@ function RegistroDisciplinarContent() {
                     onClick={() => handleExport(o)}
                     className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition font-medium shadow-sm flex items-center gap-2"
                   >
-                    Exportar PDF (Imprimir)
+                    <FileText className="w-4 h-4" /> PDF
+                  </button>
+                  <button 
+                    onClick={() => handleExportDocx(o)}
+                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition font-medium shadow-sm flex items-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" /> DOCX
                   </button>
                 </div>
               </div>
