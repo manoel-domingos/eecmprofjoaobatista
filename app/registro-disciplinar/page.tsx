@@ -61,6 +61,7 @@ function RegistroDisciplinarContent() {
   const [observations, setObservations] = useState('');
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
   const [signedDocUrls, setSignedDocUrls] = useState<string[]>([]);
+  const [durationDays, setDurationDays] = useState(1);
   const [isImproving, setIsImproving] = useState(false);
 
   const handleImproveObservations = async () => {
@@ -172,6 +173,7 @@ function RegistroDisciplinarContent() {
     setObservations('');
     setVideoUrls([]);
     setSignedDocUrls([]);
+    setDurationDays(1);
     setIsModalOpen(true);
   };
 
@@ -190,6 +192,7 @@ function RegistroDisciplinarContent() {
     setObservations(o.observations || '');
     setVideoUrls(o.videoUrls || []);
     setSignedDocUrls(o.signedDocUrls || []);
+    setDurationDays(o.durationDays || 1);
     setIsModalOpen(true);
   };
 
@@ -319,7 +322,8 @@ function RegistroDisciplinarContent() {
         registeredBy,
         observations,
         videoUrls,
-        signedDocUrls
+        signedDocUrls,
+        durationDays: activeRule?.severity === 'Grave' ? durationDays : undefined
       });
     } else {
       addOccurrence({
@@ -332,7 +336,8 @@ function RegistroDisciplinarContent() {
         registeredBy,
         observations,
         videoUrls,
-        signedDocUrls
+        signedDocUrls,
+        durationDays: activeRule?.severity === 'Grave' ? durationDays : undefined
       });
     }
 
@@ -466,7 +471,7 @@ function RegistroDisciplinarContent() {
       name: newName,
       class: newClassName,
       shift: newShift,
-      points: 10.0,
+      points: 8.0,
       contacts: validContacts.length > 0 ? validContacts : undefined
     });
     setNewName('');
@@ -491,7 +496,8 @@ function RegistroDisciplinarContent() {
           registeredBy,
           observations,
           videoUrls,
-          signedDocUrls
+          signedDocUrls,
+          durationDays: activeRule?.severity === 'Grave' ? durationDays : undefined
         });
       } else {
         addOccurrence({
@@ -504,7 +510,8 @@ function RegistroDisciplinarContent() {
           registeredBy,
           observations,
           videoUrls,
-          signedDocUrls
+          signedDocUrls,
+          durationDays: activeRule?.severity === 'Grave' ? durationDays : undefined
         });
       }
       setIsModalOpen(false);
@@ -558,6 +565,10 @@ function RegistroDisciplinarContent() {
     const printWindow = window.open('', '_blank', 'width=800,height=600');
     if (!printWindow) return;
 
+    const pointsToDeduct = rule?.severity === 'Grave' && measure.includes('Suspensão') 
+      ? 0.50 * (o.durationDays || 1) 
+      : Math.abs(rule?.points || 0);
+
     printWindow.document.write(`
       <h${""}tml lang="pt-BR">
         <head>
@@ -593,8 +604,8 @@ function RegistroDisciplinarContent() {
           <div class="box">
             <div class="row"><span class="label">Infração (Art. ${rule?.code}):</span><span class="value">${rule?.description}</span></div>
             <div class="row"><span class="label">Gravidade:</span><span class="value">${rule?.severity}</span></div>
-            <div class="row"><span class="label">Medida Administrativa:</span><span class="value">${measure}</span></div>
-            <div class="row"><span class="label">Impacto na Pontuação:</span><span class="value" style="color: #ef4444;">-${rule?.points} pontos</span></div>
+            <div class="row"><span class="label">Medida Administrativa:</span><span class="value">${measure} ${o.durationDays ? `(${o.durationDays} ${o.durationDays === 1 ? 'dia' : 'dias'})` : ''}</span></div>
+            <div class="row"><span class="label">Impacto na Pontuação:</span><span class="value" style="color: #ef4444;">-${pointsToDeduct.toFixed(2)} pontos</span></div>
           </div>
           
           <div class="row" style="margin-top: 24px;">
@@ -903,6 +914,26 @@ function RegistroDisciplinarContent() {
                             {escalation.measure}
                           </strong></span>
                         </div>
+
+                        {escalation.severity === 'Grave' && (
+                          <div className="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                            <label className="block text-[11px] font-bold text-blue-700 uppercase mb-2">Duração da Suspensão (Dias Letivos)</label>
+                            <div className="flex items-center gap-4">
+                              <input 
+                                type="range" 
+                                min="1" 
+                                max="3" 
+                                value={durationDays}
+                                onChange={(e) => setDurationDays(parseInt(e.target.value))}
+                                className="flex-1 h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                              />
+                              <span className="text-sm font-bold text-blue-700 w-12 text-center bg-white px-2 py-1 rounded border border-blue-200">
+                                {durationDays} {durationDays === 1 ? 'dia' : 'dias'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-blue-600 mt-2 italic">* Conforme Art. 16 § 4º (Máximo 3 dias letivos corridos)</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )})()}

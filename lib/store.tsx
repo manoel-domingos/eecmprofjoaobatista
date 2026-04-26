@@ -946,7 +946,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return { isEscalated: false, reason: '', measure: rule.measure, severity: rule.severity };
   };
 
-  const getStudentBehavior = (points: number) => {
+  const getStudentBehavior = (points: number): BehaviorClass => {
     if (points >= 10) return 'Excepcional';
     if (points >= 9.0) return 'Ótimo';
     if (points >= 7.0) return 'Bom';
@@ -957,10 +957,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getStudentPoints = (studentId: string) => {
     const student = students.find(s => s.id === studentId);
-    if (!student) return 10;
+    if (!student) return 8.0;
     
     // Initial point according to Art. 45 § 2º: 8.0 for new students
-    // But we use 10.0 as theoretical max and Art. 51 allows reaching it.
+    // Recalculating from base 8.0
     let base = 8.0; 
     
     const studentOccurrences = occurrences.filter(o => o.studentId === studentId && !o.archived);
@@ -971,47 +971,67 @@ export function AppProvider({ children }: { children: ReactNode }) {
     studentOccurrences.forEach(o => {
       const rule = rules.find(r => r.code === o.ruleCode);
       if (rule) {
-        // Base deduction by severity if not specified otherwise
-        // We use the rule.points which we already set to -0.1, -0.3, -0.5 in data.ts
         let pointsToDeduct = Math.abs(rule.points);
         
+        // Art. 46 III: Suspensão is -0.50 per day
+        if (rule.severity === 'Grave' && rule.measure === 'Suspensão') {
+          const days = o.durationDays || 1;
+          pointsToDeduct = 0.50 * days;
+        }
+
         // Check for recidivism (Art. 35 III - Aggravating)
-        const count = studentOccurrences.filter(prev => prev.ruleCode === o.ruleCode && new Date(prev.date) < new Date(o.date)).length;
-        if (count > 0) {
-          pointsToDeduct *= 1.5; // Example aggregator: 50% increase for same rule repeat
+        const sameRuleCount = studentOccurrences.filter(prev => prev.ruleCode === o.ruleCode && new Date(prev.date) < new Date(o.date)).length;
+        if (sameRuleCount > 0) {
+          // Rule says we should "aggravate the measure". 
+          // In point terms, we'll apply a 50% increase as a standard representation of aggravation.
+          pointsToDeduct *= 1.5; 
         }
         
         deductions += pointsToDeduct;
       }
     });
 
-    // 2. Direct Bonuses from Praise (Art. 47)
+    // 2. Direct Bonuses from Praise (Art. 47 & 50)
     let bonuses = 0;
     studentPraises.forEach(p => {
-      if (p.type === 'Individual') bonuses += 0.50;
-      if (p.type === 'Coletivo') bonuses += 0.30;
-      if (p.type === 'Art. 50') bonuses += 0.50; // Bimester bonus
+      if (p.type === 'Individual') bonuses += 0.50; // Art. 47 I
+      if (p.type === 'Coletivo') bonuses += 0.30;   // Art. 47 II
+      if (p.type === 'Art. 50') bonuses += 0.50;    // Art. 50 (Bimester >= 8.0)
     });
 
     // 3. Time-based bonus (Art. 51)
-    // 2 months clean: +0.20 per day
-    if (studentOccurrences.length > 0) {
-      const lastOccur = new Date(Math.max(...studentOccurrences.map(o => new Date(o.date).getTime())));
+    // Decorridos 02 meses (60 dias) sem falta: +0.20 per day until 10.0
+    const lastEventDate = studentOccurrences.length > 0 
+      ? new Date(Math.max(...studentOccurrences.map(o => new Date(o.date).getTime())))
+      : null;
+
+    if (lastEventDate) {
       const sixtyDaysInMs = 60 * 24 * 60 * 60 * 1000;
       const today = new Date();
-      const diff = today.getTime() - lastOccur.getTime();
+      const diff = today.getTime() - lastEventDate.getTime();
       
       if (diff > sixtyDaysInMs) {
         const extraDays = Math.floor((diff - sixtyDaysInMs) / (24 * 60 * 60 * 1000));
         bonuses += extraDays * 0.20;
       }
     } else {
-      // Allow bonus for no occurrences? Only if enrolled 2 months ago, but we don't have enroll date.
-      // We start at 8.0 for everyone anyway based on Art 45 § 2º.
+      // If no occurrences, check since "beginning of term"
+      // Since we don't have enrollment date, we assume the semester started 60 days ago if no history.
+      // But Art. 51 specifically mentions "after suffering a measure".
+      // Let's assume recovery starts from 8.0 if they stay clean.
+      const today = new Date();
+      // Mocking a start date for the year (e.g., Feb 1st)
+      const startOfYear = new Date(today.getFullYear(), 1, 1); 
+      const diff = today.getTime() - startOfYear.getTime();
+      if (diff > (60 * 24 * 60 * 60 * 1000)) {
+         const extraDays = Math.floor((diff - (60 * 24 * 60 * 60 * 1000)) / (24 * 60 * 60 * 1000));
+         bonuses += extraDays * 0.20;
+      }
     }
 
     const currentPoints = base - deductions + bonuses;
-    return Math.min(10, Math.max(0, parseFloat(currentPoints.toFixed(2))));
+    // Cap at 10.0 (Art. 51) and floor at 0
+    return Math.min(10.0, Math.max(0, parseFloat(currentPoints.toFixed(2))));
   };
 
   const setGuestMode = () => {
