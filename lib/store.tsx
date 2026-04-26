@@ -150,6 +150,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function initAuthAndData() {
+      let usingMockSession = false;
       // Restore session from localStorage if within 10 minutes
       try {
         const stored = localStorage.getItem('eecm_session');
@@ -164,11 +165,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
               setIsGuest(false);
               // Refresh timestamp to extend session on F5
               localStorage.setItem('eecm_session', JSON.stringify({ type, email, timestamp: now }));
+              usingMockSession = true;
             } else if (type === 'guest') {
               setIsGuest(true);
               setUser(null);
               // Refresh timestamp
               localStorage.setItem('eecm_session', JSON.stringify({ type, timestamp: now }));
+              usingMockSession = true;
             }
           } else {
             localStorage.removeItem('eecm_session');
@@ -183,19 +186,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Check session
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          setUser(session.user);
+      if (!usingMockSession) {
+        // Check session
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            setUser(session.user);
+          }
+        } catch (e) {
+          console.error("Failed to get supabase session", e);
         }
-      } catch (e) {
-        console.error("Failed to get supabase session", e);
-      }
 
-      supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user || null);
-      });
+        supabase.auth.onAuthStateChange((_event, session) => {
+          setUser(session?.user || null);
+        });
+      }
 
       setIsAuthRestored(true);
 
