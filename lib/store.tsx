@@ -174,21 +174,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
             localStorage.removeItem('eecm_session');
           }
         }
-        setIsAuthRestored(true);
       } catch (err) {
         console.error("Failed to restore session", err);
-        setIsAuthRestored(true);
       }
 
-      if (!supabase) return;
+      if (!supabase) {
+        setIsAuthRestored(true);
+        return;
+      }
 
       // Check session
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user || null);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+        }
+      } catch (e) {
+        console.error("Failed to get supabase session", e);
+      }
 
       supabase.auth.onAuthStateChange((_event, session) => {
         setUser(session?.user || null);
       });
+
+      setIsAuthRestored(true);
 
       const fetchData = async () => {
         if (!supabase) return;
