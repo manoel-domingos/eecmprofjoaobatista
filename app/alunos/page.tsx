@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
-import { Users, Plus, Upload, Download, Search, X, Edit2, Archive, Trash2 } from 'lucide-react';
+import { Users, Plus, Upload, Download, Search, X, Edit2, Archive, Trash2, ChevronDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from "@google/genai";
 
