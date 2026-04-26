@@ -24,7 +24,7 @@ export interface AILog {
   tokens?: number;
   status: 'success' | 'error';
   error?: string;
-  provider: 'google' | 'groq';
+  provider: 'google' | 'groq' | 'gemini';
 }
 
 export const globalAILogs: AILog[] = [];
@@ -152,7 +152,7 @@ export async function getWorkingModelWithFallback(apiKey: string) {
       
       addLog({
         model: modelName,
-        provider: 'google',
+        provider: 'gemini',
         prompt: `[Probe] ${probePrompt}`,
         response: result.response.text(),
         status: 'success'
@@ -166,7 +166,7 @@ export async function getWorkingModelWithFallback(apiKey: string) {
       
       addLog({
         model: modelName,
-        provider: 'google',
+        provider: 'gemini',
         prompt: '[Probe] ok',
         response: '',
         status: 'error',

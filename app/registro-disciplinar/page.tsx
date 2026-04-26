@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, Suspense } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
-import { Search, Plus, X, Edit2, Archive, Video, FileText, Camera, Clock, MapPin, UserPlus, Trash2, MessageSquare, Phone, Printer, Sparkles } from 'lucide-react';
+import { Search, Plus, X, Edit2, Archive, Video, FileText, Camera, Clock, MapPin, UserPlus, Trash2, MessageSquare, Phone, Printer, Sparkles, AlertTriangle } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 import { Occurrence, StaffMember } from '@/lib/data';
 import { getLocalDateString, getLocalTimeString, formatDate, formatPhoneForWhatsApp } from '@/lib/utils';
@@ -1060,6 +1060,40 @@ function RegistroDisciplinarContent() {
                   </div>
                 </div>
               </div>
+
+              {selectedRule === '84' && (
+                <div className="mt-6 p-5 bg-amber-50 dark:bg-amber-500/10 border-l-4 border-amber-500 rounded-r-2xl shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 bg-amber-100 dark:bg-amber-500/20 rounded-full flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-amber-900 dark:text-amber-200 text-base">
+                        Procedimentos Obrigatórios: Infração de Briga
+                      </h4>
+                      <p className="text-amber-800 dark:text-amber-300/80 mt-1 text-sm leading-relaxed">
+                        Conforme o regimento, para casos de briga ou luta corporal, os seguintes passos são <strong>imprescindíveis</strong>:
+                      </p>
+                      <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {[
+                          { label: 'Ficha FICAI', desc: 'Comunicação de Aluno Infrator' },
+                          { label: 'Sistema EDUCASEG', desc: 'Registro de Segurança Escolar' },
+                          { label: 'Boletim de Ocorrência', desc: 'Registro na Delegacia (B.O.)' },
+                          { label: 'Acionar os Pais', desc: 'Contato imediato e registro' }
+                        ].map((item, i) => (
+                          <li key={i} className="flex items-center gap-2 bg-white/50 dark:bg-slate-800/50 p-2 rounded-lg border border-amber-200/50 dark:border-amber-500/20">
+                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            <span className="text-xs text-amber-900 dark:text-amber-100 font-bold">{item.label}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-amber-700 dark:text-amber-400 mt-3 text-[11px] italic">
+                        * Anexe os protocolos e registros de contato nos campos de documentos acima.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="pt-4 flex items-center justify-between sticky bottom-0 border-t border-slate-200 p-5 -mx-5 -mb-5 mt-4 bg-white">
                 <div className="relative">
