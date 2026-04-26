@@ -7,7 +7,7 @@ if (!fs.existsSync(libDir)) {
 }
 
 const date = new Date();
-const options = { timeZone: 'America/Sao_Paulo', year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false };
+const options = { timeZone: 'America/Cuiaba', year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false };
 const formatter = new Intl.DateTimeFormat('pt-BR', options);
 
 const parts = formatter.formatToParts(date);
