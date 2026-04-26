@@ -147,55 +147,55 @@ export default function Dashboard() {
 
         {/* Row 1: KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="glass-card p-5 flex flex-col justify-between h-36">
-            <div className="w-9 h-9 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center">
+          <div className="p-5 flex flex-col justify-between h-36 rounded-2xl border border-blue-200/50 dark:border-blue-500/20 bg-blue-50/60 dark:bg-blue-500/5 hover:bg-blue-100/80 dark:hover:bg-blue-500/15 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md group">
+            <div className="w-9 h-9 bg-white dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center shadow-sm">
               <FileText className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-[#8492a6] uppercase tracking-wider mb-1">Total de Ocorrências</p>
+              <p className="text-[10px] font-bold text-blue-600/70 dark:text-blue-400/70 uppercase tracking-wider mb-1">Total de Ocorrências</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">{totalOccurrences}</p>
+                <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">{totalOccurrences}</p>
               </div>
-              <p className="text-[#8492a6] text-xs mt-1">No período selecionado</p>
+              <p className="text-blue-600/50 dark:text-blue-400/50 text-xs mt-1 font-medium">No período selecionado</p>
             </div>
           </div>
 
-          <div className="glass-card p-5 flex flex-col justify-between h-36 !bg-red-500/5 dark:!bg-red-900/10 !border-red-200/30">
-            <div className="w-9 h-9 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg flex items-center justify-center">
+          <div className="p-5 flex flex-col justify-between h-36 rounded-2xl border border-red-200/50 dark:border-red-500/20 bg-red-50/60 dark:bg-red-500/5 hover:bg-red-100/80 dark:hover:bg-red-500/15 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md group">
+            <div className="w-9 h-9 bg-white dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg flex items-center justify-center shadow-sm">
               <AlertTriangle className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-[#8492a6] uppercase tracking-wider mb-1">Casos Graves</p>
+              <p className="text-[10px] font-bold text-red-600/70 dark:text-red-400/70 uppercase tracking-wider mb-1">Casos Graves</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-red-600 dark:text-red-400">{graveCount}</p>
+                <p className="text-3xl font-bold text-red-700 dark:text-red-300">{graveCount}</p>
               </div>
-              <p className="text-[#8492a6] text-xs mt-1">{gravePercent}% do total</p>
+              <p className="text-red-600/50 dark:text-red-400/50 text-xs mt-1 font-medium">{gravePercent}% do total</p>
             </div>
           </div>
 
-          <div className="glass-card p-5 flex flex-col justify-between h-36 !bg-amber-500/5 dark:!bg-amber-900/10 !border-amber-200/30">
-            <div className="w-9 h-9 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg flex items-center justify-center">
+          <div className="p-5 flex flex-col justify-between h-36 rounded-2xl border border-purple-200/50 dark:border-purple-500/20 bg-purple-50/60 dark:bg-purple-500/5 hover:bg-purple-100/80 dark:hover:bg-purple-500/15 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md group">
+            <div className="w-9 h-9 bg-white dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-lg flex items-center justify-center shadow-sm">
               <Users className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-[#8492a6] uppercase tracking-wider mb-1">Alunos com Registros</p>
+              <p className="text-[10px] font-bold text-purple-600/70 dark:text-purple-400/70 uppercase tracking-wider mb-1">Alunos com Registros</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">{impactedStudentsCount}</p>
+                <p className="text-3xl font-bold text-purple-700 dark:text-purple-300">{impactedStudentsCount}</p>
               </div>
-              <p className="text-[#8492a6] text-xs mt-1">de {students.length} alunos - {impactedStudentsPercent}% do total</p>
+              <p className="text-purple-600/50 dark:text-purple-400/50 text-xs mt-1 font-medium">de {students.length} alunos - {impactedStudentsPercent}%</p>
             </div>
           </div>
 
-          <div className="glass-card p-5 flex flex-col justify-between h-36 !bg-emerald-500/5 dark:!bg-emerald-900/10 !border-emerald-200/30">
-            <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center">
+          <div className="p-5 flex flex-col justify-between h-36 rounded-2xl border border-emerald-200/50 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-500/5 hover:bg-emerald-100/80 dark:hover:bg-emerald-500/15 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md group">
+            <div className="w-9 h-9 bg-white dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center shadow-sm">
               <Star className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-[#8492a6] uppercase tracking-wider mb-1">Nota Média Geral</p>
+              <p className="text-[10px] font-bold text-emerald-600/70 dark:text-emerald-400/70 uppercase tracking-wider mb-1">Nota Média Geral</p>
               <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{averagePointsStr}</p>
+                <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">{averagePointsStr}</p>
               </div>
-              <p className="text-[#8492a6] text-xs mt-1">{percentAbove7}% dos alunos com nota &gt; 7.0</p>
+              <p className="text-emerald-600/50 dark:text-emerald-400/50 text-xs mt-1 font-medium">{percentAbove7}% com nota &gt; 7.0</p>
             </div>
           </div>
         </div>
@@ -212,7 +212,7 @@ export default function Dashboard() {
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {criticalStudents.slice(0, 8).map(s => (
-                  <div key={s.id} className="bg-white dark:bg-[#1a1f2e] p-3 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm flex justify-between items-center">
+                  <div key={s.id} className="bg-white dark:bg-[#1a1f2e] p-3 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm flex justify-between items-center hover:-translate-y-0.5 transition-all duration-300">
                     <div className="truncate pr-2">
                       <p className="font-bold text-slate-800 dark:text-white text-sm truncate">{s.name}</p>
                       <p className="text-xs text-slate-500">{s.class}</p>
@@ -231,7 +231,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
           
           {/* Disciplina */}
-          <div className="glass-card p-5 flex flex-col">
+          <div className="glass-card p-5 flex flex-col group hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md">
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-50 dark:bg-slate-800/50 rounded-lg">
@@ -244,9 +244,9 @@ export default function Dashboard() {
               </div>
               <Link 
                 href={`/registro-disciplinar?year=${selectedYear}&month=${selectedMonth}&shift=${selectedShift}&class=${selectedClass}`}
-                className="text-blue-500 dark:text-blue-400 font-medium text-xs hover:underline flex items-center gap-1 transition"
+                className="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 px-3 py-1.5 rounded-lg text-blue-600 dark:text-blue-400 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1.5 transition-all hover:bg-blue-100 dark:hover:bg-blue-500/20"
               >
-                Ver tudo <ArrowRight className="w-3 h-3" />
+                Ver tudo <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
             
@@ -274,7 +274,7 @@ export default function Dashboard() {
           </div>
 
           {/* Elogios e Bonificações */}
-          <div className="glass-card p-5 flex flex-col">
+          <div className="glass-card p-5 flex flex-col group hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md">
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-amber-50 dark:bg-slate-800/50 rounded-lg">
@@ -287,9 +287,9 @@ export default function Dashboard() {
               </div>
               <Link 
                 href={`/elogios?year=${selectedYear}&month=${selectedMonth}&shift=${selectedShift}&class=${selectedClass}`}
-                className="text-amber-500 dark:text-amber-400 font-medium text-xs hover:underline flex items-center gap-1 transition"
+                className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 px-3 py-1.5 rounded-lg text-emerald-600 dark:text-emerald-400 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1.5 transition-all hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
               >
-                Ver tudo <ArrowRight className="w-3 h-3" />
+                Ver tudo <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
             
@@ -314,7 +314,7 @@ export default function Dashboard() {
           </div>
 
           {/* Acidentes */}
-          <div className="glass-card p-5 flex flex-col">
+          <div className="glass-card p-5 flex flex-col group hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md">
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-orange-50 dark:bg-slate-800/50 rounded-lg">
@@ -327,9 +327,9 @@ export default function Dashboard() {
               </div>
               <Link 
                 href={`/acidentes?year=${selectedYear}&month=${selectedMonth}&shift=${selectedShift}&class=${selectedClass}`}
-                className="text-orange-500 dark:text-orange-400 font-medium text-xs hover:underline flex items-center gap-1 transition"
+                className="bg-orange-50 dark:bg-orange-500/10 border border-orange-100 dark:border-orange-500/20 px-3 py-1.5 rounded-lg text-orange-600 dark:text-orange-400 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1.5 transition-all hover:bg-orange-100 dark:hover:bg-orange-500/20"
               >
-                Ver tudo <ArrowRight className="w-3 h-3" />
+                Ver tudo <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
             
