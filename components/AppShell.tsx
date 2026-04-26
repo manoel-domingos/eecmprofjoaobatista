@@ -697,6 +697,11 @@ function RightControls(props: RightControlsProps) {
                 <LogOut className="w-4 h-4" /> Sair
               </button>
             </div>
+            <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+              <p className="text-[11px] text-slate-400 dark:text-slate-500 italic text-center">
+                Versão: {versionData.version}
+              </p>
+            </div>
           </div>
         )}
       </div>
