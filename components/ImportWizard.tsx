@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateContentWithFallback } from '@/lib/ai';
+import { useAppContext } from '@/lib/store';
 
 // ============================================================
 // TIPAGENS E CONFIGURAÇÕES
@@ -168,7 +169,8 @@ const RGX = {
 
 const COLUMNS = ["Ignorar", "Nome*", "Turma*", "CPF", "Data Nasc.", "Telefone 1", "Telefone 2", "Matrícula", "Email", "Gênero", "Nome Mãe", "Nome Pai", "Endereço", "Observação"];
 
-export default function ImportWizard({ isOpen, onClose, onImport, geminiApiKey }: ImportWizardProps) {
+export default function ImportWizard({ isOpen, onClose, onImport }: { isOpen: boolean, onClose: () => void, onImport: (data: any[]) => void }) {
+  const { geminiApiKey, groqApiKey } = useAppContext();
   const [step, setStep] = useState<'upload' | 'mapping' | 'review'>('upload');
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
   const [sheetNames, setSheetNames] = useState<string[]>([]);
@@ -477,7 +479,7 @@ export default function ImportWizard({ isOpen, onClose, onImport, geminiApiKey }
 2. Mapeie as colunas para estes tipos: ${COLUMNS.join(', ')}.
 Responda apenas em JSON: {"headerRowIndex": number, "mapping": {"índice_coluna": "Tipo"}}\n\nPlanilha:\n${preview}`;
 
-      const result = await generateContentWithFallback(geminiApiKey, prompt);
+      const result = await generateContentWithFallback(geminiApiKey, prompt, (model) => setAutoDetectProgress(`IA analisando (${model})...`), groqApiKey);
       const text = result.response.text();
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {

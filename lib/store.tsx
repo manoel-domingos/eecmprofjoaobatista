@@ -25,7 +25,11 @@ interface AppState {
   currentUserRole: AppUserRole | 'GUEST';
   isAuthRestored: boolean;
   isDebugMode: boolean;
+  geminiApiKey: string;
+  groqApiKey: string;
   setIsDebugMode: (v: boolean) => void;
+  setGeminiApiKey: (v: string) => void;
+  setGroqApiKey: (v: string) => void;
   setGuestMode: () => void;
   setMockUser: (username: string) => void;
   logout: () => Promise<void>;
@@ -119,15 +123,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDebugMode, setIsDebugMode] = useState(false);
+  const [geminiApiKey, setGeminiApiKey] = useState('');
+  const [groqApiKey, setGroqApiKey] = useState('');
 
   useEffect(() => {
-    const stored = localStorage.getItem('eecm_debug_mode');
-    if (stored === 'true') setIsDebugMode(true);
+    const storedDebug = localStorage.getItem('eecm_debug_mode');
+    if (storedDebug === 'true') setIsDebugMode(true);
+    
+    const storedGemini = localStorage.getItem('eecm_gemini_key');
+    if (storedGemini) setGeminiApiKey(storedGemini);
+    
+    const storedGroq = localStorage.getItem('eecm_groq_key');
+    if (storedGroq) setGroqApiKey(storedGroq);
   }, []);
 
   useEffect(() => {
     localStorage.setItem('eecm_debug_mode', isDebugMode.toString());
   }, [isDebugMode]);
+
+  useEffect(() => {
+    if (geminiApiKey) localStorage.setItem('eecm_gemini_key', geminiApiKey);
+  }, [geminiApiKey]);
+
+  useEffect(() => {
+    if (groqApiKey) localStorage.setItem('eecm_groq_key', groqApiKey);
+  }, [groqApiKey]);
   useEffect(() => {
     try {
       const storedUsers = localStorage.getItem('eecm_app_users');
@@ -1047,7 +1067,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider value={{
       students, occurrences, accidents, praises, rules, summons, conductTerms, auditLogs, staffMembers, appUsers, isSupabaseConnected, isSyncing,
-      user, isGuest, currentUserRole, isAuthRestored, isDebugMode, setIsDebugMode, setGuestMode, setMockUser, logout,
+      user, isGuest, currentUserRole, isAuthRestored, isDebugMode, setIsDebugMode, 
+      geminiApiKey, setGeminiApiKey, groqApiKey, setGroqApiKey,
+      setGuestMode, setMockUser, logout,
       logAction, refreshData,
       addAppUser, updateAppUser, deleteAppUser,
       addStudent, importStudents, updateStudent, archiveStudent, restoreStudent, deleteAllStudents,

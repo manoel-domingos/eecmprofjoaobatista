@@ -3,9 +3,121 @@
 import React, { useState, useRef } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
-import { Users, Plus, Upload, Download, Search, X, Edit2, Archive, Trash2, ChevronDown } from 'lucide-react';
-import ImportWizard from '@/components/ImportWizard';
+import { Users, Plus, Upload, Download, Search, X, Edit2, Archive, Trash2, ChevronDown, Wand2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { GoogleGenAI, Type } from "@google/genai";
+import { advancedSmartHeuristicScan } from '@/lib/scanner';
+
+// ── Mapa de campos internos para rótulos do wizard ──
+type WizardField =
+  | 'ignore' | 'name' | 'class' | 'shift'
+  | 'cpf' | 'birthDate' | 'phone1' | 'phone2'
+  | 'registration' | 'observation' | 'address'
+  | 'mother' | 'father';
+
+const FIELD_LABELS: Record<WizardField, string> = {
+  ignore:       'Ignorar',
+  name:         'Nome*',
+  class:        'Turma*',
+  shift:        'Turno',
+  cpf:          'CPF',
+  birthDate:    'Data Nasc.',
+  phone1:       'Telefone 1',
+  phone2:       'Telefone 2',
+  registration: 'Matrícula',
+  observation:  'Observação',
+  address:      'Endereço',
+  mother:       'Nome Mãe',
+  father:       'Nome Pai',
+};
+
+// ColumnType do scanner → WizardField
+const SCANNER_TO_WIZARD: Record<string, WizardField> = {
+  NOME:            'name',
+  TURMA:           'class',
+  CPF:             'cpf',
+  DATA_NASCIMENTO: 'birthDate',
+  TELEFONE:        'phone1',
+  MATRICULA:       'registration',
+  EMAIL:           'observation',
+  GENERO:          'ignore',
+  ENDERECO:        'address',
+  RESPONSAVEL:     'mother',
+  UNKNOWN:         'ignore',
+};
+
+const analyzeSheetWithAI = async (csvSnippet: string, apiKey: string) => {
+  try {
+    if (!apiKey) return null;
+    const ai = new GoogleGenAI({ apiKey });
+    
+    // Limit to prevent huge JSON hallucination loops
+    const limitedCsv = csvSnippet.substring(0, 1500);
+
+    const prompt = `Analise as primeiras linhas dessa planilha escolar (formato CSV) e identifique a estrutura para importar alunos.
+CSV:
+${limitedCsv}
+
+Responda APENAS com o objeto JSON solicitado. NUNCA inclua os dados da planilha de volta nos valores. Seja curto e conciso. Não use blocos markdown.
+Formato do JSON (não adicione propriedades que não foram pedidas):
+{
+  "headerRowIndex": número da linha (0-indexed) onde estão os cabeçalhos,
+  "columns": { "name": "NOME DO ALUNO", "class": "TURMA", ... }
+}
+
+Para a estrutura de alunos, as chaves suportadas em "columns" são: "name" (Aluno), "class" (Série/Turma), "shift" (Turno), "cpf", "birthDate" (Nascimento), "phone1" (Telefone), "phone2", "registration" (Matrícula), "observation" (Observação), "mother" (Mãe), "father" (Pai).
+Se não houver coluna para alguma dessas chaves internas, não inclua a chave no objeto. Exemplo: {"headerRowIndex": 0, "columns": {"name": "NOME DO ALUNO", "class": "TURMA"}}`;
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        maxOutputTokens: 256,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            headerRowIndex: { type: Type.INTEGER },
+            columns: {
+               type: Type.OBJECT,
+               properties: {
+                 name: { type: Type.STRING },
+                 class: { type: Type.STRING },
+                 shift: { type: Type.STRING },
+                 cpf: { type: Type.STRING },
+                 birthDate: { type: Type.STRING },
+                 phone1: { type: Type.STRING },
+                 phone2: { type: Type.STRING },
+                 registration: { type: Type.STRING },
+                 observation: { type: Type.STRING },
+                 mother: { type: Type.STRING },
+                 father: { type: Type.STRING }
+               }
+            }
+          }
+        }
+      }
+    });
+
+    const responseText = (response.text || '{}');
+    try {
+       // Find the first { and the last }
+       const startIndex = responseText.indexOf('{');
+       const endIndex = responseText.lastIndexOf('}');
+       if (startIndex !== -1 && endIndex !== -1 && endIndex >= startIndex) {
+         const jsonStr = responseText.substring(startIndex, endIndex + 1);
+         return JSON.parse(jsonStr);
+       }
+       return JSON.parse(responseText.trim().replace(/^```json/, '').replace(/```$/, '').trim());
+    } catch (parseError) {
+       console.warn("JSON parse failed.", parseError);
+       return null; // Return null instead of throwing to allow heuristic fallback
+    }
+  } catch (err) {
+    console.error("AI Analysis failed:", err);
+    return null;
+  }
+};
 
 export default function Alunos() {
   const { 
@@ -17,14 +129,14 @@ export default function Alunos() {
     getStudentPoints, 
     getStudentBehavior, 
     deleteAllStudents, 
-    currentUserRole 
+    currentUserRole,
+    geminiApiKey,
+    isDebugMode
   } = useAppContext();
-
   const [searchTerm, setSearchTerm] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+  const [editingStudent, setEditingStudent] = useState<string | null>(null);
 
   // Form State
   const [name, setName] = useState('');
@@ -37,6 +149,12 @@ export default function Alunos() {
   const [registrationNumber, setRegistrationNumber] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [ignoredWarning, setIgnoredWarning] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  
+  // Import review state
+  const [pendingImports, setPendingImports] = useState<any[]>([]);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [reviewEditContactsIndex, setReviewEditContactsIndex] = useState<number | null>(null);
 
   // Exclusão state
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -46,8 +164,10 @@ export default function Alunos() {
   const [deleteAllConfirmText, setDeleteAllConfirmText] = useState('');
 
   const phoneRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uniqueClasses = Array.from(new Set(students.filter(s => !s.archived).map(s => s.class))).sort((a, b) => {
+    // Sort numeric grades first if possible, fallback to standard sort
     const aNum = parseInt(a);
     const bNum = parseInt(b);
     if (!isNaN(aNum) && !isNaN(bNum)) {
@@ -59,8 +179,11 @@ export default function Alunos() {
 
   const filteredStudents = students.filter(s => {
     if (s.archived) return false;
+    
+    // Check class filter
     if (classFilter && s.class !== classFilter) return false;
     
+    // Check search term
     const term = searchTerm.toLowerCase();
     if (!term) return true;
     
@@ -70,7 +193,7 @@ export default function Alunos() {
   });
 
   const openAddModal = () => {
-    setEditingStudentId(null);
+    setEditingStudent(null);
     setName('');
     setClassName('');
     setShift('Matutino');
@@ -85,7 +208,7 @@ export default function Alunos() {
   };
 
   const openEditModal = (s: any) => {
-    setEditingStudentId(s.id);
+    setEditingStudent(s.id);
     setName(s.name);
     setClassName(s.class);
     setShift(s.shift);
@@ -132,9 +255,12 @@ export default function Alunos() {
         }
 
         newContacts[index][field] = formatted;
+        
         setIgnoredWarning(false);
         const inputRef = phoneRefs.current[index];
-        if (inputRef) inputRef.setCustomValidity('');
+        if (inputRef) {
+             inputRef.setCustomValidity('');
+        }
     } else {
         newContacts[index][field] = value;
     }
@@ -142,11 +268,11 @@ export default function Alunos() {
   };
 
   const handleArchive = () => {
-    if (editingStudentId && deleteConfirmText.toLowerCase() === 'arquivar') {
-      archiveStudent(editingStudentId);
+    if (editingStudent && deleteConfirmText.toLowerCase() === 'arquivar') {
+      archiveStudent(editingStudent);
       setIsDeleteConfirmOpen(false);
       setIsModalOpen(false);
-      setEditingStudentId(null);
+      setEditingStudent(null);
       setDeleteConfirmText('');
     }
   };
@@ -155,6 +281,7 @@ export default function Alunos() {
     e.preventDefault();
     if (!name || !className) return;
 
+    // Filter out completely empty contacts
     const validContacts = contacts.filter(c => c.name.trim() !== '' || c.phone.trim() !== '');
 
     if (!ignoredWarning) {
@@ -171,18 +298,18 @@ export default function Alunos() {
       if (hasMissingNine && firstInvalidIndex !== -1 && phoneRefs.current[firstInvalidIndex]) {
          const input = phoneRefs.current[firstInvalidIndex];
          if (input) {
-            input.setCustomValidity('Falta um "9" na frente deste número. Clique em Confirmar novamente se quiser salvar assim mesmo.');
-            input.reportValidity();
-            setIgnoredWarning(true);
-            return;
+           input.setCustomValidity('Falta um "9" na frente deste número. Clique em Confirmar novamente se quiser salvar assim mesmo.');
+           input.reportValidity();
+           setIgnoredWarning(true);
+           return;
          }
       }
     }
 
     setIgnoredWarning(false);
 
-    if (editingStudentId) {
-      updateStudent(editingStudentId, {
+    if (editingStudent) {
+      updateStudent(editingStudent, {
         name,
         class: className,
         shift,
@@ -198,7 +325,7 @@ export default function Alunos() {
         name,
         class: className,
         shift,
-        points: 10.0,
+        points: 10.0, // starts with 10 points
         observation: observation || undefined,
         address: address || undefined,
         cpf: cpf || undefined,
@@ -209,18 +336,292 @@ export default function Alunos() {
     }
 
     setIsModalOpen(false);
-    setEditingStudentId(null);
+    setName('');
+    setClassName('');
+    setShift('Matutino');
+    setContacts([{ name: '', phone: '' }]);
+    setObservation('');
+    setAddress('');
+    setCpf('');
+    setRegistrationNumber('');
+    setBirthDate('');
+    setEditingStudent(null);
   };
 
   const handleImport = () => {
-    setIsWizardOpen(true);
+    if (fileInputRef.current) {
+       fileInputRef.current.click();
+    }
+  };
+
+  const [importMessage, setImportMessage] = useState('Processando planilha...');
+
+  // ── Wizard de Importação ──
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [wizardRawRows, setWizardRawRows] = useState<any[][]>([]);
+  const [wizardHeaderRowIndex, setWizardHeaderRowIndex] = useState(0);
+  const [wizardColumnMappings, setWizardColumnMappings] = useState<Record<number, WizardField>>({});
+  const [wizardScanNeedsAI, setWizardScanNeedsAI] = useState(false);
+  const WIZARD_PREVIEW_ROWS = 6;
+
+  // ── Utilitários de build de aluno ──────────────────────────
+
+  const extractPhones = (phoneStr: string): string[] => {
+    if (!phoneStr) return [];
+    const splitMatches = phoneStr.split(/[/;,]|\s+e\s+/i);
+    if (splitMatches.length > 1) {
+      return splitMatches.flatMap(p => {
+        let n = p.replace(/\D/g, '');
+        if (n.length === 8 || n.length === 9) n = '65' + n;
+        if (n.length === 10) return ['(' + n.substring(0,2) + ') ' + n.substring(2,6) + '-' + n.substring(6,10)];
+        if (n.length === 11) return ['(' + n.substring(0,2) + ') ' + n.substring(2,7) + '-' + n.substring(7,11)];
+        return [];
+      });
+    }
+    let nums = phoneStr.replace(/\D/g, '');
+    if (nums.length === 8 || nums.length === 9) nums = '65' + nums;
+    if (nums.length === 10) return ['(' + nums.substring(0,2) + ') ' + nums.substring(2,6) + '-' + nums.substring(6,10)];
+    if (nums.length === 11) return ['(' + nums.substring(0,2) + ') ' + nums.substring(2,7) + '-' + nums.substring(7,11)];
+    return [];
+  };
+
+  const formatCpf = (cpfStr: string): string => {
+    if (!cpfStr) return '';
+    let nums = cpfStr.replace(/\D/g, '');
+    if (nums.length < 11) nums = nums.padStart(11, '0');
+    else if (nums.length > 11) nums = nums.substring(0, 11);
+    return nums.substring(0,3) + '.' + nums.substring(3,6) + '.' + nums.substring(6,9) + '-' + nums.substring(9,11);
+  };
+
+  const buildStudentFromFields = (fields: Partial<Record<WizardField, string>>, sheetNameStr: string) => {
+    let name = fields.name || '';
+    let className = fields.class || '';
+    let shift = fields.shift || 'Matutino';
+    let cpf = fields.cpf || '';
+    const birthDate = fields.birthDate || '';
+    const tel1 = fields.phone1 || '';
+    const tel2 = fields.phone2 || '';
+    const registrationNumber = fields.registration || '';
+    const observation = fields.observation || '';
+    const address = fields.address || '';
+    const mae = fields.mother || '';
+    const pai = fields.father || '';
+
+    let rawClass = className || sheetNameStr;
+    const upperRaw = rawClass.toUpperCase();
+    if (upperRaw.includes('VESP')) shift = 'Vespertino';
+    else if (upperRaw.includes('MAT')) shift = 'Matutino';
+    else if (upperRaw.includes('NOT')) shift = 'Noturno';
+
+    const gradeMatch = rawClass.match(/(\d+)[º°oa-z]*/i);
+    const parsedGrade = gradeMatch ? gradeMatch[1] + 'º Ano' : '';
+    const letterMatch = rawClass.match(/\d+[º°oa-z]*\s*[-_.\s]*([A-Za-z])/i);
+    let parsedIdentifier = '';
+    if (letterMatch) {
+      const letter = letterMatch[1].toUpperCase();
+      if (letter !== 'V' && letter !== 'M' && letter !== 'N') parsedIdentifier = letter;
+    }
+    if (!parsedIdentifier) {
+      const iso = rawClass.match(/\b([A-G])\b/i);
+      if (iso) parsedIdentifier = iso[1].toUpperCase();
+    }
+    className = parsedGrade
+      ? parsedGrade + (parsedIdentifier ? ' ' + parsedIdentifier : '')
+      : rawClass.replace(/[-_.\s]*V[EÊ]SP.*$/i, '').replace(/[-_.\s]*MAT.*$/i, '').replace(/[-_.\s]*NOT.*$/i, '').replace(/[-_.\s]+$/, '').trim();
+
+    const shiftUpper = shift.toUpperCase();
+    if (shiftUpper.startsWith('V')) shift = 'Vespertino';
+    else if (shiftUpper.startsWith('M')) shift = 'Matutino';
+    else if (shiftUpper.startsWith('N')) shift = 'Noturno';
+    const validShift: 'Matutino' | 'Vespertino' | 'Noturno' = ['Matutino', 'Vespertino', 'Noturno'].includes(shift) ? shift as any : 'Matutino';
+
+    const contacts: {name: string; phone: string}[] = [];
+    extractPhones(tel1).forEach((phone, i) => contacts.push({ name: mae ? (i===0 ? 'Mãe: ' + mae : 'Responsável (Mãe ' + (i+1) + ')') : 'Resp. 1 - ' + (i+1), phone }));
+    extractPhones(tel2).forEach((phone, i) => contacts.push({ name: pai ? (i===0 ? 'Pai: ' + pai : 'Responsável (Pai ' + (i+1) + ')') : 'Resp. 2 - ' + (i+1), phone }));
+    if (contacts.length === 0) {
+      if (mae) contacts.push({ name: 'Mãe: ' + mae, phone: '' });
+      if (pai) contacts.push({ name: 'Pai: ' + pai, phone: '' });
+    }
+    if (cpf) cpf = formatCpf(cpf);
+
+    let error = '';
+    if (!name) error += 'Nome faltando. ';
+    if (!className) error += 'Turma faltando. ';
+    if (!name && !className && contacts.length === 0 && !registrationNumber) return null;
+
+    return { _id: crypto.randomUUID(), name, class: className, shift: validShift, points: 10.0,
+             cpf: cpf || undefined, address: address || undefined, birthDate: birthDate || undefined,
+             registrationNumber: registrationNumber || undefined, observation: observation || undefined,
+             contacts: contacts.length > 0 ? contacts : undefined, error: error.trim() };
+  };
+
+  // ── Etapa 1: Lê arquivo e abre wizard ────────────────────
+
+  const processImportedData = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportMessage('Lendo arquivo...');
+    setIsImporting(true);
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { cellDates: true });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rawRows = XLSX.utils.sheet_to_json<any[]>(firstSheet, { header: 1, defval: null, raw: false }) as any[][];
+
+      setImportMessage('Detectando estrutura...');
+      const scanResult = advancedSmartHeuristicScan(rawRows, { confidenceThreshold: 75 });
+      const primary = scanResult.primary;
+
+      const headerIdx = primary?.headerRowIndex ?? 0;
+      const totalCols = rawRows[headerIdx]?.length ?? 0;
+      const initialMappings: Record<number, WizardField> = {};
+      for (let i = 0; i < totalCols; i++) initialMappings[i] = 'ignore';
+
+      if (primary) {
+        const seen: Record<string, number> = {};
+        const sorted = [...primary.columns].sort((a, b) => a.index - b.index);
+        for (const col of sorted) {
+          const count = (seen[col.type] ?? 0) + 1;
+          seen[col.type] = count;
+          if (col.confidence < 50) continue;
+          let field = (SCANNER_TO_WIZARD[col.type] ?? 'ignore') as WizardField;
+          if (col.type === 'TELEFONE') field = count === 1 ? 'phone1' : 'phone2';
+          if (col.type === 'RESPONSAVEL') field = count === 1 ? 'mother' : 'father';
+          initialMappings[col.index] = field;
+        }
+      }
+
+      // AI Fallback: If heuristic is weak or specifically needs AI
+      if ((!primary || primary.confidence < 60 || primary.needsAI) && geminiApiKey) {
+        setImportMessage('Consultando Inteligência Artificial...');
+        const snippet = rawRows.slice(0, 10).map(r => r.join(',')).join('\n');
+        const aiResult = await analyzeSheetWithAI(snippet, geminiApiKey);
+        
+        if (aiResult && aiResult.columns) {
+          if (aiResult.headerRowIndex !== undefined) setWizardHeaderRowIndex(aiResult.headerRowIndex);
+          
+          // Merge AI results into initialMappings
+          Object.entries(aiResult.columns).forEach(([field, colName]) => {
+            const f = field as WizardField;
+            const headerRow = rawRows[aiResult.headerRowIndex ?? headerIdx] || [];
+            const colIdx = headerRow.findIndex(h => String(h).toLowerCase().includes(String(colName).toLowerCase()));
+            if (colIdx !== -1) {
+              initialMappings[colIdx] = f;
+            }
+          });
+        }
+      }
+
+      setWizardRawRows(rawRows);
+      setWizardHeaderRowIndex(headerIdx);
+      setWizardColumnMappings(initialMappings);
+      setWizardScanNeedsAI(!primary || primary.needsAI);
+      setIsWizardOpen(true);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao ler a planilha. Verifique o formato do arquivo.');
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // ── Etapa 2 → 3: Conclui mapeamento e abre revisão ──────
+
+  const concludeMapping = () => {
+    const dataRows = wizardRawRows.slice(wizardHeaderRowIndex + 1);
+    const parsedStudents = dataRows.map(row => {
+      const fields: Partial<Record<WizardField, string>> = {};
+      Object.entries(wizardColumnMappings).forEach(([colIdx, field]) => {
+        if (field === 'ignore') return;
+        const val = row[Number(colIdx)];
+        if (val !== null && val !== undefined && String(val).trim() !== '' && String(val).trim() !== '-') {
+          if (!fields[field]) fields[field] = String(val).trim();
+        }
+      });
+      return buildStudentFromFields(fields, '');
+    }).filter(Boolean) as any[];
+
+    parsedStudents.sort((a, b) => (a.error && !b.error ? -1 : !a.error && b.error ? 1 : 0));
+
+    if (parsedStudents.length > 0) {
+      setPendingImports(parsedStudents);
+      setIsWizardOpen(false);
+      setIsReviewOpen(true);
+    } else {
+      alert('Nenhum dado encontrado com o mapeamento atual. Ajuste as colunas e tente novamente.');
+    }
+  };
+
+  const handleReviewChange = (index: number, field: string, value: string) => {
+    const updated = [...pendingImports];
+    updated[index][field] = value;
+    
+    let error = '';
+    if (!updated[index].name) error += 'Nome faltando. ';
+    if (!updated[index].class) error += 'Turma faltando. ';
+    updated[index].error = error.trim();
+
+    setPendingImports(updated);
+  };
+
+  const handleReviewContactChange = (index: number, contactIndex: number, field: 'name' | 'phone', value: string) => {
+    const updated = [...pendingImports];
+    if (!updated[index].contacts) updated[index].contacts = [];
+    
+    if (field === 'phone') {
+        let v = value.replace(/\D/g, '');
+        if (v.length > 2 && v.length <= 6) v = `(${v.substring(0,2)}) ${v.substring(2)}`;
+        else if (v.length > 6 && v.length <= 10) v = `(${v.substring(0,2)}) ${v.substring(2,6)}-${v.substring(6)}`;
+        else if (v.length > 10) v = `(${v.substring(0,2)}) ${v.substring(2,7)}-${v.substring(7,11)}`;
+        updated[index].contacts[contactIndex][field] = v;
+    } else {
+        updated[index].contacts[contactIndex][field] = value;
+    }
+    setPendingImports(updated);
+  };
+
+  const handleAddReviewContact = (index: number) => {
+    const updated = [...pendingImports];
+    if (!updated[index].contacts) updated[index].contacts = [];
+    updated[index].contacts.push({ name: '', phone: '' });
+    setPendingImports(updated);
+  };
+
+  const handleRemoveReviewContact = (index: number, contactIndex: number) => {
+    const updated = [...pendingImports];
+    updated[index].contacts.splice(contactIndex, 1);
+    setPendingImports(updated);
+  };
+
+  const confirmImport = async () => {
+    const validStudents = pendingImports.filter(s => !s.error);
+    if (validStudents.length === 0) {
+       alert('Nenhum aluno válido para importar. Corrija os erros ou selecione outra planilha.');
+       return;
+    }
+    
+    // strip _id and error before importing
+    const payload = validStudents.map(s => {
+       const { _id, error, ...rest } = s;
+       return rest;
+    });
+
+    setIsImporting(true);
+    await importStudents(payload);
+    setIsImporting(false);
+    setIsReviewOpen(false);
+    setPendingImports([]);
+    alert(`Importação concluída! ${validStudents.length} aluno(s) adicionados.`);
   };
 
   const handleExport = () => {
+    // Generate simple CSV
     const headers = ['ID,Nome,Turma,Turno,Nota Disciplinar'];
     const rows = students.map(s => `${s.id},${s.name},${s.class},${s.shift},${getStudentPoints(s.id)}`);
     const csvContent = headers.concat(rows).join('\n');
     
+    // Create a Blob and download it
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -243,15 +644,22 @@ export default function Alunos() {
   };
 
   const formatPhoneForWhatsApp = (phone: string, studentName: string) => {
+    // Remove tudo que não for número
     const numbers = phone.replace(/\D/g, '');
+    // Se o número tiver menos de 10 dígitos, provavelmente não tem DDD, então não formata o link
     if (numbers.length < 10) return '';
-    const hasCountryCode = numbers.startsWith('55') && numbers.length >= 12;
+    // Adiciona o código do DDI do Brasil (55) se não o usuário não colocou
+    const  hasCountryCode = numbers.startsWith('55') && numbers.length >= 12;
     const baseUrl = `https://wa.me/${hasCountryCode ? '' : '55'}${numbers}`;
     
+    // Greeting depending on time
     const hour = new Date().getHours();
     let greeting = 'Bom dia';
-    if (hour >= 12 && hour < 18) greeting = 'Boa tarde';
-    else if (hour >= 18) greeting = 'Boa noite';
+    if (hour >= 12 && hour < 18) {
+      greeting = 'Boa tarde';
+    } else if (hour >= 18) {
+      greeting = 'Boa noite';
+    }
 
     const message = `Olá, ${greeting}! Estou entrando em contato para falar sobre o ${studentName}.`;
     return `${baseUrl}?text=${encodeURIComponent(message)}`;
@@ -270,14 +678,21 @@ export default function Alunos() {
             <p className="text-slate-500 text-sm">Lista de estudantes, importação e exportação de dados.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+              onChange={processImportedData}
+            />
             <button
               onClick={handleImport}
-              disabled={currentUserRole === 'GUEST'}
+              disabled={isImporting || currentUserRole === 'GUEST'}
               title={currentUserRole === 'GUEST' ? 'Apenas leitura — entre como gestor para importar' : undefined}
               className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/40 dark:border-slate-700/50 hover:bg-white/60 dark:hover:bg-slate-700/60 text-slate-800 dark:text-slate-200 px-6 py-2 rounded-full font-medium flex items-center justify-center gap-2 transition shadow-sm flex-1 sm:flex-none disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Upload className="w-5 h-5" />
-              Importar Planilha
+              {isImporting ? importMessage : 'Importar Planilha'}
             </button>
             <button
               onClick={openAddModal}
@@ -333,6 +748,7 @@ export default function Alunos() {
               <button
                 onClick={handleDeleteAll}
                 disabled={currentUserRole === 'GUEST'}
+                title={currentUserRole === 'GUEST' ? 'Apenas leitura' : undefined}
                 className="bg-rose-50/40 dark:bg-rose-900/10 backdrop-blur-md border border-rose-200/50 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Trash2 className="w-4 h-4" /> Apagar Todos
@@ -439,7 +855,7 @@ export default function Alunos() {
           <div className="bg-white border border-slate-200 rounded-xl max-w-md w-full flex flex-col shadow-2xl max-h-[90vh]">
             <div className="flex items-center justify-between p-5 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
-                {editingStudentId ? 'Editar Aluno' : 'Cadastrar Aluno Manualmente'}
+                {editingStudent ? 'Editar Aluno' : 'Cadastrar Aluno Manualmente'}
               </h2>
               <button 
                 onClick={() => setIsModalOpen(false)}
@@ -483,17 +899,21 @@ export default function Alunos() {
                       <option value="2º Ano">2º Ano</option>
                       <option value="3º Ano">3º Ano</option>
                     </select>
-                    <input 
-                      type="text"
-                      maxLength={1}
-                      value={className.match(/ ([A-Z])$/i)?.[1] || ''}
+                    <select 
+                      required
+                      value={className.match(/ ([A-Z])$/i)?.[1] || 'A'}
                       onChange={(e) => {
                         const prefix = className.replace(/ [A-Z]$/i, '') || '6º Ano';
-                        setClassName(`${prefix} ${e.target.value.toUpperCase()}`.trim());
+                        setClassName(`${prefix} ${e.target.value}`);
                       }}
-                      className="w-1/3 bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
-                      placeholder="Letra"
-                    />
+                      className="w-1/3 bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="A">A</option>
+                      <option value="B">B</option>
+                      <option value="C">C</option>
+                      <option value="D">D</option>
+                      <option value="E">E</option>
+                    </select>
                   </div>
                 </div>
                 <div>
@@ -622,7 +1042,7 @@ export default function Alunos() {
               </div>
 
               <div className="pt-4 flex justify-between gap-3 border-t border-slate-200 mt-5 pt-5">
-                {editingStudentId ? (
+                {editingStudent ? (
                   <button 
                     type="button" 
                     onClick={() => { setIsDeleteConfirmOpen(true); setDeleteConfirmText(''); }}
@@ -645,7 +1065,7 @@ export default function Alunos() {
                     disabled={!name || !className}
                     className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {editingStudentId ? 'Salvar Alterações' : 'Confirmar Cadastro'}
+                    {editingStudent ? 'Salvar Alterações' : 'Confirmar Cadastro'}
                   </button>
                 </div>
               </div>
@@ -736,15 +1156,370 @@ export default function Alunos() {
         </div>
       )}
 
-      <ImportWizard
-        isOpen={isWizardOpen}
-        onClose={() => setIsWizardOpen(false)}
-        onImport={async (studentsData) => {
-          await importStudents(studentsData);
-          setIsWizardOpen(false);
-        }}
-        geminiApiKey={process.env.NEXT_PUBLIC_GEMINI_API_KEY}
-      />
+      {/* ── WIZARD DE IMPORTAÇÃO: Etapa 2 - Mapeamento ── */}
+      {isWizardOpen && (() => {
+        const headerRow = wizardRawRows[wizardHeaderRowIndex] ?? [];
+        const totalCols = headerRow.length;
+        const previewStart = Math.max(0, wizardHeaderRowIndex - 2);
+        const previewEnd = Math.min(wizardRawRows.length - 1, wizardHeaderRowIndex + WIZARD_PREVIEW_ROWS);
+        const requiredMapped = Object.values(wizardColumnMappings).includes('name') && Object.values(wizardColumnMappings).includes('class');
+
+        return (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">2</div>
+                    <h2 className="text-lg font-bold text-slate-800">Mapeamento de Colunas</h2>
+                  </div>
+                  <p className="text-xs text-slate-500 ml-8">Confirme quais colunas correspondem a cada campo. A linha destacada em azul é o cabeçalho detectado.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {wizardScanNeedsAI && (
+                    <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg text-xs">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      Verifique o mapeamento
+                    </div>
+                  )}
+                  {!wizardScanNeedsAI && (
+                    <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg text-xs">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Detectado automaticamente
+                    </div>
+                  )}
+                  <button onClick={() => setIsWizardOpen(false)} className="text-slate-400 hover:bg-slate-100 p-2 rounded-full transition">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Column selects */}
+              <div className="overflow-x-auto border-b border-slate-100">
+                <table className="text-sm border-collapse min-w-full">
+                  <thead>
+                    <tr className="bg-slate-50">
+                      <td className="px-3 py-2 text-xs text-slate-400 font-medium w-10 text-center border-r border-slate-100">LINHA</td>
+                      {Array.from({ length: totalCols }, (_, ci) => (
+                        <td key={ci} className="px-2 py-2 border-r border-slate-100 min-w-[130px]">
+                          <select
+                            value={wizardColumnMappings[ci] ?? 'ignore'}
+                            onChange={e => setWizardColumnMappings(prev => ({ ...prev, [ci]: e.target.value as WizardField }))}
+                            className={'w-full text-xs px-2 py-1.5 rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-400 ' +
+                              (wizardColumnMappings[ci] === 'name' || wizardColumnMappings[ci] === 'class'
+                                ? 'border-blue-300 bg-blue-50 text-blue-700 font-semibold'
+                                : wizardColumnMappings[ci] === 'ignore'
+                                ? 'border-slate-200 bg-white text-slate-400'
+                                : 'border-emerald-300 bg-emerald-50 text-emerald-700 font-medium')}
+                          >
+                            {(Object.entries(FIELD_LABELS) as [WizardField, string][]).map(([val, label]) => (
+                              <option key={val} value={val}>{label}</option>
+                            ))}
+                          </select>
+                        </td>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {wizardRawRows.slice(previewStart, previewEnd + 1).map((row, ri) => {
+                      const absoluteIdx = previewStart + ri;
+                      const isHeader = absoluteIdx === wizardHeaderRowIndex;
+                      return (
+                        <tr
+                          key={absoluteIdx}
+                          onClick={() => {
+                            setWizardHeaderRowIndex(absoluteIdx);
+                            // Re-init mappings for new column count
+                            const newRow = wizardRawRows[absoluteIdx] ?? [];
+                            const nm: Record<number, WizardField> = {};
+                            for (let i = 0; i < newRow.length; i++) nm[i] = 'ignore';
+                            setWizardColumnMappings(nm);
+                          }}
+                          className={'cursor-pointer transition ' + (isHeader ? 'bg-blue-50 border-y-2 border-blue-400' : 'hover:bg-slate-50 border-b border-slate-100')}
+                          title="Clique para usar esta linha como cabeçalho"
+                        >
+                          <td className={'text-center text-xs font-mono border-r border-slate-100 px-2 py-2 ' + (isHeader ? 'text-blue-600 font-bold' : 'text-slate-400')}>
+                            {isHeader ? '↓' : absoluteIdx}
+                          </td>
+                          {Array.from({ length: totalCols }, (_, ci) => {
+                            const cell = row?.[ci];
+                            const val = cell !== null && cell !== undefined ? String(cell) : '';
+                            const isMapped = !isHeader && wizardColumnMappings[ci] && wizardColumnMappings[ci] !== 'ignore';
+                            return (
+                              <td key={ci} className={'px-3 py-2 border-r border-slate-100 text-xs truncate max-w-[160px] ' +
+                                (isHeader ? 'text-blue-700 font-semibold' : isMapped ? 'text-slate-700' : 'text-slate-400')}>
+                                {val || <span className="opacity-30">—</span>}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between px-6 py-4 bg-slate-50">
+                <div className="text-xs text-slate-500">
+                  <span className="font-medium">{wizardRawRows.length - wizardHeaderRowIndex - 1}</span> linhas de dados detectadas.
+                  {!requiredMapped && <span className="ml-2 text-amber-600 font-medium">⚠ Mapeie Nome* e Turma* para continuar.</span>}
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setIsWizardOpen(false)} className="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-200 transition text-sm">
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={concludeMapping}
+                    disabled={!requiredMapped}
+                    className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Concluir Importação →
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Import Review Modal */}
+      {isReviewOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-slate-100">
+              <div>
+                <h2 className="text-xl font-bold text-slate-800">Revisão de Importação</h2>
+                <p className="text-sm text-slate-500 mt-1">Verifique e corrija os dados antes de finalizar a importação.</p>
+              </div>
+              <button 
+                onClick={() => { setIsReviewOpen(false); setPendingImports([]); }}
+                className="text-slate-400 hover:bg-slate-50 p-2 rounded-full transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-auto bg-slate-50 p-4">
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm">
+                      <th className="py-3 px-4 font-medium whitespace-nowrap">Status</th>
+                      <th className="py-3 px-4 font-medium">Nome do Aluno</th>
+                      <th className="py-3 px-4 font-medium">Turma</th>
+                      <th className="py-3 px-4 font-medium">Turno</th>
+                      <th className="py-3 px-4 font-medium">Contatos</th>
+                      <th className="py-3 px-4 font-medium text-center">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {pendingImports.map((student, index) => (
+                      <tr key={student._id} className={student.error ? 'bg-red-50/50' : 'hover:bg-slate-50'}>
+                        <td className="py-2 px-4 whitespace-nowrap">
+                          {student.error ? (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                              Erro: {student.error}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                              Pronto
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2 px-4">
+                          <input 
+                            type="text" 
+                            value={student.name}
+                            onChange={(e) => handleReviewChange(index, 'name', e.target.value)}
+                            className={`w-full px-3 py-1.5 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${!student.name ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white'}`}
+                            placeholder="Nome..."
+                          />
+                        </td>
+                        <td className="py-2 px-4 w-40">
+                          <div className="flex gap-1">
+                            <select
+                              value={student.class ? student.class.replace(/ [A-Z]$/i, '') : '6º Ano'}
+                              onChange={(e) => {
+                                const letter = student.class ? (student.class.match(/ ([A-Z])$/i)?.[1] || 'A') : 'A';
+                                handleReviewChange(index, 'class', `${e.target.value} ${letter}`);
+                              }}
+                              className="w-2/3 px-2 py-1.5 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border-slate-200 bg-white"
+                            >
+                                <option value="Berçário">Berçário</option>
+                                <option value="Maternal I">Maternal I</option>
+                                <option value="Maternal II">Maternal II</option>
+                                <option value="Pré I">Pré I</option>
+                                <option value="Pré II">Pré II</option>
+                                <option value="1º Ano">1º Ano</option>
+                                <option value="2º Ano">2º Ano</option>
+                                <option value="3º Ano">3º Ano</option>
+                                <option value="4º Ano">4º Ano</option>
+                                <option value="5º Ano">5º Ano</option>
+                                <option value="6º Ano">6º Ano</option>
+                                <option value="7º Ano">7º Ano</option>
+                                <option value="8º Ano">8º Ano</option>
+                                <option value="9º Ano">9º Ano</option>
+                                {/* Add dynamically if missing */}
+                                {student.class && ![
+                                  'Berçário', 'Maternal I', 'Maternal II', 'Pré I', 'Pré II',
+                                  '1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', 
+                                  '6º Ano', '7º Ano', '8º Ano', '9º Ano'
+                                ].includes(student.class.replace(/ [A-Z]$/i, '')) && (
+                                  <option value={student.class.replace(/ [A-Z]$/i, '')}>{student.class.replace(/ [A-Z]$/i, '')}</option>
+                                )}
+                            </select>
+                            <input
+                              type="text"
+                              maxLength={1}
+                              value={student.class ? (student.class.match(/ ([A-Z])$/i)?.[1] || '') : ''}
+                              onChange={(e) => {
+                                const prefix = student.class ? student.class.replace(/ [A-Z]$/i, '') : '6º Ano';
+                                handleReviewChange(index, 'class', `${prefix} ${e.target.value.toUpperCase()}`.trim());
+                              }}
+                              className="w-1/3 px-2 py-1.5 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border-slate-200 bg-white text-center"
+                              placeholder="Turma"
+                            />
+                          </div>
+                        </td>
+                        <td className="py-2 px-4 w-40">
+                          <select 
+                            value={student.shift}
+                            onChange={(e) => handleReviewChange(index, 'shift', e.target.value)}
+                            className="w-full px-3 py-1.5 rounded-md border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="Matutino">Matutino</option>
+                            <option value="Vespertino">Vespertino</option>
+                            <option value="Noturno">Noturno</option>
+                          </select>
+                        </td>
+                        <td className="py-2 px-4 text-xs text-slate-500 hidden md:table-cell max-w-xs truncate">
+                          <div className="flex items-center justify-between gap-2">
+                             <div className="truncate flex-1" title={student.contacts ? (student.contacts as any[]).map(c => `${c.name}: ${c.phone}`).join(' | ') : 'Sem contato'}>
+                                {student.contacts && student.contacts.length > 0 ? (student.contacts as any[]).map(c => `${c.name}: ${c.phone}`).join(' | ') : 'Sem contato'}
+                             </div>
+                             <button
+                               onClick={() => setReviewEditContactsIndex(index)}
+                               className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md shrink-0 transition"
+                               title="Editar Contatos"
+                             >
+                               <Edit2 className="w-3.5 h-3.5" />
+                             </button>
+                          </div>
+                        </td>
+                        <td className="py-2 px-4 text-center w-16">
+                           <button
+                             onClick={() => {
+                               const updated = [...pendingImports];
+                               updated.splice(index, 1);
+                               setPendingImports(updated);
+                             }}
+                             className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition"
+                             title="Remover linha"
+                           >
+                              <Trash2 className="w-4 h-4" />
+                           </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-slate-100 bg-white flex justify-between items-center sm:flex-row flex-col gap-4">
+              <span className="text-sm font-medium text-slate-600">
+                {pendingImports.filter(s => s.error).length} linha(s) com erro(s). 
+                <span className="text-green-600 ml-2">{pendingImports.filter(s => !s.error).length} linha(s) válida(s).</span>
+              </span>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setIsReviewOpen(false); setPendingImports([]); }}
+                  className="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-50 transition font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmImport}
+                  disabled={pendingImports.filter(s => !s.error).length === 0 || isImporting}
+                  className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition font-medium disabled:opacity-50 flex items-center gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  {isImporting ? 'Importando...' : 'Confirmar Importação'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {reviewEditContactsIndex !== null && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-slate-800">
+                Editar Contatos: {pendingImports[reviewEditContactsIndex]?.name || 'Aluno'}
+              </h3>
+              <button 
+                onClick={() => setReviewEditContactsIndex(null)}
+                className="text-slate-400 hover:bg-slate-50 p-2 rounded-full transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4 max-h-[60vh] overflow-auto mb-6 pr-2">
+              {(!pendingImports[reviewEditContactsIndex]?.contacts || pendingImports[reviewEditContactsIndex].contacts.length === 0) ? (
+                <p className="text-sm text-slate-500 italic">Nenhum contato cadastrado.</p>
+              ) : (
+                pendingImports[reviewEditContactsIndex].contacts.map((contact: any, cIdx: number) => (
+                  <div key={cIdx} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={contact.name}
+                      onChange={(e) => handleReviewContactChange(reviewEditContactsIndex, cIdx, 'name', e.target.value)}
+                      placeholder="Nome do Responsável"
+                      className="w-1/2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <input
+                      type="tel"
+                      value={contact.phone}
+                      onChange={(e) => handleReviewContactChange(reviewEditContactsIndex, cIdx, 'phone', e.target.value)}
+                      placeholder="Telefone"
+                      className="w-1/2 flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => handleRemoveReviewContact(reviewEditContactsIndex, cIdx)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+              
+              <button
+                onClick={() => handleAddReviewContact(reviewEditContactsIndex)}
+                className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 mt-2"
+              >
+                <Plus className="w-4 h-4" />
+                Adicionar outro contato
+              </button>
+            </div>
+            
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setReviewEditContactsIndex(null)}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium"
+              >
+                Concluído
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }

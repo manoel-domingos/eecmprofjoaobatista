@@ -1,10 +1,16 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export const MODEL_FALLBACK_CHAIN = [
+export const GEMINI_MODELS = [
   "gemini-2.0-flash-lite", 
   "gemini-2.0-flash",
   "gemini-2.5-flash",
   "gemini-2.5-pro",
+];
+
+export const GROQ_MODELS = [
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+  "mixtral-8x7b-32768"
 ];
 
 export interface AILog {
@@ -16,9 +22,9 @@ export interface AILog {
   tokens?: number;
   status: 'success' | 'error';
   error?: string;
+  provider: 'google' | 'groq';
 }
 
-// Global debug state (singleton)
 export const globalAILogs: AILog[] = [];
 let onLogUpdate: ((logs: AILog[]) => void) | null = null;
 
@@ -39,55 +45,80 @@ function addLog(log: Omit<AILog, 'id' | 'timestamp'>) {
 }
 
 /**
- * Executes a generative content request with automatic model rotation/fallback.
- * @param apiKey The Gemini API Key
- * @param prompt The prompt to send
- * @param options Optional model selection options
+ * Executes a generative content request with automatic provider/model rotation.
  */
 export async function generateContentWithFallback(
-  apiKey: string,
+  apiKey: string, // Can be Gemini key or Groq key depending on flow
   prompt: string,
-  onProgress?: (modelName: string) => void
+  onProgress?: (modelName: string) => void,
+  groqKey?: string
 ) {
-  const genAI = new GoogleGenerativeAI(apiKey);
   let lastError: any = null;
 
-  for (const modelName of MODEL_FALLBACK_CHAIN) {
+  // 1. Try Groq first if key is available (it's faster)
+  if (groqKey) {
+    for (const modelName of GROQ_MODELS) {
+      try {
+        if (onProgress) onProgress(`Groq: ${modelName}`);
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${groqKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.1
+          })
+        });
+
+        if (!response.ok) throw new Error(`Groq error: ${response.status}`);
+        
+        const data = await response.json();
+        const responseText = data.choices[0].message.content;
+        
+        addLog({
+          model: modelName,
+          prompt,
+          response: responseText,
+          tokens: data.usage?.total_tokens || Math.ceil((prompt.length + responseText.length) / 4),
+          status: 'success',
+          provider: 'groq'
+        });
+
+        return { response: { text: () => responseText } };
+      } catch (err: any) {
+        lastError = err;
+        addLog({ model: modelName, prompt, response: '', status: 'error', error: err.message, provider: 'groq' });
+        continue;
+      }
+    }
+  }
+
+  // 2. Fallback to Gemini
+  const genAI = new GoogleGenerativeAI(apiKey);
+  for (const modelName of GEMINI_MODELS) {
     try {
-      if (onProgress) onProgress(modelName);
+      if (onProgress) onProgress(`Gemini: ${modelName}`);
       const model = genAI.getGenerativeModel({ model: modelName });
       const result = await model.generateContent(prompt);
-      
       const responseText = result.response.text();
+      
       addLog({
         model: modelName,
         prompt,
         response: responseText,
-        tokens: Math.ceil((prompt.length + responseText.length) / 4), // Rough estimate
-        status: 'success'
+        tokens: Math.ceil((prompt.length + responseText.length) / 4),
+        status: 'success',
+        provider: 'google'
       });
       
       return result;
     } catch (err: any) {
-      const msg = err?.message || '';
-      const isQuota = msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED');
-      const isNotFound = msg.includes('404') || msg.includes('not found');
-      
-      addLog({
-        model: modelName,
-        prompt,
-        response: '',
-        status: 'error',
-        error: msg
-      });
-
       lastError = err;
-      
-      if (isQuota || isNotFound) {
-        console.warn(`Model ${modelName} failed, trying next in fallback chain...`);
-        continue;
-      }
-      throw err;
+      addLog({ model: modelName, prompt, response: '', status: 'error', error: err.message, provider: 'google' });
+      continue;
     }
   }
 
@@ -96,8 +127,8 @@ export async function generateContentWithFallback(
                           lastError?.message?.includes('RESOURCE_EXHAUSTED');
 
   const errorMessage = isFinalQuotaError 
-    ? "Cota de IA esgotada em todos os modelos disponíveis. Por favor, aguarde um momento ou tente novamente mais tarde."
-    : (lastError?.message || "Todos os modelos no sistema de rodízio falharam.");
+    ? "Cota de IA esgotada em todos os provedores (Groq/Google). Aguarde um momento."
+    : (lastError?.message || "Todos os modelos falharam.");
 
   throw new Error(errorMessage);
 }

@@ -3,11 +3,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bot, X, Send, Sparkles, MessageSquare, History, ShieldAlert, BookOpen, PenTool } from 'lucide-react';
-import { getWorkingModelWithFallback } from '@/lib/ai';
+import { generateContentWithFallback } from '@/lib/ai';
 import { useAppContext } from '@/lib/store';
 
 export default function AIAssistant() {
-  const { students, occurrences, rules, getStudentPoints, getStudentBehavior } = useAppContext();
+  const { students, occurrences, rules, geminiApiKey, groqApiKey } = useAppContext();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{role: 'user' | 'assistant', content: string}[]>([
     { role: 'assistant', content: 'Olá! Sou seu assistente de gestão disciplinar. Como posso ajudar hoje?' }
@@ -15,8 +15,6 @@ export default function AIAssistant() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -26,7 +24,7 @@ export default function AIAssistant() {
 
   const handleSend = async (text?: string) => {
     const messageText = text || input;
-    if (!messageText.trim() || !apiKey) return;
+    if (!messageText.trim()) return;
 
     const userMessage = { role: 'user' as const, content: messageText };
     setMessages(prev => [...prev, userMessage]);
@@ -34,10 +32,9 @@ export default function AIAssistant() {
     setIsLoading(true);
 
     try {
-      const model = await getWorkingModelWithFallback(apiKey);
-
-      // Context construction
-      const context = `
+      const historyContext = messages.map(m => `${m.role === 'user' ? 'Usuário' : 'Assistente'}: ${m.content}`).join('\n');
+      
+      const prompt = `
         Você é um Assistente de Gestão Disciplinar Escolar de uma escola de elite.
         Sua função é ajudar os gestores e professores a:
         1. Escrever observações e atas de ocorrências de forma profissional e clara.
@@ -48,31 +45,22 @@ export default function AIAssistant() {
         - Total de alunos: ${students.length}
         - Regras Disciplinares (algumas): ${rules.slice(0, 10).map(r => `${r.code}: ${r.description} (${r.points} pts)`).join('; ')}
         
-        Sempre seja profissional, empático e focado na educação restaurativa e disciplina.
-        Responda em Português do Brasil.
+        HISTÓRICO DA CONVERSA:
+        ${historyContext}
+
+        PERGUNTA DO USUÁRIO:
+        ${messageText}
+
+        Responda em Português do Brasil de forma direta e profissional.
       `;
 
-      const history = messages.map(m => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }]
-      }));
-
-      const chat = model.startChat({
-        history: [
-          { role: 'user', parts: [{ text: context }] },
-          { role: 'model', parts: [{ text: "Entendido. Estou pronto para auxiliar na gestão disciplinar da escola." }] },
-          ...history
-        ],
-      });
-
-      const result = await chat.sendMessage(messageText);
-      const response = await result.response;
-      const aiResponse = response.text();
+      const result = await generateContentWithFallback(geminiApiKey, prompt, undefined, groqApiKey);
+      const aiResponse = result.response.text();
 
       setMessages(prev => [...prev, { role: 'assistant', content: aiResponse }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Assistant Error:", error);
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Desculpe, tive um problema ao processar sua solicitação. Verifique sua chave de API.' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: `Erro: ${error.message || 'Falha na IA'}. Verifique suas chaves de API.` }]);
     } finally {
       setIsLoading(false);
     }
