@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, Suspense } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
-import { Search, Plus, X, Edit2, Archive, Video, FileText, Camera, Clock, MapPin, UserPlus, Trash2, MessageSquare, Phone, Printer } from 'lucide-react';
+import { Search, Plus, X, Edit2, Archive, Video, FileText, Camera, Clock, MapPin, UserPlus, Trash2, MessageSquare, Phone, Printer, Sparkles } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 import { Occurrence, StaffMember } from '@/lib/data';
 import { getLocalDateString, getLocalTimeString, formatDate, formatPhoneForWhatsApp } from '@/lib/utils';
@@ -60,6 +60,43 @@ function RegistroDisciplinarContent() {
   const [observations, setObservations] = useState('');
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
   const [signedDocUrls, setSignedDocUrls] = useState<string[]>([]);
+  const [isImproving, setIsImproving] = useState(false);
+
+  const handleImproveObservations = async () => {
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey || !observations.trim() && !selectedRule) return;
+
+    setIsImproving(true);
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const student = students.find(s => s.id === selectedStudent);
+      const rule = rules.find(r => r.code === parseInt(selectedRule, 10));
+
+      const prompt = `
+        Aja como um gestor escolar profissional. Melhore e formalize o seguinte relato de ocorrência disciplinar para uma ata oficial.
+        O texto deve ser claro, objetivo, imparcial e usar linguagem formal.
+        
+        DADOS:
+        - Aluno: ${student?.name || 'Não identificado'}
+        - Infração: ${rule?.description || 'Não especificada'}
+        - Relato original: ${observations || '(O usuário não descreveu, crie um modelo padrão baseado na infração)'}
+        
+        Retorne APENAS o texto melhorado, sem introduções ou explicações.
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      setObservations(response.text().trim());
+    } catch (error) {
+      console.error("Erro ao melhorar observações:", error);
+      alert("Não foi possível melhorar o texto com IA no momento.");
+    } finally {
+      setIsImproving(false);
+    }
+  };
 
   // Student Form State
   const [newName, setNewName] = useState('');
@@ -906,7 +943,18 @@ function RegistroDisciplinarContent() {
 
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1 flex items-center justify-between">
-                    Observações adicionais
+                    <div className="flex items-center gap-2">
+                      Observações adicionais
+                      <button
+                        type="button"
+                        onClick={handleImproveObservations}
+                        disabled={isImproving || (!observations.trim() && !selectedRule)}
+                        className="flex items-center gap-1 text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full hover:bg-blue-100 transition-all disabled:opacity-50"
+                      >
+                        <Sparkles size={10} className={isImproving ? "animate-spin" : ""} />
+                        {isImproving ? "Melhorando..." : "Melhorar com IA"}
+                      </button>
+                    </div>
                     <span className="text-[10px] text-slate-400 font-normal uppercase tracking-wider">Ajuste o tamanho se necessário</span>
                   </label>
                   <textarea 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
-import { Star, Plus, Search, X, Edit2, Archive, Printer } from 'lucide-react';
+import { Star, Plus, Search, X, Edit2, Archive, Printer, Sparkles } from 'lucide-react';
 import { getLocalDateString, formatDate } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import SearchableSelect from '@/components/SearchableSelect';
@@ -35,6 +35,42 @@ function ElogiosContent() {
   const [type, setType] = useState<any>('Individual');
   const [description, setDescription] = useState('');
   const [registeredBy, setRegisteredBy] = useState('Gestor Escolar');
+  const [isImproving, setIsImproving] = useState(false);
+
+  const handleImproveDescription = async () => {
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!apiKey || !description.trim()) return;
+
+    setIsImproving(true);
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const student = students.find(s => s.id === selectedStudent);
+
+      const prompt = `
+        Aja como um gestor escolar profissional. Melhore e formalize o seguinte relato de ELOGIO ou RECONHECIMENTO para o histórico do aluno.
+        O texto deve ser inspirador, profissional, claro e usar linguagem formal.
+        
+        DADOS:
+        - Aluno: ${student?.name || 'Não identificado'}
+        - Tipo: ${type}
+        - Relato original: ${description}
+        
+        Retorne APENAS o texto melhorado, sem introduções ou explicações.
+      `;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      setDescription(response.text().trim());
+    } catch (error) {
+      console.error("Erro ao melhorar elogio:", error);
+      alert("Não foi possível melhorar o texto com IA no momento.");
+    } finally {
+      setIsImproving(false);
+    }
+  };
 
   const filteredPraises = praises.filter(p => {
     if (p.archived) return false;
@@ -327,8 +363,21 @@ function ElogiosContent() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1">Motivo / Descrição *</label>
+               <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    Motivo / Descrição *
+                    <button
+                      type="button"
+                      onClick={handleImproveDescription}
+                      disabled={isImproving || !description.trim()}
+                      className="flex items-center gap-1 text-[10px] bg-yellow-50 text-yellow-600 px-2 py-0.5 rounded-full hover:bg-yellow-100 transition-all disabled:opacity-50"
+                    >
+                      <Sparkles size={10} className={isImproving ? "animate-spin" : ""} />
+                      {isImproving ? "Melhorando..." : "Melhorar com IA"}
+                    </button>
+                  </div>
+                </label>
                 <textarea 
                   required
                   rows={3}

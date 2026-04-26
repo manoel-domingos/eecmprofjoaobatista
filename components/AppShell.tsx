@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import versionData from '@/lib/version.json';
 import ChatWidget from '@/components/ChatWidget';
+import AIAssistant from '@/components/AIAssistant';
 
 type MenuItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 type MenuGroup = { label: string; icon: React.ComponentType<{ className?: string }>; href?: string; children?: MenuItem[] };
@@ -193,6 +194,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {isChatOpen && <ChatWidget forceOpen={true} forceOnClose={() => setIsChatOpen(false)} />}
+      <AIAssistant />
     </div>
   );
 }

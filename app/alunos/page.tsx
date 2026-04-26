@@ -4,89 +4,27 @@ import React, { useState, useRef } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
 import { Users, Plus, Upload, Download, Search, X, Edit2, Archive, Trash2, ChevronDown } from 'lucide-react';
+import ImportWizard from '@/components/ImportWizard';
 import * as XLSX from 'xlsx';
-import { GoogleGenAI, Type } from "@google/genai";
-
-const analyzeSheetWithAI = async (csvSnippet: string) => {
-  try {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey) return null;
-    const ai = new GoogleGenAI({ apiKey });
-    
-    // Limit to prevent huge JSON hallucination loops
-    const limitedCsv = csvSnippet.substring(0, 1500);
-
-    const prompt = `Analise as primeiras linhas dessa planilha escolar (formato CSV) e identifique a estrutura para importar alunos.
-CSV:
-${limitedCsv}
-
-Responda APENAS com o objeto JSON solicitado. NUNCA inclua os dados da planilha de volta nos valores. Seja curto e conciso. Não use blocos markdown.
-Formato do JSON (não adicione propriedades que não foram pedidas):
-{
-  "headerRowIndex": número da linha (0-indexed) onde estão os cabeçalhos,
-  "columns": { "name": "NOME DO ALUNO", "class": "TURMA", ... }
-}
-
-Para a estrutura de alunos, as chaves suportadas em "columns" são: "name" (Aluno), "class" (Série/Turma), "shift" (Turno), "cpf", "birthDate" (Nascimento), "phone1" (Telefone), "phone2", "registration" (Matrícula), "observation" (Observação), "mother" (Mãe), "father" (Pai).
-Se não houver coluna para alguma dessas chaves internas, não inclua a chave no objeto. Exemplo: {"headerRowIndex": 0, "columns": {"name": "NOME DO ALUNO", "class": "TURMA"}}`;
-    
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: {
-        maxOutputTokens: 256,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            headerRowIndex: { type: Type.INTEGER },
-            columns: {
-               type: Type.OBJECT,
-               properties: {
-                 name: { type: Type.STRING },
-                 class: { type: Type.STRING },
-                 shift: { type: Type.STRING },
-                 cpf: { type: Type.STRING },
-                 birthDate: { type: Type.STRING },
-                 phone1: { type: Type.STRING },
-                 phone2: { type: Type.STRING },
-                 registration: { type: Type.STRING },
-                 observation: { type: Type.STRING },
-                 mother: { type: Type.STRING },
-                 father: { type: Type.STRING }
-               }
-            }
-          }
-        }
-      }
-    });
-
-    const responseText = (response.text || '{}');
-    try {
-       // Find the first { and the last }
-       const startIndex = responseText.indexOf('{');
-       const endIndex = responseText.lastIndexOf('}');
-       if (startIndex !== -1 && endIndex !== -1 && endIndex >= startIndex) {
-         const jsonStr = responseText.substring(startIndex, endIndex + 1);
-         return JSON.parse(jsonStr);
-       }
-       return JSON.parse(responseText.trim().replace(/^```json/, '').replace(/```$/, '').trim());
-    } catch (parseError) {
-       console.warn("JSON parse failed.", parseError);
-       return null; // Return null instead of throwing to allow heuristic fallback
-    }
-  } catch (err) {
-    console.error("AI Analysis failed:", err);
-    return null;
-  }
-};
 
 export default function Alunos() {
-  const { students, addStudent, importStudents, updateStudent, archiveStudent, getStudentPoints, getStudentBehavior, deleteAllStudents, currentUserRole } = useAppContext();
+  const { 
+    students, 
+    addStudent, 
+    importStudents, 
+    updateStudent, 
+    archiveStudent, 
+    getStudentPoints, 
+    getStudentBehavior, 
+    deleteAllStudents, 
+    currentUserRole 
+  } = useAppContext();
+
   const [searchTerm, setSearchTerm] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<string | null>(null);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
 
   // Form State
   const [name, setName] = useState('');
@@ -99,12 +37,6 @@ export default function Alunos() {
   const [registrationNumber, setRegistrationNumber] = useState('');
   const [birthDate, setBirthDate] = useState('');
   const [ignoredWarning, setIgnoredWarning] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  
-  // Import review state
-  const [pendingImports, setPendingImports] = useState<any[]>([]);
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [reviewEditContactsIndex, setReviewEditContactsIndex] = useState<number | null>(null);
 
   // Exclusão state
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -114,10 +46,8 @@ export default function Alunos() {
   const [deleteAllConfirmText, setDeleteAllConfirmText] = useState('');
 
   const phoneRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uniqueClasses = Array.from(new Set(students.filter(s => !s.archived).map(s => s.class))).sort((a, b) => {
-    // Sort numeric grades first if possible, fallback to standard sort
     const aNum = parseInt(a);
     const bNum = parseInt(b);
     if (!isNaN(aNum) && !isNaN(bNum)) {
@@ -129,11 +59,8 @@ export default function Alunos() {
 
   const filteredStudents = students.filter(s => {
     if (s.archived) return false;
-    
-    // Check class filter
     if (classFilter && s.class !== classFilter) return false;
     
-    // Check search term
     const term = searchTerm.toLowerCase();
     if (!term) return true;
     
@@ -143,7 +70,7 @@ export default function Alunos() {
   });
 
   const openAddModal = () => {
-    setEditingStudent(null);
+    setEditingStudentId(null);
     setName('');
     setClassName('');
     setShift('Matutino');
@@ -158,7 +85,7 @@ export default function Alunos() {
   };
 
   const openEditModal = (s: any) => {
-    setEditingStudent(s.id);
+    setEditingStudentId(s.id);
     setName(s.name);
     setClassName(s.class);
     setShift(s.shift);
@@ -205,12 +132,9 @@ export default function Alunos() {
         }
 
         newContacts[index][field] = formatted;
-        
         setIgnoredWarning(false);
         const inputRef = phoneRefs.current[index];
-        if (inputRef) {
-             inputRef.setCustomValidity('');
-        }
+        if (inputRef) inputRef.setCustomValidity('');
     } else {
         newContacts[index][field] = value;
     }
@@ -218,11 +142,11 @@ export default function Alunos() {
   };
 
   const handleArchive = () => {
-    if (editingStudent && deleteConfirmText.toLowerCase() === 'arquivar') {
-      archiveStudent(editingStudent);
+    if (editingStudentId && deleteConfirmText.toLowerCase() === 'arquivar') {
+      archiveStudent(editingStudentId);
       setIsDeleteConfirmOpen(false);
       setIsModalOpen(false);
-      setEditingStudent(null);
+      setEditingStudentId(null);
       setDeleteConfirmText('');
     }
   };
@@ -231,7 +155,6 @@ export default function Alunos() {
     e.preventDefault();
     if (!name || !className) return;
 
-    // Filter out completely empty contacts
     const validContacts = contacts.filter(c => c.name.trim() !== '' || c.phone.trim() !== '');
 
     if (!ignoredWarning) {
@@ -248,18 +171,18 @@ export default function Alunos() {
       if (hasMissingNine && firstInvalidIndex !== -1 && phoneRefs.current[firstInvalidIndex]) {
          const input = phoneRefs.current[firstInvalidIndex];
          if (input) {
-           input.setCustomValidity('Falta um "9" na frente deste número. Clique em Confirmar novamente se quiser salvar assim mesmo.');
-           input.reportValidity();
-           setIgnoredWarning(true);
-           return;
+            input.setCustomValidity('Falta um "9" na frente deste número. Clique em Confirmar novamente se quiser salvar assim mesmo.');
+            input.reportValidity();
+            setIgnoredWarning(true);
+            return;
          }
       }
     }
 
     setIgnoredWarning(false);
 
-    if (editingStudent) {
-      updateStudent(editingStudent, {
+    if (editingStudentId) {
+      updateStudent(editingStudentId, {
         name,
         class: className,
         shift,
@@ -275,7 +198,7 @@ export default function Alunos() {
         name,
         class: className,
         shift,
-        points: 10.0, // starts with 10 points
+        points: 10.0,
         observation: observation || undefined,
         address: address || undefined,
         cpf: cpf || undefined,
@@ -286,426 +209,18 @@ export default function Alunos() {
     }
 
     setIsModalOpen(false);
-    setName('');
-    setClassName('');
-    setShift('Matutino');
-    setContacts([{ name: '', phone: '' }]);
-    setObservation('');
-    setAddress('');
-    setCpf('');
-    setRegistrationNumber('');
-    setBirthDate('');
-    setEditingStudent(null);
+    setEditingStudentId(null);
   };
 
   const handleImport = () => {
-    if (fileInputRef.current) {
-       fileInputRef.current.click();
-    }
-  };
-
-  const [importMessage, setImportMessage] = useState('Processando planilha...');
-
-  const processImportedData = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setImportMessage('Lendo arquivo...');
-    setIsImporting(true);
-    
-    try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      
-      let aiMap: any = null;
-      try {
-        if (process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
-           setImportMessage('Analisando cabeçalhos com IA...');
-           const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-           const csvSnippet = XLSX.utils.sheet_to_csv(firstSheet).split('\n').slice(0, 15).join('\n');
-           aiMap = await analyzeSheetWithAI(csvSnippet);
-           if (aiMap) console.log("AI Sheet mapping:", aiMap);
-        }
-      } catch (e) {
-        console.error("AI map failed", e);
-      }
-      
-      setImportMessage('Extraindo dados...');
-      
-      let allJsonData: any[] = [];
-      
-      const normalizeStr = (str: any) => String(str).toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
-
-      for (const sheetName of workbook.SheetNames) {
-        const worksheet = workbook.Sheets[sheetName];
-        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        let headerRowIndex = 0;
-        
-        // Find best header row by scoring
-        let maxScore = -1;
-        for (let i = 0; i < Math.min(20, rawData.length); i++) {
-          const row: any = rawData[i];
-          if (!row || !Array.isArray(row)) continue;
-          
-          let score = 0;
-          const cells = row.map(cell => normalizeStr(String(cell || '')));
-          
-          if (cells.some(c => c === 'nome' || c === 'aluno' || c === 'nome do aluno' || c === 'estudante' || c === 'nome completo')) score += 5;
-          if (cells.some(c => c === 'turma' || c === 'serie' || c === 'ano')) score += 3;
-          if (cells.some(c => c === 'turno' || c === 'periodo')) score += 3;
-          if (cells.some(c => c === 'cpf' || c === 'matricula')) score += 3;
-          if (cells.some(c => c.includes('telefone') || c === 'telefone' || c.includes('contato'))) score += 2;
-          if (cells.some(c => c === 'sig')) score += 2;
-          
-          // Bonus for first few rows to break ties
-          const positionBonus = Math.max(0, 5 - i);
-          
-          if (score > 0) {
-              const finalScore = score + positionBonus;
-              if (finalScore > maxScore) {
-                  maxScore = finalScore;
-                  headerRowIndex = i;
-              }
-          }
-        }
-        
-        // Only use AI's header row index if heuristic found nothing
-        if (maxScore === -1 && aiMap && typeof aiMap.headerRowIndex === 'number') {
-           headerRowIndex = aiMap.headerRowIndex;
-        }
-        
-        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIndex, defval: '', raw: false });
-        
-        jsonData.forEach(row => {
-          row['_SHEET_NAME_'] = sheetName;
-        });
-        
-        allJsonData = [...allJsonData, ...jsonData];
-      }
-
-      const parsedStudents = allJsonData.map((row) => {
-        const hasData = Object.keys(row).some(k => k !== '_SHEET_NAME_' && String(row[k] || '').trim() !== '' && String(row[k] || '').trim() !== '-');
-        if (!hasData) return null;
-
-        let studentId = '';
-        let name = '';
-        let className = '';
-        let shift = 'Matutino';
-        
-        let observation = '';
-        let address = '';
-        let cpf = '';
-        let registrationNumber = '';
-        let birthDate = '';
-
-        let mae = '';
-        let pai = '';
-        let tel1 = '';
-        let tel2 = '';
-
-        const sheetNameStr = String(row['_SHEET_NAME_'] || '');
-
-        if (aiMap && aiMap.columns) {
-           const c = aiMap.columns;
-           if (c.name && row[c.name] !== undefined && String(row[c.name]).trim() !== '') name = String(row[c.name]).trim();
-           if (c.class && row[c.class] !== undefined && String(row[c.class]).trim() !== '') className = String(row[c.class]).trim();
-           if (c.shift && row[c.shift] !== undefined && String(row[c.shift]).trim() !== '') shift = String(row[c.shift]).trim();
-           if (c.cpf && row[c.cpf] !== undefined && String(row[c.cpf]).trim() !== '') cpf = String(row[c.cpf]).trim();
-           if (c.birthDate && row[c.birthDate] !== undefined && String(row[c.birthDate]).trim() !== '') birthDate = String(row[c.birthDate]).trim();
-           if (c.phone1 && row[c.phone1] !== undefined && String(row[c.phone1]).trim() !== '') tel1 = String(row[c.phone1]).trim();
-           if (c.phone2 && row[c.phone2] !== undefined && String(row[c.phone2]).trim() !== '') tel2 = String(row[c.phone2]).trim();
-           if (c.registration && row[c.registration] !== undefined && String(row[c.registration]).trim() !== '') registrationNumber = String(row[c.registration]).trim();
-           if (c.observation && row[c.observation] !== undefined && String(row[c.observation]).trim() !== '') observation = String(row[c.observation]).trim();
-           if (c.mother && row[c.mother] !== undefined && String(row[c.mother]).trim() !== '') mae = String(row[c.mother]).trim();
-           if (c.father && row[c.father] !== undefined && String(row[c.father]).trim() !== '') pai = String(row[c.father]).trim();
-        }
-
-        for (const key of Object.keys(row)) {
-          const normKey = normalizeStr(key);
-          const val = String(row[key] || '').trim();
-
-          if (val === '-' || val === '' || key === '_SHEET_NAME_') continue;
-
-          // Capture Student ID if present
-          if (normKey === 'cod aluno' || normKey === 'id' || normKey === 'codigo' || normKey === 'cod') {
-            if (!studentId) studentId = val;
-          }
-          else if (normKey === 'matricula' || normKey === 'matr' || normKey === 'matr.') {
-             if (!registrationNumber) registrationNumber = val;
-          }
-          else if (normKey === 'nome' || normKey === 'nome completo' || normKey === 'nome aluno' || normKey === 'aluno' || normKey === 'nome do aluno') {
-             if (!name) name = val;
-          }
-          else if (normKey === 'turma' || normKey === 'serie' || normKey.includes('turma')) {
-             if (!className) className = val;
-          }
-          else if (normKey === 'turno' || normKey === 'periodo') {
-             if (!shift || shift === 'Matutino') shift = val;
-          }
-          else if (normKey === 'cpf') {
-             if (!cpf) cpf = val;
-          }
-          else if (normKey.includes('endereco') || normKey.includes('endereco completo') || normKey === 'end' || normKey === 'end.') {
-             if (!address) address = val;
-          }
-          else if (normKey.includes('nascimento') || normKey.includes('data nasc') || normKey === 'dt. nasc.' || normKey === 'dt nasc') {
-             if (!birthDate) birthDate = val;
-          }
-          else if (normKey.includes('observacao') || normKey === 'obs' || normKey === 'obs.' || normKey === 'observacoes') {
-             if (!observation) observation = val;
-          }
-          else if (
-            normKey === 'mae' || 
-            normKey.includes('mae') || 
-            key.toLowerCase().includes('mãe') ||
-            normKey.includes('ma£e') || 
-            normKey.includes('mae') ||
-            (normKey.startsWith('m') && (normKey.includes('e') || normKey.includes('resp')) && normKey.length < 15)
-          ) {
-            if (!mae) mae = val;
-          }
-          else if (normKey === 'pai' || normKey.includes('pai')) {
-            if (!pai) pai = val;
-          }
-          else if (normKey === 'telefone 1' || normKey === 'telefone1' || normKey === 'tel 1' || normKey === 'contato 1' || normKey === 'telefone' || normKey.includes('telefone') || normKey.includes('celular') || normKey.includes('contato')) {
-             if (!tel1) tel1 = val;
-             else if (!tel2 && val !== tel1) tel2 = val;
-          }
-          else if (normKey === 'telefone 2' || normKey === 'telefone2' || normKey === 'tel 2' || normKey === 'contato 2') {
-             if (!tel2) tel2 = val;
-          }
-        }
-
-        let rawClass = className || sheetNameStr;
-        const upperRaw = rawClass.toUpperCase();
-        
-        if (upperRaw.includes('VESP')) shift = 'Vespertino';
-        else if (upperRaw.includes('MAT')) shift = 'Matutino';
-        else if (upperRaw.includes('NOT')) shift = 'Noturno';
-
-        let parsedGrade = '';
-        let parsedIdentifier = '';
-
-        const gradeMatch = rawClass.match(/(\d+)[º°oa-z]*/i);
-        if (gradeMatch) {
-            parsedGrade = gradeMatch[1] + 'º Ano';
-        }
-
-        const letterMatch = rawClass.match(/\d+[º°oa-z]*\s*[-_.\s]*([A-Za-z])/i);
-        if (letterMatch) {
-            const letter = letterMatch[1].toUpperCase();
-            if (letter !== 'V' && letter !== 'M' && letter !== 'N') {
-                parsedIdentifier = letter;
-            }
-        }
-        
-        if (!parsedIdentifier) {
-           const isolateLetter = rawClass.match(/\b([A-G])\b/i);
-           if (isolateLetter) parsedIdentifier = isolateLetter[1].toUpperCase();
-        }
-
-        if (parsedGrade) {
-            className = parsedGrade + (parsedIdentifier ? ' ' + parsedIdentifier : '');
-        } else {
-            className = rawClass.replace(/[-_.\s]*V[EÊ]SP.*$/i, '').replace(/[-_.\s]*MAT.*$/i, '').replace(/[-_.\s]*NOT.*$/i, '').replace(/[-_.\s]+$/, '').trim();
-        }
-
-        if (shift) {
-           const shiftUpper = shift.toUpperCase();
-           if (shiftUpper.startsWith('V')) shift = 'Vespertino';
-           else if (shiftUpper.startsWith('M')) shift = 'Matutino';
-           else if (shiftUpper.startsWith('N')) shift = 'Noturno';
-        }
-
-        const validShift = ['Matutino', 'Vespertino', 'Noturno'].includes(shift) ? shift as any : 'Matutino';
-
-          const extractPhones = (phoneStr: string) => {
-             if (!phoneStr) return [];
-             const splitMatches = phoneStr.split(/[\/;,]|\s+e\s+/i);
-             if (splitMatches.length > 1) {
-                 return splitMatches.flatMap(p => {
-                    let n = p.replace(/\D/g, '');
-                    if (n.length === 8 || n.length === 9) n = '65' + n;
-                    if (n.length >= 10 && n.length <= 11) {
-                       if (n.length === 10) return [`(${n.substring(0, 2)}) ${n.substring(2, 6)}-${n.substring(6, 10)}`];
-                       if (n.length === 11) return [`(${n.substring(0, 2)}) ${n.substring(2, 7)}-${n.substring(7, 11)}`];
-                    }
-                    if (n.length > 11) {
-                        return [`(${n.substring(0, 2)}) ${n.substring(2, Math.min(n.length, 7))}-${n.substring(Math.min(n.length, 7), Math.min(n.length, 11))}`];
-                    }
-                    return [];
-                 });
-             }
-
-             let nums = phoneStr.replace(/\D/g, '');
-             let extracted: string[] = [];
-             
-             if (nums.length >= 12) {
-                if (nums.length === 22) { extracted = [nums.substring(0,11), nums.substring(11,22)]; }
-                else if (nums.length === 21) { extracted = [nums.substring(0,11), nums.substring(11,21)]; }
-                else if (nums.length === 20) { extracted = [nums.substring(0,10), nums.substring(10,20)]; }
-                else if (nums.length === 18) { extracted = ['65' + nums.substring(0,9), '65' + nums.substring(9,18)]; }
-                else if (nums.length === 16) { extracted = ['65' + nums.substring(0,8), '65' + nums.substring(8,16)]; }
-                else {
-                   const half = Math.floor(nums.length/2);
-                   extracted = [nums.substring(0, half), nums.substring(half)];
-                }
-             } else {
-                if (nums.length === 8 || nums.length === 9) nums = '65' + nums;
-                if (nums.length >= 10) extracted = [nums];
-             }
-             
-             return extracted.map(n => {
-                 if (n.length === 10) return `(${n.substring(0, 2)}) ${n.substring(2, 6)}-${n.substring(6, 10)}`;
-                 if (n.length === 11) return `(${n.substring(0, 2)}) ${n.substring(2, 7)}-${n.substring(7, 11)}`;
-                 return n;
-             });
-          };
-
-        const formatCpf = (cpfStr: string) => {
-           if (!cpfStr) return '';
-           let nums = cpfStr.replace(/\D/g, '');
-           if (nums.length < 11) {
-             nums = nums.padStart(11, '0');
-           } else if (nums.length > 11) {
-             nums = nums.substring(0, 11);
-           }
-           return `${nums.substring(0,3)}.${nums.substring(3,6)}.${nums.substring(6,9)}-${nums.substring(9,11)}`;
-        };
-        
-        const contacts: {name: string, phone: string}[] = [];
-        const phones1 = extractPhones(tel1);
-        phones1.forEach((phone, i) => {
-             contacts.push({ name: mae ? (i===0 ? `Mãe: ${mae}` : `Responsável (Mãe ${i+1})`) : `Resp. 1 - ${i+1}`, phone });
-        });
-        
-        const phones2 = extractPhones(tel2);
-        phones2.forEach((phone, i) => {
-             contacts.push({ name: pai ? (i===0 ? `Pai: ${pai}` : `Responsável (Pai ${i+1})`) : `Resp. 2 - ${i+1}`, phone });
-        });
-        
-        if (contacts.length === 0) {
-            if (mae) contacts.push({ name: `Mãe: ${mae}`, phone: '' });
-            if (pai) contacts.push({ name: `Pai: ${pai}`, phone: '' });
-        }
-
-        let error = '';
-        if (!name) error += 'Nome faltando. ';
-        if (!className) error += 'Turma faltando. ';
-        if (cpf) {
-           cpf = formatCpf(cpf);
-        }
-
-        if (!name && !className && contacts.length === 0 && !studentId && !registrationNumber) return null; // Skip completely empty generated rows
-
-        return {
-          _id: crypto.randomUUID(),
-          id: studentId || undefined,
-          name,
-          class: className,
-          shift: validShift,
-          points: 10.0,
-          cpf: cpf || undefined,
-          address: address || undefined,
-          birthDate: birthDate || undefined,
-          registrationNumber: registrationNumber || undefined,
-          observation: observation || undefined,
-          contacts: contacts.length > 0 ? contacts : undefined,
-          error: error.trim()
-        };
-      }).filter(Boolean) as any[];
-
-      // Sort so errors appear first
-      parsedStudents.sort((a, b) => {
-        if (a.error && !b.error) return -1;
-        if (!a.error && b.error) return 1;
-        return 0;
-      });
-
-      if (parsedStudents.length > 0) {
-        setPendingImports(parsedStudents);
-        setIsReviewOpen(true);
-      } else {
-        alert('Nenhum dado encontrado na planilha.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Ocorreu um erro ao ler a planilha. Verifique o formato do arquivo.');
-    } finally {
-      setIsImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = ''; // reseta
-    }
-  };
-
-  const handleReviewChange = (index: number, field: string, value: string) => {
-    const updated = [...pendingImports];
-    updated[index][field] = value;
-    
-    let error = '';
-    if (!updated[index].name) error += 'Nome faltando. ';
-    if (!updated[index].class) error += 'Turma faltando. ';
-    updated[index].error = error.trim();
-
-    setPendingImports(updated);
-  };
-
-  const handleReviewContactChange = (index: number, contactIndex: number, field: 'name' | 'phone', value: string) => {
-    const updated = [...pendingImports];
-    if (!updated[index].contacts) updated[index].contacts = [];
-    
-    if (field === 'phone') {
-        let v = value.replace(/\D/g, '');
-        if (v.length > 2 && v.length <= 6) v = `(${v.substring(0,2)}) ${v.substring(2)}`;
-        else if (v.length > 6 && v.length <= 10) v = `(${v.substring(0,2)}) ${v.substring(2,6)}-${v.substring(6)}`;
-        else if (v.length > 10) v = `(${v.substring(0,2)}) ${v.substring(2,7)}-${v.substring(7,11)}`;
-        updated[index].contacts[contactIndex][field] = v;
-    } else {
-        updated[index].contacts[contactIndex][field] = value;
-    }
-    setPendingImports(updated);
-  };
-
-  const handleAddReviewContact = (index: number) => {
-    const updated = [...pendingImports];
-    if (!updated[index].contacts) updated[index].contacts = [];
-    updated[index].contacts.push({ name: '', phone: '' });
-    setPendingImports(updated);
-  };
-
-  const handleRemoveReviewContact = (index: number, contactIndex: number) => {
-    const updated = [...pendingImports];
-    updated[index].contacts.splice(contactIndex, 1);
-    setPendingImports(updated);
-  };
-
-  const confirmImport = async () => {
-    const validStudents = pendingImports.filter(s => !s.error);
-    if (validStudents.length === 0) {
-       alert('Nenhum aluno válido para importar. Corrija os erros ou selecione outra planilha.');
-       return;
-    }
-    
-    // strip _id and error before importing
-    const payload = validStudents.map(s => {
-       const { _id, error, ...rest } = s;
-       return rest;
-    });
-
-    setIsImporting(true);
-    await importStudents(payload);
-    setIsImporting(false);
-    setIsReviewOpen(false);
-    setPendingImports([]);
-    alert(`Importação concluída! ${validStudents.length} aluno(s) adicionados.`);
+    setIsWizardOpen(true);
   };
 
   const handleExport = () => {
-    // Generate simple CSV
     const headers = ['ID,Nome,Turma,Turno,Nota Disciplinar'];
     const rows = students.map(s => `${s.id},${s.name},${s.class},${s.shift},${getStudentPoints(s.id)}`);
     const csvContent = headers.concat(rows).join('\n');
     
-    // Create a Blob and download it
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -728,22 +243,15 @@ export default function Alunos() {
   };
 
   const formatPhoneForWhatsApp = (phone: string, studentName: string) => {
-    // Remove tudo que não for número
     const numbers = phone.replace(/\D/g, '');
-    // Se o número tiver menos de 10 dígitos, provavelmente não tem DDD, então não formata o link
     if (numbers.length < 10) return '';
-    // Adiciona o código do DDI do Brasil (55) se não o usuário não colocou
-    const  hasCountryCode = numbers.startsWith('55') && numbers.length >= 12;
+    const hasCountryCode = numbers.startsWith('55') && numbers.length >= 12;
     const baseUrl = `https://wa.me/${hasCountryCode ? '' : '55'}${numbers}`;
     
-    // Greeting depending on time
     const hour = new Date().getHours();
     let greeting = 'Bom dia';
-    if (hour >= 12 && hour < 18) {
-      greeting = 'Boa tarde';
-    } else if (hour >= 18) {
-      greeting = 'Boa noite';
-    }
+    if (hour >= 12 && hour < 18) greeting = 'Boa tarde';
+    else if (hour >= 18) greeting = 'Boa noite';
 
     const message = `Olá, ${greeting}! Estou entrando em contato para falar sobre o ${studentName}.`;
     return `${baseUrl}?text=${encodeURIComponent(message)}`;
@@ -762,21 +270,14 @@ export default function Alunos() {
             <p className="text-slate-500 text-sm">Lista de estudantes, importação e exportação de dados.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-              onChange={processImportedData}
-            />
             <button
               onClick={handleImport}
-              disabled={isImporting || currentUserRole === 'GUEST'}
+              disabled={currentUserRole === 'GUEST'}
               title={currentUserRole === 'GUEST' ? 'Apenas leitura — entre como gestor para importar' : undefined}
               className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/40 dark:border-slate-700/50 hover:bg-white/60 dark:hover:bg-slate-700/60 text-slate-800 dark:text-slate-200 px-6 py-2 rounded-full font-medium flex items-center justify-center gap-2 transition shadow-sm flex-1 sm:flex-none disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Upload className="w-5 h-5" />
-              {isImporting ? importMessage : 'Importar Planilha'}
+              Importar Planilha
             </button>
             <button
               onClick={openAddModal}
@@ -832,7 +333,6 @@ export default function Alunos() {
               <button
                 onClick={handleDeleteAll}
                 disabled={currentUserRole === 'GUEST'}
-                title={currentUserRole === 'GUEST' ? 'Apenas leitura' : undefined}
                 className="bg-rose-50/40 dark:bg-rose-900/10 backdrop-blur-md border border-rose-200/50 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Trash2 className="w-4 h-4" /> Apagar Todos
@@ -939,7 +439,7 @@ export default function Alunos() {
           <div className="bg-white border border-slate-200 rounded-xl max-w-md w-full flex flex-col shadow-2xl max-h-[90vh]">
             <div className="flex items-center justify-between p-5 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
-                {editingStudent ? 'Editar Aluno' : 'Cadastrar Aluno Manualmente'}
+                {editingStudentId ? 'Editar Aluno' : 'Cadastrar Aluno Manualmente'}
               </h2>
               <button 
                 onClick={() => setIsModalOpen(false)}
@@ -983,21 +483,17 @@ export default function Alunos() {
                       <option value="2º Ano">2º Ano</option>
                       <option value="3º Ano">3º Ano</option>
                     </select>
-                    <select 
-                      required
-                      value={className.match(/ ([A-Z])$/i)?.[1] || 'A'}
+                    <input 
+                      type="text"
+                      maxLength={1}
+                      value={className.match(/ ([A-Z])$/i)?.[1] || ''}
                       onChange={(e) => {
                         const prefix = className.replace(/ [A-Z]$/i, '') || '6º Ano';
-                        setClassName(`${prefix} ${e.target.value}`);
+                        setClassName(`${prefix} ${e.target.value.toUpperCase()}`.trim());
                       }}
-                      className="w-1/3 bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="A">A</option>
-                      <option value="B">B</option>
-                      <option value="C">C</option>
-                      <option value="D">D</option>
-                      <option value="E">E</option>
-                    </select>
+                      className="w-1/3 bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
+                      placeholder="Letra"
+                    />
                   </div>
                 </div>
                 <div>
@@ -1126,7 +622,7 @@ export default function Alunos() {
               </div>
 
               <div className="pt-4 flex justify-between gap-3 border-t border-slate-200 mt-5 pt-5">
-                {editingStudent ? (
+                {editingStudentId ? (
                   <button 
                     type="button" 
                     onClick={() => { setIsDeleteConfirmOpen(true); setDeleteConfirmText(''); }}
@@ -1149,7 +645,7 @@ export default function Alunos() {
                     disabled={!name || !className}
                     className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {editingStudent ? 'Salvar Alterações' : 'Confirmar Cadastro'}
+                    {editingStudentId ? 'Salvar Alterações' : 'Confirmar Cadastro'}
                   </button>
                 </div>
               </div>
@@ -1240,241 +736,15 @@ export default function Alunos() {
         </div>
       )}
 
-      {/* Import Review Modal */}
-      {isReviewOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-slate-100">
-              <div>
-                <h2 className="text-xl font-bold text-slate-800">Revisão de Importação</h2>
-                <p className="text-sm text-slate-500 mt-1">Verifique e corrija os dados antes de finalizar a importação.</p>
-              </div>
-              <button 
-                onClick={() => { setIsReviewOpen(false); setPendingImports([]); }}
-                className="text-slate-400 hover:bg-slate-50 p-2 rounded-full transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-auto bg-slate-50 p-4">
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-sm">
-                      <th className="py-3 px-4 font-medium whitespace-nowrap">Status</th>
-                      <th className="py-3 px-4 font-medium">Nome do Aluno</th>
-                      <th className="py-3 px-4 font-medium">Turma</th>
-                      <th className="py-3 px-4 font-medium">Turno</th>
-                      <th className="py-3 px-4 font-medium">Contatos</th>
-                      <th className="py-3 px-4 font-medium text-center">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {pendingImports.map((student, index) => (
-                      <tr key={student._id} className={student.error ? 'bg-red-50/50' : 'hover:bg-slate-50'}>
-                        <td className="py-2 px-4 whitespace-nowrap">
-                          {student.error ? (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                              Erro: {student.error}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                              Pronto
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2 px-4">
-                          <input 
-                            type="text" 
-                            value={student.name}
-                            onChange={(e) => handleReviewChange(index, 'name', e.target.value)}
-                            className={`w-full px-3 py-1.5 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${!student.name ? 'border-red-300 bg-red-50' : 'border-slate-200 bg-white'}`}
-                            placeholder="Nome..."
-                          />
-                        </td>
-                        <td className="py-2 px-4 w-40">
-                          <div className="flex gap-1">
-                            <select
-                              value={student.class ? student.class.replace(/ [A-Z]$/i, '') : '6º Ano'}
-                              onChange={(e) => {
-                                const letter = student.class ? (student.class.match(/ ([A-Z])$/i)?.[1] || 'A') : 'A';
-                                handleReviewChange(index, 'class', `${e.target.value} ${letter}`);
-                              }}
-                              className="w-2/3 px-2 py-1.5 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border-slate-200 bg-white"
-                            >
-                                <option value="Berçário">Berçário</option>
-                                <option value="Maternal I">Maternal I</option>
-                                <option value="Maternal II">Maternal II</option>
-                                <option value="Pré I">Pré I</option>
-                                <option value="Pré II">Pré II</option>
-                                <option value="1º Ano">1º Ano</option>
-                                <option value="2º Ano">2º Ano</option>
-                                <option value="3º Ano">3º Ano</option>
-                                <option value="4º Ano">4º Ano</option>
-                                <option value="5º Ano">5º Ano</option>
-                                <option value="6º Ano">6º Ano</option>
-                                <option value="7º Ano">7º Ano</option>
-                                <option value="8º Ano">8º Ano</option>
-                                <option value="9º Ano">9º Ano</option>
-                                {/* Add dynamically if missing */}
-                                {student.class && ![
-                                  'Berçário', 'Maternal I', 'Maternal II', 'Pré I', 'Pré II',
-                                  '1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', 
-                                  '6º Ano', '7º Ano', '8º Ano', '9º Ano'
-                                ].includes(student.class.replace(/ [A-Z]$/i, '')) && (
-                                  <option value={student.class.replace(/ [A-Z]$/i, '')}>{student.class.replace(/ [A-Z]$/i, '')}</option>
-                                )}
-                            </select>
-                            <input
-                              type="text"
-                              maxLength={1}
-                              value={student.class ? (student.class.match(/ ([A-Z])$/i)?.[1] || '') : ''}
-                              onChange={(e) => {
-                                const prefix = student.class ? student.class.replace(/ [A-Z]$/i, '') : '6º Ano';
-                                handleReviewChange(index, 'class', `${prefix} ${e.target.value.toUpperCase()}`.trim());
-                              }}
-                              className="w-1/3 px-2 py-1.5 rounded-md border text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 border-slate-200 bg-white text-center"
-                              placeholder="Turma"
-                            />
-                          </div>
-                        </td>
-                        <td className="py-2 px-4 w-40">
-                          <select 
-                            value={student.shift}
-                            onChange={(e) => handleReviewChange(index, 'shift', e.target.value)}
-                            className="w-full px-3 py-1.5 rounded-md border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="Matutino">Matutino</option>
-                            <option value="Vespertino">Vespertino</option>
-                            <option value="Noturno">Noturno</option>
-                          </select>
-                        </td>
-                        <td className="py-2 px-4 text-xs text-slate-500 hidden md:table-cell max-w-xs truncate">
-                          <div className="flex items-center justify-between gap-2">
-                             <div className="truncate flex-1" title={student.contacts ? (student.contacts as any[]).map(c => `${c.name}: ${c.phone}`).join(' | ') : 'Sem contato'}>
-                                {student.contacts && student.contacts.length > 0 ? (student.contacts as any[]).map(c => `${c.name}: ${c.phone}`).join(' | ') : 'Sem contato'}
-                             </div>
-                             <button
-                               onClick={() => setReviewEditContactsIndex(index)}
-                               className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md shrink-0 transition"
-                               title="Editar Contatos"
-                             >
-                               <Edit2 className="w-3.5 h-3.5" />
-                             </button>
-                          </div>
-                        </td>
-                        <td className="py-2 px-4 text-center w-16">
-                           <button
-                             onClick={() => {
-                               const updated = [...pendingImports];
-                               updated.splice(index, 1);
-                               setPendingImports(updated);
-                             }}
-                             className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition"
-                             title="Remover linha"
-                           >
-                              <Trash2 className="w-4 h-4" />
-                           </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            
-            <div className="p-6 border-t border-slate-100 bg-white flex justify-between items-center sm:flex-row flex-col gap-4">
-              <span className="text-sm font-medium text-slate-600">
-                {pendingImports.filter(s => s.error).length} linha(s) com erro(s). 
-                <span className="text-green-600 ml-2">{pendingImports.filter(s => !s.error).length} linha(s) válida(s).</span>
-              </span>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setIsReviewOpen(false); setPendingImports([]); }}
-                  className="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-50 transition font-medium"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={confirmImport}
-                  disabled={pendingImports.filter(s => !s.error).length === 0 || isImporting}
-                  className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition font-medium disabled:opacity-50 flex items-center gap-2"
-                >
-                  <Upload className="w-4 h-4" />
-                  {isImporting ? 'Importando...' : 'Confirmar Importação'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {reviewEditContactsIndex !== null && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-slate-800">
-                Editar Contatos: {pendingImports[reviewEditContactsIndex]?.name || 'Aluno'}
-              </h3>
-              <button 
-                onClick={() => setReviewEditContactsIndex(null)}
-                className="text-slate-400 hover:bg-slate-50 p-2 rounded-full transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="space-y-4 max-h-[60vh] overflow-auto mb-6 pr-2">
-              {(!pendingImports[reviewEditContactsIndex]?.contacts || pendingImports[reviewEditContactsIndex].contacts.length === 0) ? (
-                <p className="text-sm text-slate-500 italic">Nenhum contato cadastrado.</p>
-              ) : (
-                pendingImports[reviewEditContactsIndex].contacts.map((contact: any, cIdx: number) => (
-                  <div key={cIdx} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={contact.name}
-                      onChange={(e) => handleReviewContactChange(reviewEditContactsIndex, cIdx, 'name', e.target.value)}
-                      placeholder="Nome do Responsável"
-                      className="w-1/2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <input
-                      type="tel"
-                      value={contact.phone}
-                      onChange={(e) => handleReviewContactChange(reviewEditContactsIndex, cIdx, 'phone', e.target.value)}
-                      placeholder="Telefone"
-                      className="w-1/2 flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <button
-                      onClick={() => handleRemoveReviewContact(reviewEditContactsIndex, cIdx)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition shrink-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))
-              )}
-              
-              <button
-                onClick={() => handleAddReviewContact(reviewEditContactsIndex)}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 mt-2"
-              >
-                <Plus className="w-4 h-4" />
-                Adicionar outro contato
-              </button>
-            </div>
-            
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={() => setReviewEditContactsIndex(null)}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition font-medium"
-              >
-                Concluído
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ImportWizard
+        isOpen={isWizardOpen}
+        onClose={() => setIsWizardOpen(false)}
+        onImport={async (studentsData) => {
+          await importStudents(studentsData);
+          setIsWizardOpen(false);
+        }}
+        geminiApiKey={process.env.NEXT_PUBLIC_GEMINI_API_KEY}
+      />
     </AppShell>
   );
 }
