@@ -268,20 +268,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
           
           if (rulesData) {
-            // Prioritize descriptions from code (with synonyms) but keep other data from DB
-            const mergedRules = INITIAL_RULES.map(ir => {
-              const dbMatch = rulesData.find((dr: any) => dr.code === ir.code);
-              return dbMatch ? { ...dbMatch, description: ir.description } : ir;
-            });
-            
-            // Also add any rules that might exist in DB but not in INITIAL_RULES
-            rulesData.forEach((dr: any) => {
-              if (!mergedRules.find(mr => mr.code === dr.code)) {
-                mergedRules.push({ ...dr });
-              }
-            });
-            
-            setRules(mergedRules);
+            setRules(rulesData.map(r => ({ ...r, ruleCode: r.code })));
           }
           if (occurrencesData) setOccurrences(occurrencesData.map((o: any) => ({
             id: o.id,
