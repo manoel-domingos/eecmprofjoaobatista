@@ -558,20 +558,51 @@ Responda apenas em JSON: {"headerRowIndex": number, "mapping": {"índice_coluna"
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className="bg-white dark:bg-slate-900 w-full max-w-6xl h-[90vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800"
       >
-        {/* Header */}
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <FileUp className="text-white w-6 h-6" />
+        {/* Header & Steps */}
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <FileUp className="text-white w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Importação Inteligente</h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Heurística Avançada + IA</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-800 dark:text-white">Importação Inteligente</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Mapeamento dinâmico com Heurística Anti-Data</p>
+
+            {/* Stepper */}
+            <div className="flex items-center gap-2">
+              {[
+                { id: 'upload', label: 'Upload' },
+                { id: 'config', label: 'Config' },
+                { id: 'mapping', label: 'Mapeamento' },
+                { id: 'review', label: 'Revisão' }
+              ].map((s, i, arr) => (
+                <React.Fragment key={s.id}>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                      step === s.id 
+                      ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20 scale-110' 
+                      : (arr.findIndex(x => x.id === step) > i ? 'bg-green-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400')
+                    }`}>
+                      {arr.findIndex(x => x.id === step) > i ? '✓' : i + 1}
+                    </div>
+                    <span className={`text-xs font-bold hidden sm:block ${step === s.id ? 'text-blue-500' : 'text-slate-400'}`}>
+                      {s.label}
+                    </span>
+                  </div>
+                  {i < arr.length - 1 && (
+                    <div className="w-4 h-px bg-slate-200 dark:bg-slate-700 mx-1" />
+                  )}
+                </React.Fragment>
+              ))}
             </div>
+
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors hidden md:block">
+              <X className="w-6 h-6 text-slate-400" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
-            <X className="w-6 h-6 text-slate-400" />
-          </button>
         </div>
 
         {/* Content */}
