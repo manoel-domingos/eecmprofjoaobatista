@@ -161,8 +161,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className={`min-h-screen bg-[#eef3f9] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-200 ${layoutMode === 'sidebar' ? 'flex' : 'flex flex-col'}`}>
       {/* Background decoration for liquid glass effect */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-400/10 blur-[120px] rounded-full" />
+        <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-blue-600/15 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute -bottom-[10%] -right-[10%] w-[50%] h-[50%] bg-purple-600/15 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
 
       {isMobileMenuOpen && (
@@ -218,7 +218,7 @@ function SidebarLayout({
 }) {
   return (
     <>
-      <aside className="hidden md:flex w-64 bg-[#1E293B] flex-col shrink-0 shadow-xl">
+      <aside className="hidden md:flex w-64 bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex-col shrink-0 shadow-2xl z-10">
         <div className="p-6 flex flex-col items-center border-b border-slate-800">
           <div className="w-28 h-28 flex items-center justify-center">
             <img src="/nova_logo.png" alt="Logo EECM" className="w-full h-full object-contain drop-shadow-md" />

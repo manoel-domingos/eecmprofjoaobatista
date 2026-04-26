@@ -181,7 +181,7 @@ export default function ImportWizard({ isOpen, onClose, onImport }: { isOpen: bo
   
   // Current view states (synced with sheetMappings[selectedSheet])
   const [headerRowIndex, setHeaderRowIndex] = useState<number>(0);
-  const [columnMapping, setColumnMapping] = useState<Record<number, FieldOption>>({});
+  const [columnMapping, setColumnMapping] = useState<Record<number, string>>({});
   
   const [previewData, setPreviewData] = useState<any[][]>([]);
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
@@ -575,9 +575,8 @@ Responda apenas em JSON: {"headerRowIndex": number, "mapping": {"índice_coluna"
             <div className="flex items-center gap-2">
               {[
                 { id: 'upload', label: 'Upload' },
-                { id: 'config', label: 'Config' },
                 { id: 'mapping', label: 'Mapeamento' },
-                { id: 'review', label: 'Revisão' }
+                { id: 'success', label: 'Finalizado' }
               ].map((s, i, arr) => (
                 <React.Fragment key={s.id}>
                   <div className="flex items-center gap-2">
@@ -623,235 +622,156 @@ Responda apenas em JSON: {"headerRowIndex": number, "mapping": {"índice_coluna"
                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx,.xls,.csv" />
               </div>
             </div>
-          ) : step === 'config' ? (
-            <div className="flex-1 flex flex-col overflow-hidden p-8">
-              <div className="max-w-4xl mx-auto w-full space-y-8">
+          ) : step === 'mapping' ? (
+            <div className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-slate-900">
+              {/* Header Info */}
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-start">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-                    <TableIcon className="w-5 h-5 text-blue-500" />
-                    Configuração da Estrutura
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-bold">2</div>
+                    Mapeamento de Colunas
                   </h3>
-                  <p className="text-sm text-slate-500 mb-6">Selecione a aba correta e clique na linha que contém os títulos das colunas.</p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Confirme quais colunas correspondem a cada campo. A linha destacada em azul é o cabeçalho detectado.
+                  </p>
                 </div>
-
-                {sheetNames.length > 1 && (
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Aba do Excel</label>
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                      {sheetNames.map(name => (
-                        <button
-                          key={name}
-                          onClick={() => handleSheetChange(name)}
-                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
-                            selectedSheet === name 
-                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
-                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-500'
-                          }`}
-                        >
-                          {name}
-                        </button>
-                      ))}
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="px-4 py-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-xl flex items-center gap-2 text-amber-700 dark:text-amber-400 text-sm font-medium">
+                    <AlertTriangle className="w-4 h-4" />
+                    Verifique o mapeamento
                   </div>
-                )}
+                  <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                    <X className="w-6 h-6 text-slate-400" />
+                  </button>
+                </div>
+              </div>
 
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
-                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 border-b border-slate-200 dark:border-slate-800">
-                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Selecione a linha de cabeçalho (Primeiras 15 linhas)</h4>
-                  </div>
-                  <div className="overflow-auto max-h-[40vh]">
-                    <table className="w-full text-sm border-collapse">
-                      <tbody>
-                        {previewData.slice(0, 15).map((row, idx) => (
-                          <tr 
-                            key={idx} 
-                            onClick={() => setHeaderRowIndex(idx)}
-                            className={`cursor-pointer transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0 ${
-                              headerRowIndex === idx 
-                              ? 'bg-blue-50 dark:bg-blue-500/10' 
-                              : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'
-                            }`}
+              {/* Toolbar: Sheets */}
+              {sheetNames.length > 1 && (
+                <div className="px-6 py-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/10 flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mr-2">Abas:</span>
+                  {sheetNames.map(name => (
+                    <button
+                      key={name}
+                      onClick={() => handleSheetChange(name)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                        selectedSheet === name 
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10' 
+                        : 'bg-white dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 hover:border-blue-500'
+                      }`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Table Area */}
+              <div className="flex-1 overflow-auto p-0 relative no-scrollbar">
+                <table className="w-full text-sm border-separate border-spacing-0">
+                  <thead className="sticky top-0 z-20 bg-white dark:bg-slate-900 shadow-sm">
+                    <tr>
+                      <th className="p-4 w-16 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">LINHA</th>
+                      {(previewData[headerRowIndex] || Array(10).fill('')).map((_, colIdx) => (
+                        <th key={colIdx} className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                          <select
+                            value={columnMapping[colIdx] || 'Ignorar'}
+                            onChange={(e) => setColumnMapping(prev => ({ ...prev, [colIdx]: e.target.value }))}
+                            className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 transition-all outline-none"
                           >
-                            <td className="p-3 w-12 text-center border-r border-slate-50 dark:border-slate-800">
-                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                                headerRowIndex === idx ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
-                              }`}>
-                                {idx + 1}
-                              </div>
-                            </td>
-                            <td className="p-3 flex gap-2 overflow-hidden">
-                              {row.map((cell, cIdx) => (
-                                <div key={cIdx} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap max-w-[150px] truncate">
-                                  {String(cell || '')}
+                            <option value="Ignorar">Ignorar</option>
+                            {COLUMNS.filter(c => c !== 'Ignorar').map(col => (
+                              <option key={col} value={col}>{col}</option>
+                            ))}
+                          </select>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {previewData.slice(0, 50).map((row, idx) => (
+                      <tr 
+                        key={idx} 
+                        onClick={() => setHeaderRowIndex(idx)}
+                        className={`group cursor-pointer transition-colors ${
+                          headerRowIndex === idx 
+                          ? 'bg-blue-50/50 dark:bg-blue-500/10' 
+                          : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'
+                        }`}
+                      >
+                        <td className={`p-3 text-center border-b border-slate-50 dark:border-slate-800 font-medium ${
+                           headerRowIndex === idx ? 'text-blue-600' : 'text-slate-400'
+                        }`}>
+                          {headerRowIndex === idx ? '↓' : idx}
+                        </td>
+                        {row.map((cell, cIdx) => (
+                          <td key={cIdx} className={`p-4 border-b border-slate-50 dark:border-slate-800 transition-colors relative ${
+                            headerRowIndex === idx ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-500 dark:text-slate-400'
+                          }`}>
+                            <div className="truncate max-w-[250px]">
+                              {String(cell || '—')}
+                            </div>
+                            
+                            {/* Hover Tooltip */}
+                            {headerRowIndex !== idx && cIdx === 0 && (
+                              <div className="absolute left-full top-1/2 -translate-y-1/2 z-30 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap ml-4">
+                                <div className="bg-slate-900 text-white text-[10px] px-3 py-1.5 rounded-lg shadow-xl flex items-center gap-2">
+                                  <Menu className="w-3 h-3" />
+                                  Clique para usar esta linha como cabeçalho
                                 </div>
-                              ))}
-                            </td>
-                          </tr>
+                              </div>
+                            )}
+                          </td>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-                <div className="flex justify-end pt-4">
+              {/* Footer Mapping */}
+              <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/20">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+                  <p className="text-xs text-slate-500 font-medium">
+                    {previewData.length} linhas de dados detectadas.
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-bold flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    Mapeie Nome* e Turma* para continuar.
+                  </p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <button onClick={onClose} className="px-6 py-2.5 text-slate-500 hover:text-slate-700 font-bold transition-colors">
+                    Cancelar
+                  </button>
                   <button
-                    onClick={() => {
-                      setStep('mapping');
-                      const rows = XLSX.utils.sheet_to_json<any[][]>(workbook!.Sheets[selectedSheet], { header: 1 });
-                      const result = advancedSmartHeuristicScan(rows);
-                      // Overwrite the heuristic's row with the manual one, but use its logic for column types
-                      const m = buildColumnMappingFromScan({ ...result, headerRowIndex }, (rows[headerRowIndex] || []).length);
-                      setColumnMapping(m);
-                      setSheetMappings({ [selectedSheet]: { headerRowIndex, columnMapping: m } });
-                    }}
-                    className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-xl shadow-blue-600/20 transition-all flex items-center gap-2 group"
+                    onClick={handleFinalImport}
+                    className="px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-2xl font-bold shadow-xl shadow-blue-500/20 transition-all flex items-center gap-2"
                   >
-                    Confirmar Estrutura
-                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    Concluir Importação →
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Toolbar */}
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
-                  {sheetNames.map(name => (
-                    <button
-                      key={name}
-                      onClick={() => handleSheetChange(name)}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                        selectedSheet === name 
-                        ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
-                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:border-blue-500'
-                      }`}
-                    >
-                      {name}
-                      {sheetMappings[name] && (
-                        <CheckCircle2 className="w-3 h-3 inline-block ml-2 opacity-70" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                <button 
-                  onClick={handleVerifyWithAI}
-                  disabled={isAutoDetecting}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-slate-400 text-white rounded-xl text-sm font-bold shadow-lg shadow-purple-500/20 transition-all"
-                >
-                  <Cpu className="w-4 h-4" /> {isAutoDetecting ? 'Analisando...' : 'Verificar com IA'}
-                </button>
-              </div>
-
-              {/* Mapping Workspace */}
-              <div className="flex-1 overflow-auto p-6">
-                {isAutoDetecting && (
-                  <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-2xl flex items-center gap-4">
-                    <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-sm font-medium text-blue-700 dark:text-blue-400">{autoDetectProgress}</p>
+            <div className="flex-1 flex flex-col items-center justify-center p-12 bg-slate-50/30">
+               <div className="max-w-xl w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-12 shadow-2xl flex flex-col items-center gap-8 text-center">
+                  <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/20">
+                    <CheckSquare className="w-12 h-12 text-white" />
                   </div>
-                )}
-
-                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800">
-                        <th className="p-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-700 w-16">Linha</th>
-                        {previewData[0]?.map((_, colIdx) => (
-                          <th key={colIdx} className="p-4 border-b border-slate-200 dark:border-slate-700 min-w-[200px]">
-                            <select
-                              value={columnMapping[colIdx] || 'Ignorar'}
-                              onChange={(e) => {
-                                const newMapping = { ...columnMapping, [colIdx]: e.target.value as FieldOption };
-                                setColumnMapping(newMapping);
-                                setSheetMappings(prev => ({ ...prev, [selectedSheet]: { ...prev[selectedSheet], columnMapping: newMapping } }));
-                              }}
-                              className={`w-full p-2.5 rounded-xl text-sm font-bold border-2 transition-all outline-none ${
-                                (columnMapping[colIdx] || 'Ignorar') !== 'Ignorar'
-                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-400'
-                              }`}
-                            >
-                              {COLUMNS.map(col => (
-                                <option key={col} value={col}>{col}</option>
-                              ))}
-                            </select>
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {previewData.slice(0, 50).map((row, rIdx) => (
-                        <tr 
-                          key={rIdx} 
-                          onClick={() => {
-                            setHeaderRowIndex(rIdx);
-                            setSheetMappings(prev => ({ ...prev, [selectedSheet]: { ...prev[selectedSheet], headerRowIndex: rIdx } }));
-                          }}
-                          className={`group cursor-pointer transition-colors ${
-                            headerRowIndex === rIdx 
-                            ? 'bg-blue-500/5 dark:bg-blue-500/10' 
-                            : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
-                          }`}
-                        >
-                          <td className="p-4 text-xs font-bold text-slate-400 border-r border-slate-100 dark:border-slate-800 relative">
-                            {rIdx}
-                            {headerRowIndex === rIdx && (
-                              <div className="absolute right-0 top-0 bottom-0 w-1 bg-blue-500" title="Linha de Cabeçalho" />
-                            )}
-                          </td>
-                          {row.map((cell, cIdx) => (
-                            <td 
-                              key={cIdx} 
-                              className={`p-4 text-sm border-b border-slate-100 dark:border-slate-800 ${
-                                headerRowIndex === rIdx ? 'font-bold text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-300'
-                              }`}
-                            >
-                              {cell ? String(cell) : '-'}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                  <div>
+                    <h3 className="text-2xl font-extrabold text-slate-800 dark:text-white">Importação Finalizada!</h3>
+                    <p className="text-slate-500 mt-2">Seus dados foram processados com sucesso e estão disponíveis no sistema.</p>
+                  </div>
+                  <button 
+                    onClick={onClose}
+                    className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-bold transition-transform active:scale-95"
+                  >
+                    Voltar aos Alunos
+                  </button>
+               </div>
             </div>
           )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-6 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/30">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Cabeçalho</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-600" />
-              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Dados</span>
-            </div>
-          </div>
-          
-          <div className="flex gap-4">
-            <button 
-              onClick={onClose}
-              className="px-6 py-2.5 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
-            >
-              Cancelar
-            </button>
-            {step === 'mapping' && (
-              <button 
-                onClick={handleFinalImport}
-                disabled={isImporting}
-                className="px-8 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 flex items-center gap-2 transition-all active:scale-95"
-              >
-                {isImporting ? 'Importando...' : 'Concluir Importação'}
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            )}
-          </div>
         </div>
       </motion.div>
     </div>
