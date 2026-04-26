@@ -42,6 +42,7 @@ export interface Occurrence {
   videoUrls?: string[];
   signedDocUrls?: string[];
   durationDays?: number;
+  measure?: string;
   attenuatingFactors?: string[];
   aggravatingFactors?: string[];
 }
