@@ -152,6 +152,7 @@ export async function getWorkingModelWithFallback(apiKey: string) {
       
       addLog({
         model: modelName,
+        provider: 'google',
         prompt: `[Probe] ${probePrompt}`,
         response: result.response.text(),
         status: 'success'
@@ -165,6 +166,7 @@ export async function getWorkingModelWithFallback(apiKey: string) {
       
       addLog({
         model: modelName,
+        provider: 'google',
         prompt: '[Probe] ok',
         response: '',
         status: 'error',

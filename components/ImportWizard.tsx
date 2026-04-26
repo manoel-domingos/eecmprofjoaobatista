@@ -171,7 +171,7 @@ const COLUMNS = ["Ignorar", "Nome*", "Turma*", "CPF", "Data Nasc.", "Telefone 1"
 
 export default function ImportWizard({ isOpen, onClose, onImport }: { isOpen: boolean, onClose: () => void, onImport: (data: any[]) => void }) {
   const { geminiApiKey, groqApiKey } = useAppContext();
-  const [step, setStep] = useState<'upload' | 'mapping' | 'review'>('upload');
+  const [step, setStep] = useState<'upload' | 'config' | 'mapping' | 'review'>('upload');
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null);
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [selectedSheet, setSelectedSheet] = useState<string>('');
@@ -436,8 +436,15 @@ export default function ImportWizard({ isOpen, onClose, onImport }: { isOpen: bo
       setWorkbook(wb);
       setSheetNames(wb.SheetNames);
       setSelectedSheet(wb.SheetNames[0]);
-      setStep('mapping');
-      autoDetectMapping(wb);
+      
+      const rows = XLSX.utils.sheet_to_json<any[][]>(wb.Sheets[wb.SheetNames[0]], { header: 1 });
+      setPreviewData(rows);
+      
+      // Run initial heuristic to suggest a header
+      const result = advancedSmartHeuristicScan(rows);
+      setHeaderRowIndex(result.headerRowIndex);
+      
+      setStep('config');
     };
     reader.readAsBinaryString(file);
   };
@@ -583,6 +590,95 @@ Responda apenas em JSON: {"headerRowIndex": number, "mapping": {"índice_coluna"
                   <p className="text-sm text-slate-500 mt-2">Suporta .xlsx, .xls e .csv (Múltiplas abas suportadas)</p>
                 </div>
                 <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept=".xlsx,.xls,.csv" />
+              </div>
+            </div>
+          ) : step === 'config' ? (
+            <div className="flex-1 flex flex-col overflow-hidden p-8">
+              <div className="max-w-4xl mx-auto w-full space-y-8">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                    <TableIcon className="w-5 h-5 text-blue-500" />
+                    Configuração da Estrutura
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-6">Selecione a aba correta e clique na linha que contém os títulos das colunas.</p>
+                </div>
+
+                {sheetNames.length > 1 && (
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Aba do Excel</label>
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                      {sheetNames.map(name => (
+                        <button
+                          key={name}
+                          onClick={() => handleSheetChange(name)}
+                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
+                            selectedSheet === name 
+                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' 
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-500'
+                          }`}
+                        >
+                          {name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 border-b border-slate-200 dark:border-slate-800">
+                    <h4 className="text-sm font-bold text-slate-700 dark:text-slate-200">Selecione a linha de cabeçalho (Primeiras 15 linhas)</h4>
+                  </div>
+                  <div className="overflow-auto max-h-[40vh]">
+                    <table className="w-full text-sm border-collapse">
+                      <tbody>
+                        {previewData.slice(0, 15).map((row, idx) => (
+                          <tr 
+                            key={idx} 
+                            onClick={() => setHeaderRowIndex(idx)}
+                            className={`cursor-pointer transition-colors border-b border-slate-50 dark:border-slate-800 last:border-0 ${
+                              headerRowIndex === idx 
+                              ? 'bg-blue-50 dark:bg-blue-500/10' 
+                              : 'hover:bg-slate-50 dark:hover:bg-slate-800/30'
+                            }`}
+                          >
+                            <td className="p-3 w-12 text-center border-r border-slate-50 dark:border-slate-800">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                headerRowIndex === idx ? 'bg-blue-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
+                              }`}>
+                                {idx + 1}
+                              </div>
+                            </td>
+                            <td className="p-3 flex gap-2 overflow-hidden">
+                              {row.map((cell, cIdx) => (
+                                <div key={cIdx} className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap max-w-[150px] truncate">
+                                  {String(cell || '')}
+                                </div>
+                              ))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <button
+                    onClick={() => {
+                      setStep('mapping');
+                      const rows = XLSX.utils.sheet_to_json<any[][]>(workbook!.Sheets[selectedSheet], { header: 1 });
+                      const result = advancedSmartHeuristicScan(rows);
+                      // Overwrite the heuristic's row with the manual one, but use its logic for column types
+                      const m = buildColumnMappingFromScan({ ...result, headerRowIndex }, (rows[headerRowIndex] || []).length);
+                      setColumnMapping(m);
+                      setSheetMappings({ [selectedSheet]: { headerRowIndex, columnMapping: m } });
+                    }}
+                    className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-xl shadow-blue-600/20 transition-all flex items-center gap-2 group"
+                  >
+                    Confirmar Estrutura
+                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
