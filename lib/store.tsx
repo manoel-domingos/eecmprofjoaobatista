@@ -1004,8 +1004,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 // Recidivism in same media rule -> Suspensão (0.5 * days)
                 pointsToDeduct = 0.50 * (o.durationDays || 1);
             } else {
-                // 1st time media -> Repreensão/Ação Educativa (1.0)
-                pointsToDeduct = 1.00;
+                // 1st time media -> Repreensão (0.3)
+                pointsToDeduct = 0.30;
             }
         } else if (rule.severity === 'Grave') {
              // Grave is always Suspensão (0.5 * days)

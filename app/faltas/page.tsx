@@ -19,12 +19,14 @@ export default function FaltasDisciplinares() {
   const [points, setPoints] = useState(0);
   const [measure, setMeasure] = useState('');
 
-  const filteredRules = rules.filter(r => {
-    const matchesSearch = r.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         r.code.toString().includes(searchTerm);
-    const matchesSeverity = selectedSeverity === 'Todas' || r.severity === selectedSeverity;
-    return matchesSearch && matchesSeverity;
-  });
+  const filteredRules = rules
+    .filter(r => {
+      const matchesSearch = r.description.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           r.code.toString().includes(searchTerm);
+      const matchesSeverity = selectedSeverity === 'Todas' || r.severity === selectedSeverity;
+      return matchesSearch && matchesSeverity;
+    })
+    .sort((a, b) => a.code - b.code);
 
   const openEditModal = (r: DisciplineRule) => {
     setEditingRule(r);
@@ -70,7 +72,7 @@ export default function FaltasDisciplinares() {
              Leve: -0.1 (Oral) ou -0.3 (Escrita)
            </div>
            <div className="px-3 py-1.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-medium">
-             Média: -1.0 (Repreensão)
+             Média: -0.3 (Escrita)
            </div>
            <div className="px-3 py-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium">
              Grave: -0.5 por dia (Suspensão)

@@ -144,12 +144,22 @@ function RegistroDisciplinarContent() {
 
     if (!searchTerm) return true; // Show all non-archived by default
     return student?.name.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+  }).sort((a, b) => {
+    // Sort by date (newest first)
+    const dateA = new Date(a.date).getTime();
+    const dateB = new Date(b.date).getTime();
+    if (dateB !== dateA) return dateB - dateA;
+    // If same date, newest ID first (proxy for creation time)
+    return b.id.localeCompare(a.id);
   });
 
-  const matchedRules = rules.filter(r => 
-    r.description.toLowerCase().includes(ruleSearch.toLowerCase()) ||
-    r.code.toString().includes(ruleSearch)
-  ).slice(0, 5); // show top 5
+  const matchedRules = rules
+    .filter(r => 
+      r.description.toLowerCase().includes(ruleSearch.toLowerCase()) ||
+      r.code.toString().includes(ruleSearch)
+    )
+    .sort((a, b) => a.code - b.code)
+    .slice(0, 10); // show top 10
 
   const activeRule = rules.find(r => r.code.toString() === selectedRule);
 
