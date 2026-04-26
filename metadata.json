@@ -1,0 +1,6 @@
+{
+  "name": "EECM Gestão Disciplinar",
+  "description": "Sistema de gestão disciplinar para escolas cívico-militares, com controle de alunos, ocorrências, acidentes, elogios e sistema de pontuação comportamental.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": []
+}

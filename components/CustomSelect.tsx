@@ -1,0 +1,90 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { ChevronDown, Check } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface Option {
+  value: string;
+  label: string;
+}
+
+interface CustomSelectProps {
+  options: Option[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}
+
+export default function CustomSelect({ 
+  options,
+  value, 
+  onChange, 
+  placeholder = "Selecione...",
+  className = ""
+}: CustomSelectProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => o.value === value);
+
+  return (
+    <div className={`relative w-full ${className}`} ref={wrapperRef}>
+      <button
+        type="button"
+        className="w-full h-9 flex items-center justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl dark:bg-[#1a1f2e] border border-slate-200 dark:border-slate-700/50 rounded-lg px-3 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <span className="truncate">
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="absolute z-50 w-full mt-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl dark:bg-[#1e2536] border border-slate-200 dark:border-slate-700 rounded-lg shadow-[0_8px_32px_0_rgba(31,38,135,0.07)] max-h-60 flex flex-col py-1 overflow-hidden"
+          >
+            <ul className="overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent">
+              {options.length === 0 ? (
+                <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400 text-center">Opções indisponíveis</li>
+              ) : (
+                options.map((opt) => {
+                  const isSelected = value === opt.value;
+                  return (
+                    <li
+                      key={opt.value}
+                      className={`flex items-center justify-between px-3 py-2 text-sm cursor-pointer mx-1 rounded-md transition-colors ${ isSelected ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50' }`}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onChange(opt.value);
+                        setIsOpen(false);
+                      }}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && <Check className="w-4 h-4 shrink-0 shadow-sm" />}
+                    </li>
+                  )
+                })
+              )}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
