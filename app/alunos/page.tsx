@@ -3,51 +3,13 @@
 import React, { useState, useRef } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
-import { Users, Plus, Upload, Download, Search, X, Edit2, Archive, Trash2, ChevronDown, Wand2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Users, Plus, Upload, Download, Search, X, Edit2, Archive, Trash2, ChevronDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI, Type } from "@google/genai";
-import { advancedSmartHeuristicScan } from '@/lib/scanner';
 
-// ── Mapa de campos internos para rótulos do wizard ──
-type WizardField =
-  | 'ignore' | 'name' | 'class' | 'shift'
-  | 'cpf' | 'birthDate' | 'phone1' | 'phone2'
-  | 'registration' | 'observation' | 'address'
-  | 'mother' | 'father';
-
-const FIELD_LABELS: Record<WizardField, string> = {
-  ignore:       'Ignorar',
-  name:         'Nome*',
-  class:        'Turma*',
-  shift:        'Turno',
-  cpf:          'CPF',
-  birthDate:    'Data Nasc.',
-  phone1:       'Telefone 1',
-  phone2:       'Telefone 2',
-  registration: 'Matrícula',
-  observation:  'Observação',
-  address:      'Endereço',
-  mother:       'Nome Mãe',
-  father:       'Nome Pai',
-};
-
-// ColumnType do scanner → WizardField
-const SCANNER_TO_WIZARD: Record<string, WizardField> = {
-  NOME:            'name',
-  TURMA:           'class',
-  CPF:             'cpf',
-  DATA_NASCIMENTO: 'birthDate',
-  TELEFONE:        'phone1',
-  MATRICULA:       'registration',
-  EMAIL:           'observation',
-  GENERO:          'ignore',
-  ENDERECO:        'address',
-  RESPONSAVEL:     'mother',
-  UNKNOWN:         'ignore',
-};
-
-const analyzeSheetWithAI = async (csvSnippet: string, apiKey: string) => {
+const analyzeSheetWithAI = async (csvSnippet: string) => {
   try {
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
     if (!apiKey) return null;
     const ai = new GoogleGenAI({ apiKey });
     
@@ -120,19 +82,7 @@ Se não houver coluna para alguma dessas chaves internas, não inclua a chave no
 };
 
 export default function Alunos() {
-  const { 
-    students, 
-    addStudent, 
-    importStudents, 
-    updateStudent, 
-    archiveStudent, 
-    getStudentPoints, 
-    getStudentBehavior, 
-    deleteAllStudents, 
-    currentUserRole,
-    geminiApiKey,
-    isDebugMode
-  } = useAppContext();
+  const { students, addStudent, importStudents, updateStudent, archiveStudent, getStudentPoints, getStudentBehavior, deleteAllStudents, currentUserRole } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [classFilter, setClassFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -356,200 +306,334 @@ export default function Alunos() {
 
   const [importMessage, setImportMessage] = useState('Processando planilha...');
 
-  // ── Wizard de Importação ──
-  const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [wizardRawRows, setWizardRawRows] = useState<any[][]>([]);
-  const [wizardHeaderRowIndex, setWizardHeaderRowIndex] = useState(0);
-  const [wizardColumnMappings, setWizardColumnMappings] = useState<Record<number, WizardField>>({});
-  const [wizardScanNeedsAI, setWizardScanNeedsAI] = useState(false);
-  const WIZARD_PREVIEW_ROWS = 6;
-
-  // ── Utilitários de build de aluno ──────────────────────────
-
-  const extractPhones = (phoneStr: string): string[] => {
-    if (!phoneStr) return [];
-    const splitMatches = phoneStr.split(/[/;,]|\s+e\s+/i);
-    if (splitMatches.length > 1) {
-      return splitMatches.flatMap(p => {
-        let n = p.replace(/\D/g, '');
-        if (n.length === 8 || n.length === 9) n = '65' + n;
-        if (n.length === 10) return ['(' + n.substring(0,2) + ') ' + n.substring(2,6) + '-' + n.substring(6,10)];
-        if (n.length === 11) return ['(' + n.substring(0,2) + ') ' + n.substring(2,7) + '-' + n.substring(7,11)];
-        return [];
-      });
-    }
-    let nums = phoneStr.replace(/\D/g, '');
-    if (nums.length === 8 || nums.length === 9) nums = '65' + nums;
-    if (nums.length === 10) return ['(' + nums.substring(0,2) + ') ' + nums.substring(2,6) + '-' + nums.substring(6,10)];
-    if (nums.length === 11) return ['(' + nums.substring(0,2) + ') ' + nums.substring(2,7) + '-' + nums.substring(7,11)];
-    return [];
-  };
-
-  const formatCpf = (cpfStr: string): string => {
-    if (!cpfStr) return '';
-    let nums = cpfStr.replace(/\D/g, '');
-    if (nums.length < 11) nums = nums.padStart(11, '0');
-    else if (nums.length > 11) nums = nums.substring(0, 11);
-    return nums.substring(0,3) + '.' + nums.substring(3,6) + '.' + nums.substring(6,9) + '-' + nums.substring(9,11);
-  };
-
-  const buildStudentFromFields = (fields: Partial<Record<WizardField, string>>, sheetNameStr: string) => {
-    let name = fields.name || '';
-    let className = fields.class || '';
-    let shift = fields.shift || 'Matutino';
-    let cpf = fields.cpf || '';
-    const birthDate = fields.birthDate || '';
-    const tel1 = fields.phone1 || '';
-    const tel2 = fields.phone2 || '';
-    const registrationNumber = fields.registration || '';
-    const observation = fields.observation || '';
-    const address = fields.address || '';
-    const mae = fields.mother || '';
-    const pai = fields.father || '';
-
-    let rawClass = className || sheetNameStr;
-    const upperRaw = rawClass.toUpperCase();
-    if (upperRaw.includes('VESP')) shift = 'Vespertino';
-    else if (upperRaw.includes('MAT')) shift = 'Matutino';
-    else if (upperRaw.includes('NOT')) shift = 'Noturno';
-
-    const gradeMatch = rawClass.match(/(\d+)[º°oa-z]*/i);
-    const parsedGrade = gradeMatch ? gradeMatch[1] + 'º Ano' : '';
-    const letterMatch = rawClass.match(/\d+[º°oa-z]*\s*[-_.\s]*([A-Za-z])/i);
-    let parsedIdentifier = '';
-    if (letterMatch) {
-      const letter = letterMatch[1].toUpperCase();
-      if (letter !== 'V' && letter !== 'M' && letter !== 'N') parsedIdentifier = letter;
-    }
-    if (!parsedIdentifier) {
-      const iso = rawClass.match(/\b([A-G])\b/i);
-      if (iso) parsedIdentifier = iso[1].toUpperCase();
-    }
-    className = parsedGrade
-      ? parsedGrade + (parsedIdentifier ? ' ' + parsedIdentifier : '')
-      : rawClass.replace(/[-_.\s]*V[EÊ]SP.*$/i, '').replace(/[-_.\s]*MAT.*$/i, '').replace(/[-_.\s]*NOT.*$/i, '').replace(/[-_.\s]+$/, '').trim();
-
-    const shiftUpper = shift.toUpperCase();
-    if (shiftUpper.startsWith('V')) shift = 'Vespertino';
-    else if (shiftUpper.startsWith('M')) shift = 'Matutino';
-    else if (shiftUpper.startsWith('N')) shift = 'Noturno';
-    const validShift: 'Matutino' | 'Vespertino' | 'Noturno' = ['Matutino', 'Vespertino', 'Noturno'].includes(shift) ? shift as any : 'Matutino';
-
-    const contacts: {name: string; phone: string}[] = [];
-    extractPhones(tel1).forEach((phone, i) => contacts.push({ name: mae ? (i===0 ? 'Mãe: ' + mae : 'Responsável (Mãe ' + (i+1) + ')') : 'Resp. 1 - ' + (i+1), phone }));
-    extractPhones(tel2).forEach((phone, i) => contacts.push({ name: pai ? (i===0 ? 'Pai: ' + pai : 'Responsável (Pai ' + (i+1) + ')') : 'Resp. 2 - ' + (i+1), phone }));
-    if (contacts.length === 0) {
-      if (mae) contacts.push({ name: 'Mãe: ' + mae, phone: '' });
-      if (pai) contacts.push({ name: 'Pai: ' + pai, phone: '' });
-    }
-    if (cpf) cpf = formatCpf(cpf);
-
-    let error = '';
-    if (!name) error += 'Nome faltando. ';
-    if (!className) error += 'Turma faltando. ';
-    if (!name && !className && contacts.length === 0 && !registrationNumber) return null;
-
-    return { _id: crypto.randomUUID(), name, class: className, shift: validShift, points: 10.0,
-             cpf: cpf || undefined, address: address || undefined, birthDate: birthDate || undefined,
-             registrationNumber: registrationNumber || undefined, observation: observation || undefined,
-             contacts: contacts.length > 0 ? contacts : undefined, error: error.trim() };
-  };
-
-  // ── Etapa 1: Lê arquivo e abre wizard ────────────────────
-
   const processImportedData = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     setImportMessage('Lendo arquivo...');
     setIsImporting(true);
+    
     try {
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { cellDates: true });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rawRows = XLSX.utils.sheet_to_json<any[]>(firstSheet, { header: 1, defval: null, raw: false }) as any[][];
-
-      setImportMessage('Detectando estrutura...');
-      const scanResult = advancedSmartHeuristicScan(rawRows, { confidenceThreshold: 75 });
-      const primary = scanResult.primary;
-
-      const headerIdx = primary?.headerRowIndex ?? 0;
-      const totalCols = rawRows[headerIdx]?.length ?? 0;
-      const initialMappings: Record<number, WizardField> = {};
-      for (let i = 0; i < totalCols; i++) initialMappings[i] = 'ignore';
-
-      if (primary) {
-        const seen: Record<string, number> = {};
-        const sorted = [...primary.columns].sort((a, b) => a.index - b.index);
-        for (const col of sorted) {
-          const count = (seen[col.type] ?? 0) + 1;
-          seen[col.type] = count;
-          if (col.confidence < 50) continue;
-          let field = (SCANNER_TO_WIZARD[col.type] ?? 'ignore') as WizardField;
-          if (col.type === 'TELEFONE') field = count === 1 ? 'phone1' : 'phone2';
-          if (col.type === 'RESPONSAVEL') field = count === 1 ? 'mother' : 'father';
-          initialMappings[col.index] = field;
+      const workbook = XLSX.read(data);
+      
+      let aiMap: any = null;
+      try {
+        if (process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
+           setImportMessage('Analisando cabeçalhos com IA...');
+           const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+           const csvSnippet = XLSX.utils.sheet_to_csv(firstSheet).split('\n').slice(0, 15).join('\n');
+           aiMap = await analyzeSheetWithAI(csvSnippet);
+           if (aiMap) console.log("AI Sheet mapping:", aiMap);
         }
+      } catch (e) {
+        console.error("AI map failed", e);
       }
+      
+      setImportMessage('Extraindo dados...');
+      
+      let allJsonData: any[] = [];
+      
+      const normalizeStr = (str: any) => String(str).toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, "");
 
-      // AI Fallback: If heuristic is weak or specifically needs AI
-      if ((!primary || primary.confidence < 60 || primary.needsAI) && geminiApiKey) {
-        setImportMessage('Consultando Inteligência Artificial...');
-        const snippet = rawRows.slice(0, 10).map(r => r.join(',')).join('\n');
-        const aiResult = await analyzeSheetWithAI(snippet, geminiApiKey);
+      for (const sheetName of workbook.SheetNames) {
+        const worksheet = workbook.Sheets[sheetName];
+        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        let headerRowIndex = 0;
         
-        if (aiResult && aiResult.columns) {
-          if (aiResult.headerRowIndex !== undefined) setWizardHeaderRowIndex(aiResult.headerRowIndex);
+        // Find best header row by scoring
+        let maxScore = -1;
+        for (let i = 0; i < Math.min(20, rawData.length); i++) {
+          const row: any = rawData[i];
+          if (!row || !Array.isArray(row)) continue;
           
-          // Merge AI results into initialMappings
-          Object.entries(aiResult.columns).forEach(([field, colName]) => {
-            const f = field as WizardField;
-            const headerRow = rawRows[aiResult.headerRowIndex ?? headerIdx] || [];
-            const colIdx = headerRow.findIndex(h => String(h).toLowerCase().includes(String(colName).toLowerCase()));
-            if (colIdx !== -1) {
-              initialMappings[colIdx] = f;
-            }
-          });
+          let score = 0;
+          const cells = row.map(cell => normalizeStr(String(cell || '')));
+          
+          if (cells.some(c => c === 'nome' || c === 'aluno' || c === 'nome do aluno' || c === 'estudante' || c === 'nome completo')) score += 5;
+          if (cells.some(c => c === 'turma' || c === 'serie' || c === 'ano')) score += 3;
+          if (cells.some(c => c === 'turno' || c === 'periodo')) score += 3;
+          if (cells.some(c => c === 'cpf' || c === 'matricula')) score += 3;
+          if (cells.some(c => c.includes('telefone') || c === 'telefone' || c.includes('contato'))) score += 2;
+          if (cells.some(c => c === 'sig')) score += 2;
+          
+          // Bonus for first few rows to break ties
+          const positionBonus = Math.max(0, 5 - i);
+          
+          if (score > 0) {
+              const finalScore = score + positionBonus;
+              if (finalScore > maxScore) {
+                  maxScore = finalScore;
+                  headerRowIndex = i;
+              }
+          }
         }
+        
+        // Only use AI's header row index if heuristic found nothing
+        if (maxScore === -1 && aiMap && typeof aiMap.headerRowIndex === 'number') {
+           headerRowIndex = aiMap.headerRowIndex;
+        }
+        
+        const jsonData: any[] = XLSX.utils.sheet_to_json(worksheet, { range: headerRowIndex, defval: '', raw: false });
+        
+        jsonData.forEach(row => {
+          row['_SHEET_NAME_'] = sheetName;
+        });
+        
+        allJsonData = [...allJsonData, ...jsonData];
       }
 
-      setWizardRawRows(rawRows);
-      setWizardHeaderRowIndex(headerIdx);
-      setWizardColumnMappings(initialMappings);
-      setWizardScanNeedsAI(!primary || primary.needsAI);
-      setIsWizardOpen(true);
+      const parsedStudents = allJsonData.map((row) => {
+        const hasData = Object.keys(row).some(k => k !== '_SHEET_NAME_' && String(row[k] || '').trim() !== '' && String(row[k] || '').trim() !== '-');
+        if (!hasData) return null;
+
+        let studentId = '';
+        let name = '';
+        let className = '';
+        let shift = 'Matutino';
+        
+        let observation = '';
+        let address = '';
+        let cpf = '';
+        let registrationNumber = '';
+        let birthDate = '';
+
+        let mae = '';
+        let pai = '';
+        let tel1 = '';
+        let tel2 = '';
+
+        const sheetNameStr = String(row['_SHEET_NAME_'] || '');
+
+        if (aiMap && aiMap.columns) {
+           const c = aiMap.columns;
+           if (c.name && row[c.name] !== undefined && String(row[c.name]).trim() !== '') name = String(row[c.name]).trim();
+           if (c.class && row[c.class] !== undefined && String(row[c.class]).trim() !== '') className = String(row[c.class]).trim();
+           if (c.shift && row[c.shift] !== undefined && String(row[c.shift]).trim() !== '') shift = String(row[c.shift]).trim();
+           if (c.cpf && row[c.cpf] !== undefined && String(row[c.cpf]).trim() !== '') cpf = String(row[c.cpf]).trim();
+           if (c.birthDate && row[c.birthDate] !== undefined && String(row[c.birthDate]).trim() !== '') birthDate = String(row[c.birthDate]).trim();
+           if (c.phone1 && row[c.phone1] !== undefined && String(row[c.phone1]).trim() !== '') tel1 = String(row[c.phone1]).trim();
+           if (c.phone2 && row[c.phone2] !== undefined && String(row[c.phone2]).trim() !== '') tel2 = String(row[c.phone2]).trim();
+           if (c.registration && row[c.registration] !== undefined && String(row[c.registration]).trim() !== '') registrationNumber = String(row[c.registration]).trim();
+           if (c.observation && row[c.observation] !== undefined && String(row[c.observation]).trim() !== '') observation = String(row[c.observation]).trim();
+           if (c.mother && row[c.mother] !== undefined && String(row[c.mother]).trim() !== '') mae = String(row[c.mother]).trim();
+           if (c.father && row[c.father] !== undefined && String(row[c.father]).trim() !== '') pai = String(row[c.father]).trim();
+        }
+
+        for (const key of Object.keys(row)) {
+          const normKey = normalizeStr(key);
+          const val = String(row[key] || '').trim();
+
+          if (val === '-' || val === '' || key === '_SHEET_NAME_') continue;
+
+          // Capture Student ID if present
+          if (normKey === 'cod aluno' || normKey === 'id' || normKey === 'codigo' || normKey === 'cod') {
+            if (!studentId) studentId = val;
+          }
+          else if (normKey === 'matricula' || normKey === 'matr' || normKey === 'matr.') {
+             if (!registrationNumber) registrationNumber = val;
+          }
+          else if (normKey === 'nome' || normKey === 'nome completo' || normKey === 'nome aluno' || normKey === 'aluno' || normKey === 'nome do aluno') {
+             if (!name) name = val;
+          }
+          else if (normKey === 'turma' || normKey === 'serie' || normKey.includes('turma')) {
+             if (!className) className = val;
+          }
+          else if (normKey === 'turno' || normKey === 'periodo') {
+             if (!shift || shift === 'Matutino') shift = val;
+          }
+          else if (normKey === 'cpf') {
+             if (!cpf) cpf = val;
+          }
+          else if (normKey.includes('endereco') || normKey.includes('endereco completo') || normKey === 'end' || normKey === 'end.') {
+             if (!address) address = val;
+          }
+          else if (normKey.includes('nascimento') || normKey.includes('data nasc') || normKey === 'dt. nasc.' || normKey === 'dt nasc') {
+             if (!birthDate) birthDate = val;
+          }
+          else if (normKey.includes('observacao') || normKey === 'obs' || normKey === 'obs.' || normKey === 'observacoes') {
+             if (!observation) observation = val;
+          }
+          else if (
+            normKey === 'mae' || 
+            normKey.includes('mae') || 
+            key.toLowerCase().includes('mãe') ||
+            normKey.includes('ma£e') || 
+            normKey.includes('mae') ||
+            (normKey.startsWith('m') && (normKey.includes('e') || normKey.includes('resp')) && normKey.length < 15)
+          ) {
+            if (!mae) mae = val;
+          }
+          else if (normKey === 'pai' || normKey.includes('pai')) {
+            if (!pai) pai = val;
+          }
+          else if (normKey === 'telefone 1' || normKey === 'telefone1' || normKey === 'tel 1' || normKey === 'contato 1' || normKey === 'telefone' || normKey.includes('telefone') || normKey.includes('celular') || normKey.includes('contato')) {
+             if (!tel1) tel1 = val;
+             else if (!tel2 && val !== tel1) tel2 = val;
+          }
+          else if (normKey === 'telefone 2' || normKey === 'telefone2' || normKey === 'tel 2' || normKey === 'contato 2') {
+             if (!tel2) tel2 = val;
+          }
+        }
+
+        let rawClass = className || sheetNameStr;
+        const upperRaw = rawClass.toUpperCase();
+        
+        if (upperRaw.includes('VESP')) shift = 'Vespertino';
+        else if (upperRaw.includes('MAT')) shift = 'Matutino';
+        else if (upperRaw.includes('NOT')) shift = 'Noturno';
+
+        let parsedGrade = '';
+        let parsedIdentifier = '';
+
+        const gradeMatch = rawClass.match(/(\d+)[º°oa-z]*/i);
+        if (gradeMatch) {
+            parsedGrade = gradeMatch[1] + 'º Ano';
+        }
+
+        const letterMatch = rawClass.match(/\d+[º°oa-z]*\s*[-_.\s]*([A-Za-z])/i);
+        if (letterMatch) {
+            const letter = letterMatch[1].toUpperCase();
+            if (letter !== 'V' && letter !== 'M' && letter !== 'N') {
+                parsedIdentifier = letter;
+            }
+        }
+        
+        if (!parsedIdentifier) {
+           const isolateLetter = rawClass.match(/\b([A-G])\b/i);
+           if (isolateLetter) parsedIdentifier = isolateLetter[1].toUpperCase();
+        }
+
+        if (parsedGrade) {
+            className = parsedGrade + (parsedIdentifier ? ' ' + parsedIdentifier : '');
+        } else {
+            className = rawClass.replace(/[-_.\s]*V[EÊ]SP.*$/i, '').replace(/[-_.\s]*MAT.*$/i, '').replace(/[-_.\s]*NOT.*$/i, '').replace(/[-_.\s]+$/, '').trim();
+        }
+
+        if (shift) {
+           const shiftUpper = shift.toUpperCase();
+           if (shiftUpper.startsWith('V')) shift = 'Vespertino';
+           else if (shiftUpper.startsWith('M')) shift = 'Matutino';
+           else if (shiftUpper.startsWith('N')) shift = 'Noturno';
+        }
+
+        const validShift = ['Matutino', 'Vespertino', 'Noturno'].includes(shift) ? shift as any : 'Matutino';
+
+          const extractPhones = (phoneStr: string) => {
+             if (!phoneStr) return [];
+             const splitMatches = phoneStr.split(/[\/;,]|\s+e\s+/i);
+             if (splitMatches.length > 1) {
+                 return splitMatches.flatMap(p => {
+                    let n = p.replace(/\D/g, '');
+                    if (n.length === 8 || n.length === 9) n = '65' + n;
+                    if (n.length >= 10 && n.length <= 11) {
+                       if (n.length === 10) return [`(${n.substring(0, 2)}) ${n.substring(2, 6)}-${n.substring(6, 10)}`];
+                       if (n.length === 11) return [`(${n.substring(0, 2)}) ${n.substring(2, 7)}-${n.substring(7, 11)}`];
+                    }
+                    if (n.length > 11) {
+                        return [`(${n.substring(0, 2)}) ${n.substring(2, Math.min(n.length, 7))}-${n.substring(Math.min(n.length, 7), Math.min(n.length, 11))}`];
+                    }
+                    return [];
+                 });
+             }
+
+             let nums = phoneStr.replace(/\D/g, '');
+             let extracted: string[] = [];
+             
+             if (nums.length >= 12) {
+                if (nums.length === 22) { extracted = [nums.substring(0,11), nums.substring(11,22)]; }
+                else if (nums.length === 21) { extracted = [nums.substring(0,11), nums.substring(11,21)]; }
+                else if (nums.length === 20) { extracted = [nums.substring(0,10), nums.substring(10,20)]; }
+                else if (nums.length === 18) { extracted = ['65' + nums.substring(0,9), '65' + nums.substring(9,18)]; }
+                else if (nums.length === 16) { extracted = ['65' + nums.substring(0,8), '65' + nums.substring(8,16)]; }
+                else {
+                   const half = Math.floor(nums.length/2);
+                   extracted = [nums.substring(0, half), nums.substring(half)];
+                }
+             } else {
+                if (nums.length === 8 || nums.length === 9) nums = '65' + nums;
+                if (nums.length >= 10) extracted = [nums];
+             }
+             
+             return extracted.map(n => {
+                 if (n.length === 10) return `(${n.substring(0, 2)}) ${n.substring(2, 6)}-${n.substring(6, 10)}`;
+                 if (n.length === 11) return `(${n.substring(0, 2)}) ${n.substring(2, 7)}-${n.substring(7, 11)}`;
+                 return n;
+             });
+          };
+
+        const formatCpf = (cpfStr: string) => {
+           if (!cpfStr) return '';
+           let nums = cpfStr.replace(/\D/g, '');
+           if (nums.length < 11) {
+             nums = nums.padStart(11, '0');
+           } else if (nums.length > 11) {
+             nums = nums.substring(0, 11);
+           }
+           return `${nums.substring(0,3)}.${nums.substring(3,6)}.${nums.substring(6,9)}-${nums.substring(9,11)}`;
+        };
+        
+        const contacts: {name: string, phone: string}[] = [];
+        const phones1 = extractPhones(tel1);
+        phones1.forEach((phone, i) => {
+             contacts.push({ name: mae ? (i===0 ? `Mãe: ${mae}` : `Responsável (Mãe ${i+1})`) : `Resp. 1 - ${i+1}`, phone });
+        });
+        
+        const phones2 = extractPhones(tel2);
+        phones2.forEach((phone, i) => {
+             contacts.push({ name: pai ? (i===0 ? `Pai: ${pai}` : `Responsável (Pai ${i+1})`) : `Resp. 2 - ${i+1}`, phone });
+        });
+        
+        if (contacts.length === 0) {
+            if (mae) contacts.push({ name: `Mãe: ${mae}`, phone: '' });
+            if (pai) contacts.push({ name: `Pai: ${pai}`, phone: '' });
+        }
+
+        let error = '';
+        if (!name) error += 'Nome faltando. ';
+        if (!className) error += 'Turma faltando. ';
+        if (cpf) {
+           cpf = formatCpf(cpf);
+        }
+
+        if (!name && !className && contacts.length === 0 && !studentId && !registrationNumber) return null; // Skip completely empty generated rows
+
+        return {
+          _id: crypto.randomUUID(),
+          id: studentId || undefined,
+          name,
+          class: className,
+          shift: validShift,
+          points: 10.0,
+          cpf: cpf || undefined,
+          address: address || undefined,
+          birthDate: birthDate || undefined,
+          registrationNumber: registrationNumber || undefined,
+          observation: observation || undefined,
+          contacts: contacts.length > 0 ? contacts : undefined,
+          error: error.trim()
+        };
+      }).filter(Boolean) as any[];
+
+      // Sort so errors appear first
+      parsedStudents.sort((a, b) => {
+        if (a.error && !b.error) return -1;
+        if (!a.error && b.error) return 1;
+        return 0;
+      });
+
+      if (parsedStudents.length > 0) {
+        setPendingImports(parsedStudents);
+        setIsReviewOpen(true);
+      } else {
+        alert('Nenhum dado encontrado na planilha.');
+      }
     } catch (err) {
       console.error(err);
-      alert('Erro ao ler a planilha. Verifique o formato do arquivo.');
+      alert('Ocorreu um erro ao ler a planilha. Verifique o formato do arquivo.');
     } finally {
       setIsImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  // ── Etapa 2 → 3: Conclui mapeamento e abre revisão ──────
-
-  const concludeMapping = () => {
-    const dataRows = wizardRawRows.slice(wizardHeaderRowIndex + 1);
-    const parsedStudents = dataRows.map(row => {
-      const fields: Partial<Record<WizardField, string>> = {};
-      Object.entries(wizardColumnMappings).forEach(([colIdx, field]) => {
-        if (field === 'ignore') return;
-        const val = row[Number(colIdx)];
-        if (val !== null && val !== undefined && String(val).trim() !== '' && String(val).trim() !== '-') {
-          if (!fields[field]) fields[field] = String(val).trim();
-        }
-      });
-      return buildStudentFromFields(fields, '');
-    }).filter(Boolean) as any[];
-
-    parsedStudents.sort((a, b) => (a.error && !b.error ? -1 : !a.error && b.error ? 1 : 0));
-
-    if (parsedStudents.length > 0) {
-      setPendingImports(parsedStudents);
-      setIsWizardOpen(false);
-      setIsReviewOpen(true);
-    } else {
-      alert('Nenhum dado encontrado com o mapeamento atual. Ajuste as colunas e tente novamente.');
+      if (fileInputRef.current) fileInputRef.current.value = ''; // reseta
     }
   };
 
@@ -1155,135 +1239,6 @@ export default function Alunos() {
           </div>
         </div>
       )}
-
-      {/* ── WIZARD DE IMPORTAÇÃO: Etapa 2 - Mapeamento ── */}
-      {isWizardOpen && (() => {
-        const headerRow = wizardRawRows[wizardHeaderRowIndex] ?? [];
-        const totalCols = headerRow.length;
-        const previewStart = Math.max(0, wizardHeaderRowIndex - 2);
-        const previewEnd = Math.min(wizardRawRows.length - 1, wizardHeaderRowIndex + WIZARD_PREVIEW_ROWS);
-        const requiredMapped = Object.values(wizardColumnMappings).includes('name') && Object.values(wizardColumnMappings).includes('class');
-
-        return (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
-
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-                <div>
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold">2</div>
-                    <h2 className="text-lg font-bold text-slate-800">Mapeamento de Colunas</h2>
-                  </div>
-                  <p className="text-xs text-slate-500 ml-8">Confirme quais colunas correspondem a cada campo. A linha destacada em azul é o cabeçalho detectado.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  {wizardScanNeedsAI && (
-                    <div className="flex items-center gap-1.5 text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg text-xs">
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      Verifique o mapeamento
-                    </div>
-                  )}
-                  {!wizardScanNeedsAI && (
-                    <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg text-xs">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Detectado automaticamente
-                    </div>
-                  )}
-                  <button onClick={() => setIsWizardOpen(false)} className="text-slate-400 hover:bg-slate-100 p-2 rounded-full transition">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Column selects */}
-              <div className="overflow-x-auto border-b border-slate-100">
-                <table className="text-sm border-collapse min-w-full">
-                  <thead>
-                    <tr className="bg-slate-50">
-                      <td className="px-3 py-2 text-xs text-slate-400 font-medium w-10 text-center border-r border-slate-100">LINHA</td>
-                      {Array.from({ length: totalCols }, (_, ci) => (
-                        <td key={ci} className="px-2 py-2 border-r border-slate-100 min-w-[130px]">
-                          <select
-                            value={wizardColumnMappings[ci] ?? 'ignore'}
-                            onChange={e => setWizardColumnMappings(prev => ({ ...prev, [ci]: e.target.value as WizardField }))}
-                            className={'w-full text-xs px-2 py-1.5 rounded-md border focus:outline-none focus:ring-2 focus:ring-blue-400 ' +
-                              (wizardColumnMappings[ci] === 'name' || wizardColumnMappings[ci] === 'class'
-                                ? 'border-blue-300 bg-blue-50 text-blue-700 font-semibold'
-                                : wizardColumnMappings[ci] === 'ignore'
-                                ? 'border-slate-200 bg-white text-slate-400'
-                                : 'border-emerald-300 bg-emerald-50 text-emerald-700 font-medium')}
-                          >
-                            {(Object.entries(FIELD_LABELS) as [WizardField, string][]).map(([val, label]) => (
-                              <option key={val} value={val}>{label}</option>
-                            ))}
-                          </select>
-                        </td>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {wizardRawRows.slice(previewStart, previewEnd + 1).map((row, ri) => {
-                      const absoluteIdx = previewStart + ri;
-                      const isHeader = absoluteIdx === wizardHeaderRowIndex;
-                      return (
-                        <tr
-                          key={absoluteIdx}
-                          onClick={() => {
-                            setWizardHeaderRowIndex(absoluteIdx);
-                            // Re-init mappings for new column count
-                            const newRow = wizardRawRows[absoluteIdx] ?? [];
-                            const nm: Record<number, WizardField> = {};
-                            for (let i = 0; i < newRow.length; i++) nm[i] = 'ignore';
-                            setWizardColumnMappings(nm);
-                          }}
-                          className={'cursor-pointer transition ' + (isHeader ? 'bg-blue-50 border-y-2 border-blue-400' : 'hover:bg-slate-50 border-b border-slate-100')}
-                          title="Clique para usar esta linha como cabeçalho"
-                        >
-                          <td className={'text-center text-xs font-mono border-r border-slate-100 px-2 py-2 ' + (isHeader ? 'text-blue-600 font-bold' : 'text-slate-400')}>
-                            {isHeader ? '↓' : absoluteIdx}
-                          </td>
-                          {Array.from({ length: totalCols }, (_, ci) => {
-                            const cell = row?.[ci];
-                            const val = cell !== null && cell !== undefined ? String(cell) : '';
-                            const isMapped = !isHeader && wizardColumnMappings[ci] && wizardColumnMappings[ci] !== 'ignore';
-                            return (
-                              <td key={ci} className={'px-3 py-2 border-r border-slate-100 text-xs truncate max-w-[160px] ' +
-                                (isHeader ? 'text-blue-700 font-semibold' : isMapped ? 'text-slate-700' : 'text-slate-400')}>
-                                {val || <span className="opacity-30">—</span>}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between px-6 py-4 bg-slate-50">
-                <div className="text-xs text-slate-500">
-                  <span className="font-medium">{wizardRawRows.length - wizardHeaderRowIndex - 1}</span> linhas de dados detectadas.
-                  {!requiredMapped && <span className="ml-2 text-amber-600 font-medium">⚠ Mapeie Nome* e Turma* para continuar.</span>}
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={() => setIsWizardOpen(false)} className="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-200 transition text-sm">
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={concludeMapping}
-                    disabled={!requiredMapped}
-                    className="px-5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Concluir Importação →
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Import Review Modal */}
       {isReviewOpen && (

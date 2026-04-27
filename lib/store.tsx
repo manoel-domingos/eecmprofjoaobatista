@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from './supabase';
 import { 
-  Student, Occurrence, Accident, Praise, DisciplineRule, Summons, ConductTerm, AuditLog, StaffMember, AppUser, AppUserRole, BehaviorClass,
+  Student, Occurrence, Accident, Praise, DisciplineRule, Summons, ConductTerm, AuditLog, StaffMember, AppUser, AppUserRole,
   INITIAL_STUDENTS, INITIAL_OCCURRENCES, INITIAL_ACCIDENTS, INITIAL_PRAISES, INITIAL_RULES
 } from './data';
 
@@ -24,12 +24,6 @@ interface AppState {
   isGuest: boolean;
   currentUserRole: AppUserRole | 'GUEST';
   isAuthRestored: boolean;
-  isDebugMode: boolean;
-  geminiApiKey: string;
-  groqApiKey: string;
-  setIsDebugMode: (v: boolean) => void;
-  setGeminiApiKey: (v: string) => void;
-  setGroqApiKey: (v: string) => void;
   setGuestMode: () => void;
   setMockUser: (username: string) => void;
   logout: () => Promise<void>;
@@ -122,32 +116,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [isAuthRestored, setIsAuthRestored] = useState(false);
 
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isDebugMode, setIsDebugMode] = useState(false);
-  const [geminiApiKey, setGeminiApiKey] = useState('');
-  const [groqApiKey, setGroqApiKey] = useState('');
 
-  useEffect(() => {
-    const storedDebug = localStorage.getItem('eecm_debug_mode');
-    if (storedDebug === 'true') setIsDebugMode(true);
-    
-    const storedGemini = localStorage.getItem('eecm_gemini_key');
-    if (storedGemini) setGeminiApiKey(storedGemini);
-    
-    const storedGroq = localStorage.getItem('eecm_groq_key');
-    if (storedGroq) setGroqApiKey(storedGroq);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('eecm_debug_mode', isDebugMode.toString());
-  }, [isDebugMode]);
-
-  useEffect(() => {
-    if (geminiApiKey) localStorage.setItem('eecm_gemini_key', geminiApiKey);
-  }, [geminiApiKey]);
-
-  useEffect(() => {
-    if (groqApiKey) localStorage.setItem('eecm_groq_key', groqApiKey);
-  }, [groqApiKey]);
   useEffect(() => {
     try {
       const storedUsers = localStorage.getItem('eecm_app_users');
@@ -266,10 +235,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setIsSupabaseConnected(true);
             setStudents(studentsData.map(s => ({ ...s, points: 8 }))); 
           }
-          
-          if (rulesData) {
-            setRules(rulesData.map(r => ({ ...r, ruleCode: r.code })));
-          }
+          if (rulesData) setRules(rulesData.map(r => ({ ...r, ruleCode: r.code })));
           if (occurrencesData) setOccurrences(occurrencesData.map((o: any) => ({
             id: o.id,
             date: o.date,
@@ -930,43 +896,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!rule) return { isEscalated: false, reason: '', measure: '', severity: '' };
 
     const sameRuleCount = studentOccurrences.filter(o => o.ruleCode === ruleCode).length;
-    const lightOccurrences = studentOccurrences.filter(o => {
-        const r = rules.find(ru => ru.code === o.ruleCode);
-        return r?.severity === 'Leve';
-    });
-
-    // 1. Check for 3 or more light infractions (Art. 35 § 4º)
-    if (rule.severity === 'Leve' && lightOccurrences.length >= 2) { 
-         return { isEscalated: true, reason: 'Acúmulo de 3 ou mais infrações leves (Art. 35 § 4º)', measure: 'Suspensão (Agravada por acúmulo)', severity: 'Grave' };
+    if (sameRuleCount > 0) {
+        const measure = rule.severity === 'Leve' ? 'Advertência Escrita (Agravada)' : 'Suspensão (Agravada)';
+        const severity = rule.severity === 'Leve' ? 'Media' : 'Grave';
+        return { isEscalated: true, reason: 'Reincidência na mesma infração', measure, severity };
     }
 
-    // 2. Check for recidivism in same rule
-    if (sameRuleCount > 0) {
-        if (rule.severity === 'Leve') {
-            return { isEscalated: true, reason: 'Reincidência em infração leve (Art. 35 § 3º)', measure: 'Advertência Escrita (Agravada)', severity: 'Leve' };
-        } else if (rule.severity === 'Media') {
-            return { isEscalated: true, reason: 'Reincidência em infração média (Art. 35 § 4º)', measure: 'Suspensão (Agravada)', severity: 'Grave' };
+    if (rule.severity === 'Leve') {
+        const lightOccurrences = studentOccurrences.filter(o => {
+            const r = rules.find(ru => ru.code === o.ruleCode);
+            return r?.severity === 'Leve';
+        });
+        if (lightOccurrences.length >= 3) {
+             return { isEscalated: true, reason: 'Acúmulo de 3 ou mais infrações leves', measure: 'Advertência Escrita (Agravada por acúmulo)', severity: 'Media' };
         }
     }
 
     return { isEscalated: false, reason: '', measure: rule.measure, severity: rule.severity };
   };
 
-  const getStudentBehavior = (points: number): BehaviorClass => {
-    if (points >= 9.5) return 'Excepcional';
-    if (points >= 8.0) return 'Ótimo';
-    if (points >= 6.0) return 'Bom';
-    if (points >= 4.0) return 'Regular';
+  const getStudentBehavior = (points: number) => {
+    if (points >= 10) return 'Excepcional';
+    if (points >= 9.0) return 'Ótimo';
+    if (points >= 7.0) return 'Bom';
+    if (points >= 5.0) return 'Regular';
     if (points >= 2.0) return 'Insuficiente';
     return 'Incompatível';
   };
 
   const getStudentPoints = (studentId: string) => {
     const student = students.find(s => s.id === studentId);
-    if (!student) return 8.0;
+    if (!student) return 10;
     
     // Initial point according to Art. 45 § 2º: 8.0 for new students
-    // Recalculating from base 8.0
+    // But we use 10.0 as theoretical max and Art. 51 allows reaching it.
     let base = 8.0; 
     
     const studentOccurrences = occurrences.filter(o => o.studentId === studentId && !o.archived);
@@ -974,99 +937,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     // 1. Deductions (Art. 46)
     let deductions = 0;
-    studentOccurrences.forEach((o, index) => {
+    studentOccurrences.forEach(o => {
       const rule = rules.find(r => r.code === o.ruleCode);
       if (rule) {
+        // Base deduction by severity if not specified otherwise
+        // We use the rule.points which we already set to -0.1, -0.3, -0.5 in data.ts
         let pointsToDeduct = Math.abs(rule.points);
         
-        // Context for this occurrence
-        const previousOccurrences = studentOccurrences.slice(0, index);
-        const sameRuleCount = previousOccurrences.filter(prev => prev.ruleCode === o.ruleCode).length;
-        const previousLightCount = previousOccurrences.filter(prev => {
-            const r = rules.find(ru => ru.code === prev.ruleCode);
-            return r?.severity === 'Leve';
-        }).length;
-
-        // Apply Escalation Rules (Art. 35)
-        if (rule.severity === 'Leve') {
-            if (previousLightCount >= 2) {
-                // 3rd or more light -> Suspensão (0.5 * days)
-                pointsToDeduct = 0.50 * (o.durationDays || 1);
-            } else if (sameRuleCount > 0) {
-                // Recidivism in same light rule -> Escrita (0.3)
-                pointsToDeduct = 0.30;
-            } else {
-                // 1st time light -> Oral (0.1)
-                pointsToDeduct = 0.10;
-            }
-        } else if (rule.severity === 'Media') {
-            if (sameRuleCount > 0) {
-                // Recidivism in same media rule -> Suspensão (0.5 * days)
-                pointsToDeduct = 0.50 * (o.durationDays || 1);
-            } else {
-                // 1st time media -> Repreensão (0.3)
-                pointsToDeduct = 0.30;
-            }
-        } else if (rule.severity === 'Grave') {
-             // Grave is always Suspensão (0.5 * days)
-             pointsToDeduct = 0.50 * (o.durationDays || 1);
-        }
-
-        // Apply Attenuating and Aggravating Factors (User request)
-        if (o.attenuatingFactors && o.attenuatingFactors.length > 0) {
-            const reduction = Math.min(0.5, o.attenuatingFactors.length * 0.25);
-            pointsToDeduct *= (1 - reduction);
-        }
-        if (o.aggravatingFactors && o.aggravatingFactors.length > 0) {
-            const increase = o.aggravatingFactors.length * 0.25;
-            pointsToDeduct *= (1 + increase);
+        // Check for recidivism (Art. 35 III - Aggravating)
+        const count = studentOccurrences.filter(prev => prev.ruleCode === o.ruleCode && new Date(prev.date) < new Date(o.date)).length;
+        if (count > 0) {
+          pointsToDeduct *= 1.5; // Example aggregator: 50% increase for same rule repeat
         }
         
         deductions += pointsToDeduct;
       }
     });
 
-    // 2. Direct Bonuses from Praise (Art. 47 & 50)
+    // 2. Direct Bonuses from Praise (Art. 47)
     let bonuses = 0;
     studentPraises.forEach(p => {
-      if (p.type === 'Individual') bonuses += 0.50; // Art. 47 I
-      if (p.type === 'Coletivo') bonuses += 0.30;   // Art. 47 II
-      if (p.type === 'Art. 50') bonuses += 0.50;    // Art. 50 (Bimester >= 8.0)
+      if (p.type === 'Individual') bonuses += 0.50;
+      if (p.type === 'Coletivo') bonuses += 0.30;
+      if (p.type === 'Art. 50') bonuses += 0.50; // Bimester bonus
     });
 
     // 3. Time-based bonus (Art. 51)
-    // Decorridos 02 meses (60 dias) sem falta: +0.20 per day until 10.0
-    const lastEventDate = studentOccurrences.length > 0 
-      ? new Date(Math.max(...studentOccurrences.map(o => new Date(o.date).getTime())))
-      : null;
-
-    if (lastEventDate) {
+    // 2 months clean: +0.20 per day
+    if (studentOccurrences.length > 0) {
+      const lastOccur = new Date(Math.max(...studentOccurrences.map(o => new Date(o.date).getTime())));
       const sixtyDaysInMs = 60 * 24 * 60 * 60 * 1000;
       const today = new Date();
-      const diff = today.getTime() - lastEventDate.getTime();
+      const diff = today.getTime() - lastOccur.getTime();
       
       if (diff > sixtyDaysInMs) {
         const extraDays = Math.floor((diff - sixtyDaysInMs) / (24 * 60 * 60 * 1000));
         bonuses += extraDays * 0.20;
       }
     } else {
-      // If no occurrences, check since "beginning of term"
-      // Since we don't have enrollment date, we assume the semester started 60 days ago if no history.
-      // But Art. 51 specifically mentions "after suffering a measure".
-      // Let's assume recovery starts from 8.0 if they stay clean.
-      const today = new Date();
-      // Mocking a start date for the year (e.g., Feb 1st)
-      const startOfYear = new Date(today.getFullYear(), 1, 1); 
-      const diff = today.getTime() - startOfYear.getTime();
-      if (diff > (60 * 24 * 60 * 60 * 1000)) {
-         const extraDays = Math.floor((diff - (60 * 24 * 60 * 60 * 1000)) / (24 * 60 * 60 * 1000));
-         bonuses += extraDays * 0.20;
-      }
+      // Allow bonus for no occurrences? Only if enrolled 2 months ago, but we don't have enroll date.
+      // We start at 8.0 for everyone anyway based on Art 45 § 2º.
     }
 
     const currentPoints = base - deductions + bonuses;
-    // Cap at 10.0 (Art. 51) and floor at 0
-    return Math.min(10.0, Math.max(0, parseFloat(currentPoints.toFixed(2))));
+    return Math.min(10, Math.max(0, parseFloat(currentPoints.toFixed(2))));
   };
 
   const setGuestMode = () => {
@@ -1122,9 +1036,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider value={{
       students, occurrences, accidents, praises, rules, summons, conductTerms, auditLogs, staffMembers, appUsers, isSupabaseConnected, isSyncing,
-      user, isGuest, currentUserRole, isAuthRestored, isDebugMode, setIsDebugMode, 
-      geminiApiKey, setGeminiApiKey, groqApiKey, setGroqApiKey,
-      setGuestMode, setMockUser, logout,
+      user, isGuest, currentUserRole, isAuthRestored, setGuestMode, setMockUser, logout,
       logAction, refreshData,
       addAppUser, updateAppUser, deleteAppUser,
       addStudent, importStudents, updateStudent, archiveStudent, restoreStudent, deleteAllStudents,

@@ -44,12 +44,12 @@ function RegistroDisciplinarContent() {
   const [editingOccurrence, setEditingOccurrence] = useState<string | null>(null);
 
   // Modal form state
-  const [selectedStudent, setSelectedStudent] = useState('');
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsGuardianListOpen(false);
-  }, [selectedStudent]);
+  }, [selectedStudents]);
 
   const [date, setDate] = useState('');
   const [hour, setHour] = useState('');
@@ -73,7 +73,7 @@ function RegistroDisciplinarContent() {
 
     setIsImproving(true);
     try {
-      const student = students.find(s => s.id === selectedStudent);
+      const studentNames = selectedStudents.map(id => students.find(s => s.id === id)?.name).join(', ');
       const rule = rules.find(r => r.code === parseInt(selectedRule, 10));
 
       const prompt = `
@@ -81,7 +81,7 @@ function RegistroDisciplinarContent() {
         O texto deve ser claro, objetivo, imparcial e usar linguagem formal.
         
         DADOS:
-        - Aluno: ${student?.name || 'Não identificado'}
+        - Aluno(s): ${studentNames || 'Não identificado'}
         - Infração: ${rule?.description || 'Não especificada'}
         - Relato original: ${observations || '(O usuário não descreveu, crie um modelo padrão baseado na infração)'}
         
@@ -175,7 +175,7 @@ function RegistroDisciplinarContent() {
     const localHour = now.toTimeString().split(' ')[0].substring(0, 5);
 
     setEditingOccurrence(null);
-    setSelectedStudent('');
+    setSelectedStudents([]);
     setDate(localDate);
     setHour(localHour);
     setLocation('Pátio');
@@ -196,7 +196,7 @@ function RegistroDisciplinarContent() {
   const openEditModal = (e: React.MouseEvent, o: Occurrence) => {
     e.stopPropagation();
     setEditingOccurrence(o.id);
-    setSelectedStudent(o.studentId);
+    setSelectedStudents([o.studentId]);
     setDate(o.date);
     setHour(o.hour || '');
     setLocation(o.location || 'Pátio');
@@ -319,27 +319,22 @@ function RegistroDisciplinarContent() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent || !selectedRule) return;
+    if (selectedStudents.length === 0 || !selectedRule) return;
 
-    if (!editingOccurrence) {
-       const escalation = getEscalationStatus(selectedStudent, parseInt(selectedRule, 10));
-       if (escalation.isEscalated) {
-          const confirmed = window.confirm(`⚠️ ATENÇÃO: ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
-          if (!confirmed) return; // Cancela se o usuário não confirmar
-       }
-    }
-
-    const escalation = getEscalationStatus(selectedStudent, parseInt(selectedRule, 10));
-    const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
+    const ruleCodeInt = parseInt(selectedRule, 10);
 
     if (editingOccurrence) {
+       const studentId = selectedStudents[0];
+       const escalation = getEscalationStatus(studentId, ruleCodeInt);
+       const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
+
       updateOccurrence(editingOccurrence, {
-        studentId: selectedStudent,
+        studentId: studentId,
         date,
         hour,
         location,
         locatedBy,
-        ruleCode: parseInt(selectedRule, 10),
+        ruleCode: ruleCodeInt,
         registeredBy,
         observations,
         measure: measureToSave,
@@ -350,28 +345,38 @@ function RegistroDisciplinarContent() {
         aggravatingFactors
       });
     } else {
-      addOccurrence({
-        studentId: selectedStudent,
-        date,
-        hour,
-        location,
-        locatedBy,
-        ruleCode: parseInt(selectedRule, 10),
-        registeredBy,
-        observations,
-        measure: measureToSave,
-        videoUrls,
-        signedDocUrls,
-        durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
-        attenuatingFactors,
-        aggravatingFactors
-      });
+      for (const studentId of selectedStudents) {
+         const escalation = getEscalationStatus(studentId, ruleCodeInt);
+         if (escalation.isEscalated) {
+            const student = students.find(s => s.id === studentId);
+            const confirmed = window.confirm(`⚠️ ATENÇÃO (${student?.name}): ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
+            if (!confirmed) continue;
+         }
+         const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
+
+         addOccurrence({
+           studentId: studentId,
+           date,
+           hour,
+           location,
+           locatedBy,
+           ruleCode: ruleCodeInt,
+           registeredBy,
+           observations,
+           measure: measureToSave,
+           videoUrls,
+           signedDocUrls,
+           durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
+           attenuatingFactors,
+           aggravatingFactors
+         });
+      }
     }
 
     setIsModalOpen(false);
     setEditingOccurrence(null);
     // Reset form
-    setSelectedStudent('');
+    setSelectedStudents([]);
     setSelectedRule('');
     setRuleSearch('');
     setObservations('');
@@ -415,9 +420,10 @@ function RegistroDisciplinarContent() {
 
   const handleAddQuickGuardian = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent || !newGuardianName || !newGuardianPhone) return;
+    const targetStudentId = selectedStudents[0];
+    if (!targetStudentId || !newGuardianName || !newGuardianPhone) return;
 
-    const currentStudent = students.find(s => s.id === selectedStudent);
+    const currentStudent = students.find(s => s.id === targetStudentId);
     if (!currentStudent) return;
 
     if (!guardianIgnoredWarning) {
@@ -439,7 +445,7 @@ function RegistroDisciplinarContent() {
       { name: newGuardianName, phone: newGuardianPhone }
     ];
 
-    updateStudent(selectedStudent, { contacts: updatedContacts });
+    updateStudent(targetStudentId, { contacts: updatedContacts });
     setNewGuardianName('');
     setNewGuardianPhone('');
     setIsAddGuardianModalOpen(false);
@@ -511,15 +517,17 @@ function RegistroDisciplinarContent() {
     if (!url) return;
 
     // If we are in the main modal (new/edit), auto-save before redirecting
-    if (isModalOpen && selectedStudent && selectedRule) {
+    if (isModalOpen && selectedStudents.length > 0 && selectedRule) {
+      const ruleCodeInt = parseInt(selectedRule, 10);
       if (editingOccurrence) {
+        const studentId = selectedStudents[0];
         updateOccurrence(editingOccurrence, {
-          studentId: selectedStudent,
+          studentId: studentId,
           date,
           hour,
           location,
           locatedBy,
-          ruleCode: parseInt(selectedRule, 10),
+          ruleCode: ruleCodeInt,
           registeredBy,
           observations,
           videoUrls,
@@ -527,23 +535,25 @@ function RegistroDisciplinarContent() {
           durationDays: activeRule?.severity === 'Grave' ? durationDays : undefined
         });
       } else {
-        addOccurrence({
-          studentId: selectedStudent,
-          date,
-          hour,
-          location,
-          locatedBy,
-          ruleCode: parseInt(selectedRule, 10),
-          registeredBy,
-          observations,
-          videoUrls,
-          signedDocUrls,
-          durationDays: activeRule?.severity === 'Grave' ? durationDays : undefined
-        });
+        for (const studentId of selectedStudents) {
+           addOccurrence({
+             studentId: studentId,
+             date,
+             hour,
+             location,
+             locatedBy,
+             ruleCode: ruleCodeInt,
+             registeredBy,
+             observations,
+             videoUrls,
+             signedDocUrls,
+             durationDays: activeRule?.severity === 'Grave' ? durationDays : undefined
+           });
+        }
       }
       setIsModalOpen(false);
       setEditingOccurrence(null);
-      setSelectedStudent('');
+      setSelectedStudents([]);
       setSelectedRule('');
       setRuleSearch('');
       setObservations('');
@@ -904,13 +914,38 @@ function RegistroDisciplinarContent() {
               <div className="max-w-md mx-auto space-y-5">
                 <div className="flex items-end gap-2">
                   <div className="flex-1">
-                    <label className="block text-sm font-medium text-slate-600 mb-1">Aluno *</label>
+                    <label className="block text-sm font-medium text-slate-600 mb-1">Aluno(s) *</label>
                     <SearchableSelect
-                      options={students.map(s => ({ value: s.id, label: `${s.name} - ${s.class} (${s.shift})` }))}
-                      value={selectedStudent}
-                      onChange={setSelectedStudent}
-                      placeholder="Selecione o aluno"
+                      options={students.filter(s => !selectedStudents.includes(s.id)).map(s => ({ value: s.id, label: `${s.name} - ${s.class} (${s.shift})` }))}
+                      value=""
+                      onChange={(val) => {
+                        if (val && !selectedStudents.includes(val)) {
+                           if (editingOccurrence) {
+                              setSelectedStudents([val]);
+                           } else {
+                              setSelectedStudents(prev => [...prev, val]);
+                           }
+                        }
+                      }}
+                      placeholder={editingOccurrence ? "Selecionar aluno" : "Adicionar alunos"}
                     />
+                    {selectedStudents.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {selectedStudents.map(id => {
+                          const s = students.find(x => x.id === id);
+                          return (
+                            <div key={id} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-md text-sm flex items-center gap-1 border border-blue-200">
+                               {s?.name}
+                               {!editingOccurrence && (
+                                 <button type="button" onClick={() => setSelectedStudents(prev => prev.filter(x => x !== id))} className="text-blue-500 hover:text-blue-800 ml-1 translate-y-px">
+                                    <X className="w-3 h-3 border border-transparent rounded hover:border-blue-400 bg-white bg-opacity-0 hover:bg-opacity-50 transition" />
+                                 </button>
+                               )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                   <button 
                     type="button"
@@ -1002,7 +1037,7 @@ function RegistroDisciplinarContent() {
                   )}
                   
                   {selectedRule && activeRule && (() => {
-                    const escalation = selectedStudent ? getEscalationStatus(selectedStudent, activeRule.code) : { isEscalated: false, reason: '', measure: activeRule.measure, severity: activeRule.severity };
+                    const escalation = selectedStudents.length > 0 ? getEscalationStatus(selectedStudents[0], activeRule.code) : { isEscalated: false, reason: '', measure: activeRule.measure, severity: activeRule.severity };
                     return (
                     <div className="bg-white border border-slate-200 rounded-lg p-4 mt-2 flex justify-between items-center relative">
                       <button 
@@ -1351,7 +1386,7 @@ function RegistroDisciplinarContent() {
                 <div className="relative">
                   <button
                     type="button"
-                    disabled={!selectedStudent}
+                    disabled={selectedStudents.length === 0}
                     onClick={() => setIsGuardianListOpen(!isGuardianListOpen)}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition font-medium disabled:opacity-50"
                   >
@@ -1365,41 +1400,54 @@ function RegistroDisciplinarContent() {
                     Falar com responsável
                   </button>
 
-                  {isGuardianListOpen && selectedStudent && (
+                  {isGuardianListOpen && selectedStudents.length > 0 && (
                     <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-slate-200 rounded-xl shadow-2xl p-4 z-[60]">
                       <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">
                         <h4 className="text-sm font-bold text-slate-800">Responsáveis</h4>
-                        <button 
-                          type="button"
-                          onClick={() => { setIsGuardianListOpen(false); setIsAddGuardianModalOpen(true); }}
-                          className="p-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded transition"
-                          title="Cadastrar responsável"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
+                        {selectedStudents.length === 1 && (
+                          <button 
+                            type="button"
+                            onClick={() => { setIsGuardianListOpen(false); setIsAddGuardianModalOpen(true); }}
+                            className="p-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded transition"
+                            title="Cadastrar responsável"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                       
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {students.find(s => s.id === selectedStudent)?.contacts?.length ? (
-                          students.find(s => s.id === selectedStudent)?.contacts?.map((c, i) => (
-                            <button
-                              key={i}
-                              type="button"
-                              onClick={() => handleWhatsAppRedirect(c.phone, students.find(s => s.id === selectedStudent)?.name || '')}
-                              className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-emerald-50 rounded-lg group transition border border-transparent hover:border-emerald-200 text-left"
-                            >
-                              <div>
-                                <p className="text-sm font-bold text-slate-700 group-hover:text-emerald-700">{c.name || 'Responsável'}</p>
-                                <p className="text-xs text-slate-500">{c.phone}</p>
-                              </div>
-                              <Phone className="w-4 h-4 text-emerald-500" />
-                            </button>
-                          ))
-                        ) : (
-                          <p className="text-xs text-slate-500 text-center py-4 italic">
-                            Aluno não tem responsáveis cadastrados.
-                          </p>
-                        )}
+                      <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                        {selectedStudents.map(studentId => {
+                          const student = students.find(s => s.id === studentId);
+                          if (!student) return null;
+                          return (
+                             <div key={student.id} className="mb-2">
+                               {selectedStudents.length > 1 && (
+                                 <p className="text-xs font-bold text-slate-800 mb-1 border-b border-slate-100 pb-1">{student.name}</p>
+                               )}
+                               <div className="space-y-1 mt-1">
+                                  {student.contacts?.length ? (
+                                    student.contacts.map((c, i) => (
+                                      <button
+                                        key={i}
+                                        type="button"
+                                        onClick={() => handleWhatsAppRedirect(c.phone, student.name)}
+                                        className="w-full flex items-center justify-between p-2 bg-slate-50 hover:bg-emerald-50 rounded-lg group transition border border-transparent hover:border-emerald-200 text-left"
+                                      >
+                                        <div>
+                                          <p className="text-xs font-bold text-slate-700 group-hover:text-emerald-700">{c.name || 'Responsável'}</p>
+                                          <p className="text-[10px] text-slate-500">{c.phone}</p>
+                                        </div>
+                                        <Phone className="w-3 h-3 text-emerald-500" />
+                                      </button>
+                                    ))
+                                  ) : (
+                                    <p className="text-[10px] text-slate-500 italic pb-2">Sem responsáveis cadastrados.</p>
+                                  )}
+                               </div>
+                             </div>
+                          )
+                        })}
                       </div>
                     </div>
                   )}
@@ -1424,7 +1472,7 @@ function RegistroDisciplinarContent() {
                   </button>
                   <button 
                     type="submit" 
-                    disabled={!selectedStudent || !selectedRule}
+                    disabled={selectedStudents.length === 0 || !selectedRule}
                     className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {editingOccurrence ? 'Salvar Alterações' : 'Confirmar Registro'}

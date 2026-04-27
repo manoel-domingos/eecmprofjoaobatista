@@ -9,13 +9,11 @@ import {
   BarChart, AlertTriangle, Star, CheckSquare, FileBadge,
   UserPlus, Award, Menu, X, LogOut, ShieldAlert,
   Sun, Moon, RefreshCw, CloudCheck, CloudOff, MessageCircle, Settings,
-  PanelsTopLeft, PanelLeft, ChevronDown, Terminal,
+  PanelsTopLeft, PanelLeft, ChevronDown,
   GraduationCap, Gavel, Smile, Cog,
 } from 'lucide-react';
 import versionData from '@/lib/version.json';
 import ChatWidget from '@/components/ChatWidget';
-import AIAssistant from '@/components/AIAssistant';
-import DebugAIPanel from '@/components/DebugAIPanel';
 
 type MenuItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 type MenuGroup = { label: string; icon: React.ComponentType<{ className?: string }>; href?: string; children?: MenuItem[] };
@@ -75,7 +73,7 @@ type LayoutMode = 'sidebar' | 'topbar';
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isGuest, currentUserRole, isAuthRestored, isDebugMode, setIsDebugMode, logout, isSyncing, isSupabaseConnected, refreshData } = useAppContext();
+  const { user, isGuest, currentUserRole, isAuthRestored, logout, isSyncing, isSupabaseConnected, refreshData } = useAppContext();
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -148,8 +146,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       userInitials={userInitials}
       userRole={userRole}
       currentUserRole={currentUserRole}
-      isDebugMode={isDebugMode}
-      setIsDebugMode={setIsDebugMode}
       logout={logout}
       setIsChatOpen={setIsChatOpen}
       layoutMode={layoutMode}
@@ -161,8 +157,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className={`min-h-screen bg-[#eef3f9] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-200 ${layoutMode === 'sidebar' ? 'flex' : 'flex flex-col'}`}>
       {/* Background decoration for liquid glass effect */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] bg-blue-600/15 blur-[120px] rounded-full animate-pulse" />
-        <div className="absolute -bottom-[10%] -right-[10%] w-[50%] h-[50%] bg-purple-600/15 blur-[120px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-400/10 blur-[120px] rounded-full" />
       </div>
 
       {isMobileMenuOpen && (
@@ -197,8 +193,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {isChatOpen && <ChatWidget forceOpen={true} forceOnClose={() => setIsChatOpen(false)} />}
-      <AIAssistant />
-      {isDebugMode && <DebugAIPanel />}
     </div>
   );
 }
@@ -218,7 +212,7 @@ function SidebarLayout({
 }) {
   return (
     <>
-      <aside className="hidden md:flex w-64 bg-slate-900/40 backdrop-blur-xl border-r border-white/10 flex-col shrink-0 shadow-2xl z-10">
+      <aside className="hidden md:flex w-64 bg-[#1E293B] flex-col shrink-0 shadow-xl">
         <div className="p-6 flex flex-col items-center border-b border-slate-800">
           <div className="w-28 h-28 flex items-center justify-center">
             <img src="/nova_logo.png" alt="Logo EECM" className="w-full h-full object-contain drop-shadow-md" />
@@ -575,8 +569,6 @@ type RightControlsProps = {
   setIsChatOpen: (v: boolean) => void;
   layoutMode: LayoutMode;
   toggleLayout: () => void;
-  isDebugMode: boolean;
-  setIsDebugMode: (v: boolean) => void;
 };
 
 function RightControls(props: RightControlsProps) {
@@ -584,7 +576,6 @@ function RightControls(props: RightControlsProps) {
     isSupabaseConnected, isSyncing, refreshData, isDarkMode, toggleTheme,
     isProfileOpen, setIsProfileOpen, user, userName, userInitials, userRole,
     currentUserRole, logout, setIsChatOpen, layoutMode, toggleLayout,
-    isDebugMode, setIsDebugMode,
   } = props;
 
   return (
@@ -698,13 +689,6 @@ function RightControls(props: RightControlsProps) {
                 className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-3"
               >
                 <MessageCircle className="w-4 h-4 text-blue-500" /> Suporte
-              </button>
-              <button
-                onClick={() => { setIsDebugMode(!isDebugMode); setIsProfileOpen(false); }}
-                className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-3"
-              >
-                <Terminal className={`w-4 h-4 ${isDebugMode ? 'text-blue-500' : 'text-slate-400'}`} /> 
-                {isDebugMode ? 'Desativar Depuração' : 'Ativar Depuração IA'}
               </button>
               <button
                 onClick={() => { logout(); setIsProfileOpen(false); }}

@@ -43,88 +43,16 @@ export default function FichaDisciplinar() {
 
         {student && (
           <div className="bg-slate-50 text-slate-900 rounded-xl p-8 max-w-4xl shadow-2xl relative">
-            <div className="flex items-center gap-3 no-print mb-8">
-              <button 
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm"
-                onClick={() => window.print()}
-              >
-                <Printer className="w-4 h-4" /> PDF / Imprimir
-              </button>
-              <button 
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm"
-                onClick={() => {
-                   // DOCX Export for Ficha
-                   const headerHtmlDocx = `
-                    <div style="width: 100%; margin-bottom: 20px;">
-                      <img src="${window.location.origin}/CABEÇALHO JB.png" width="100%" style="width: 100%; height: auto;" alt="Cabeçalho">
-                    </div>
-                   `;
-                   const htmlContent = `
-                    <div style="font-family: Arial, sans-serif; padding: 20pt;">
-                      ${headerHtmlDocx}
-                      
-                      <div style="border: 1px solid #000; padding: 10pt; margin-bottom: 20pt;">
-                        <p><strong>NOME:</strong> ${student.name?.toUpperCase()}</p>
-                        <p><strong>TURMA:</strong> ${student.class?.toUpperCase()} - ${student.shift?.toUpperCase()}</p>
-                        <p><strong>NOTA ATUAL:</strong> ${getStudentPoints(student.id).toFixed(1)}</p>
-                      </div>
+            <button 
+              className="absolute top-8 right-8 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm print:hidden"
+              onClick={() => window.print()}
+            >
+              <Printer className="w-4 h-4" /> Imprimir Ficha
+            </button>
 
-                      <h3 style="text-decoration: underline;">HISTÓRICO DE OCORRÊNCIAS</h3>
-                      <table style="width: 100%; border-collapse: collapse; margin-top: 10pt;">
-                        <thead>
-                          <tr style="background-color: #f1f5f9;">
-                            <th style="border: 1px solid #000; padding: 5pt;">Data</th>
-                            <th style="border: 1px solid #000; padding: 5pt;">Art.</th>
-                            <th style="border: 1px solid #000; padding: 5pt;">Falta/Infração</th>
-                            <th style="border: 1px solid #000; padding: 5pt;">Gravidade</th>
-                            <th style="border: 1px solid #000; padding: 5pt;">Pontos</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          ${occurrences.map(o => {
-                            const rule = rules.find(r => r.code === o.ruleCode);
-                            return `
-                              <tr>
-                                <td style="border: 1px solid #000; padding: 5pt;">${formatDate(o.date)}</td>
-                                <td style="border: 1px solid #000; padding: 5pt; text-align: center;">${o.ruleCode}</td>
-                                <td style="border: 1px solid #000; padding: 5pt;">${rule?.description?.toUpperCase()}</td>
-                                <td style="border: 1px solid #000; padding: 5pt;">${rule?.severity?.toUpperCase()}</td>
-                                <td style="border: 1px solid #000; padding: 5pt; text-align: center;">${rule?.points}</td>
-                              </tr>
-                            `;
-                          }).join('')}
-                        </tbody>
-                      </table>
-
-                      <br><br><br><br>
-                      <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                          <td style="border-top: 1px solid #000; text-align: center; width: 45%;">ASSINATURA DO ALUNO</td>
-                          <td style="width: 10%;"></td>
-                          <td style="border-top: 1px solid #000; text-align: center; width: 45%;">ASSINATURA DO GESTOR</td>
-                        </tr>
-                      </table>
-                    </div>
-                   `;
-                   const fullHtml = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'></head><body>${htmlContent}</body></html>`;
-                   const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword' });
-                   const url = URL.createObjectURL(blob);
-                   const link = document.createElement('a');
-                   link.href = url;
-                   link.download = `Ficha_Disciplinar_${student.name?.replace(/ /g, '_')}.doc`;
-                   link.click();
-                }}
-              >
-                <FileBadge className="w-4 h-4" /> DOCX
-              </button>
-            </div>
-
-            <div className="hidden print:block mb-8">
-              <img src="/CABEÇALHO JB.png" className="w-full h-auto" alt="Cabeçalho Oficial" />
-            </div>
-
-            <div className="text-center mb-8">
-               <h3 className="font-black text-xl mt-2 underline text-slate-900">FICHA DISCIPLINAR INDIVIDUAL (ANEXO II)</h3>
+            <div className="text-center mb-8 pr-32 print:pr-0">
+               <h2 className="font-bold text-lg uppercase uppercase">Escola Estadual Cívico-Militar</h2>
+               <h3 className="font-semibold text-md mt-2 underline">FICHA DISCIPLINAR INDIVIDUAL (ANEXO II)</h3>
             </div>
 
             <div className="space-y-6 text-sm">

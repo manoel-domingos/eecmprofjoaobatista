@@ -1,5 +1,3 @@
-'use client';
-
 export type Severity = 'Leve' | 'Media' | 'Grave';
 export type Shift = 'Matutino' | 'Vespertino' | 'Noturno';
 export type BehaviorClass = 'Excepcional' | 'Ótimo' | 'Bom' | 'Regular' | 'Insuficiente' | 'Incompatível';
@@ -10,7 +8,7 @@ export interface Student {
   name: string;
   class: string;
   shift: Shift;
-  points: number; // Starts at 8.0 according to Art. 45 § 2º
+  points: number; // Starts at 10.0
   contacts?: { name: string, phone: string }[];
   observation?: string;
   address?: string;
@@ -41,10 +39,6 @@ export interface Occurrence {
   archived?: boolean;
   videoUrls?: string[];
   signedDocUrls?: string[];
-  durationDays?: number;
-  measure?: string;
-  attenuatingFactors?: string[];
-  aggravatingFactors?: string[];
 }
 
 export interface StaffMember {
@@ -119,110 +113,110 @@ export interface AuditLog {
 }
 
 export const INITIAL_RULES: DisciplineRule[] = [
-  // FALTAS DISCIPLINARES DE NATUREZA LEVE (1-26) -0.10
-  { code: 1, description: "Apresentar-se com uniforme diferente do estabelecido pelo regulamento do uniforme; (uniforme, despadronizado)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 2, description: "Apresentar-se com barba ou bigode sem fazer; (barba, bigode, asseio)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 3, description: "Comparecer à EECM com cabelo em desalinho ou fora do padrão estabelecido pelas diretrizes dos Uniformes e do Regimento Escolar; (cabelo, penteado, corte)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 4, description: "Chegar atrasado a EECM para o início das aulas, instrução, treinamento, formatura ou atividade escolar; (atraso, pontualidade, chegar tarde)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 5, description: "Comparecer a EECM sem levar o material necessário; (material escolar, esquecimento, livro, caderno)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 6, description: "Adentrar ou permanecer em qualquer dependência da EECM, sem autorização; (lugar proibido, invasão, restrito)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 7, description: "Consumir alimentos, balas, doces líquidos ou mascar chicletes durante a aula, instrução, treinamento, formatura, atividade escolar, e nas dependências da EECM, salvo quando devidamente autorizado; (comer, chiclete, bala, lanche, refeitório)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 8, description: "Conversar ou se mexer quando estiver em forma; (conversar, mexer, formatura, ordem unida)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 9, description: "Deixar de entregar à Monitoria, Secretaria ou a Coordenação, qualquer objeto que não lhe pertença que tenha encontrado na EECM; (achados e perdidos, devolução)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 10, description: "Deixar de retribuir cumprimentos ou de prestar sinais de respeito regulamentares, previstos no Manual do Aluno; (cumprimento, continência, respeito, educação)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 11, description: "Deixar material escolar, objetos ou peças de uniforme em locais inapropriados dentro ou fora da unidade escolar; (esquecimento, bagunça, uniforme jogado)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 12, description: "Descartar papéis, restos de comida, embalagens ou qualquer objeto no chão ou fora de locais apropriados; (lixo, sujeira, poluição)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 13, description: "Dobrar qualquer peça de uniforme para diminuir seu tamanho, desfigurando sua originalidade; (uniforme, modificação, dobrar)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 14, description: "Debruçar-se sobre a carteira e/ou dormir durante o horário das aulas ou instruções; (dormir, debruçado, preguiça, desatenção)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 15, description: "Executar movimentos de ordem unida de forma displicente ou desatenciosa; (ordem unida, marcha, desatenção)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 16, description: "Fazer ou provocar excessivo barulho em qualquer dependência da EECM, durante o horário de aula; (barulho, gritaria, algazarra)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 17, description: "Não levar ao conhecimento de autoridade competente falta ou irregularidade que presenciar ou de que tiver ciência; (omissão, testemunha, irregularidade)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 18, description: "Perturbar o estudo do(s) colega(s), com ruídos ou brincadeiras; (bagunça, brincadeira, atrapalhar)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 19, description: "Utilizar-se, na sala, de qualquer publicação estranha à sua atividade escolar, salvo quando autorizado; (livro estranho, revista, gibi, leitura não autorizada)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 20, description: "Retardar ou contribuir para o atraso da execução de qualquer atividade sem justo motivo; (atrasar, demora, lerdeza)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 21, description: "Sentar-se no chão, atentando contra a postura e compostura, estando uniformizado, exceto quando em aula de educação Física; (sentar no chão, postura, compostura)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 22, description: "Utilizar qualquer tipo de jogo, brinquedo, figurinhas, coleções no interior da EECM; (jogo, brinquedo, figurinha, coleção)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 23, description: "Usar, a aluna, piercing, anel e brinco fora do padrão estabelecido, mais de um brinco em cada orelha, alargador ou similares, quando uniformizada; (piercing, brinco, acessório, brinco extra)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 24, description: "Usar, o aluno, piercings, brinco, alargador ou similares, quando uniformizado; (piercing, brinco, alargador, acessório)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 25, description: "Usar, quando uniformizado, boné, capuz ou outros adornos, durante a atividade escolar; (boné, capuz, gorro, toca, adorno)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
-  { code: 26, description: "Ficar na sala de aula durante os intervalos e as formaturas diárias; (intervalo, recreio, ficar na sala)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  // NATUREZA LEVE (1-26)
+  { code: 1, description: "Apresentar-se com uniforme diferente do estabelecido", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 2, description: "Apresentar-se com barba ou bigode sem fazer", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 3, description: "Cabelo desalinhado ou fora do padrão", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 4, description: "Chegar atrasado sem justificativa", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 5, description: "Comparecer sem material escolar necessário", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 6, description: "Adentrar dependências sem autorização", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 7, description: "Consumir alimentos ou mascar chicletes em aula/forma", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 8, description: "Conversar ou se mexer quando estiver em forma", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 9, description: "Deixar de entregar objeto encontrado na escola", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 10, description: "Deixar de retribuir cumprimentos ou sinais de respeito", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 11, description: "Deixar material/peças de uniforme em locais inapropriados", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 12, description: "Descartar lixo fora dos locais apropriados", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 13, description: "Dobrar peça de uniforme desfigurando originalidade", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 14, description: "Dormir durante o horário das aulas ou instruções", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 15, description: "Executar movimentos de ordem unida de forma displicente", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 16, description: "Provocar ruídos excessivos em dependências da escola", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 17, description: "Não informar autoridade sobre falta presenciada", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 18, description: "Perturbar o estudo dos colegas com ruídos/brincadeiras", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 19, description: "Utilizar publicação estranha à atividade escolar", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 20, description: "Retardar ou contribuir para o atraso de execuções", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 21, description: "Sentar-se no chão uniformizado (exceto Ed. Física)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 22, description: "Utilizar jogo, brinquedo ou coleções sem autorização", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 23, description: "Uso indevido de piercing/brincos (Alunas)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 24, description: "Uso indevido de piercing/brincos (Alunos)", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 25, description: "Usar boné, capuz ou adornos uniformizado em aula", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
+  { code: 26, description: "Ficar na sala de aula durante intervalos/formaturas", severity: "Leve", points: -0.1, measure: "Advertência Oral" },
 
-  // FALTAS DISCIPLINARES DE NATUREZA MÉDIA (27-62) -0.30
-  { code: 27, description: "Ausentar-se da sala de aula, instrução ou de qualquer atividade escolar, sem a devida autorização; (fugir da aula, sair sem permissão, gazear)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 28, description: "Apresentar-se à Monitoria, Coordenação ou a Secretaria para tratar de assunto de interesse particular sem a devida autorização; (assunto pessoal, sem autorização)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 29, description: "Atribuir-se a qualidade de representante da EECM, sem estar devidamente autorizado; (falsidade, representação indevida)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 30, description: "Brincar de lutas, dar apelidos a colegas, professores ou funcionários da escola e rir de maneira excessiva em local e momento impróprio; (apelido, bullying, brincadeira de mão, luta)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 31, description: "Cantar, assobiar ou fazer ruído em local e momento impróprio; (barulho, canto, assobio)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 32, description: "Conduzir veículo motorizado nas dependências da EECM e em seu entorno, quando uniformizado; (moto, carro, dirigir, pilotar)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 33, description: "Deixar de cumprir ordem recebida, referente a normas e regulamentos da EECM; (desobediência, insubordinação)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 34, description: "Demonstrar falta de posturas militares em local público, estando uniformizado; (postura, comportamento, militarismo)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 35, description: "Desrespeitar as normas de segurança da EECM; (segurança, perigo, norma)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 36, description: "Entrar ou sair da EECM por locais não permitidos; (pular muro, saída não autorizada)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 37, description: "Estar o aluno, em local ou dependência da EECM, cujo acesso lhe seja vedado; (área restrita, proibido)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 38, description: "Faltar com a verdade; (mentira, enganação)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 39, description: "Fazer desenhos ou escrever em locais não apropriados; (pichação, rabisco, estragar patrimônio)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 40, description: "Induzir outrem a erro ou falta; (induzir ao erro, influência negativa)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 41, description: "Não portar o Guia do Aluno ou outro documento de identificação, quando solicitado por autoridade competente; (carteirinha, identificação, guia)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 42, description: "Permanecer uniformizado em locais incompatíveis com a condição de aluno da EECM; (local impróprio, uniforme fora da escola)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 43, description: "Permitir que outro aluno utilize seu material ou peças de uniforme, sem autorização; (emprestar uniforme, material)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 44, description: "Praticar atos de vandalismo ou danos ao patrimônio da EECM ou de terceiros; (vandalismo, quebrar, danificar)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 45, description: "Realizar transações comerciais de qualquer natureza dentro da EECM; (venda, comércio, negócio)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 46, description: "Recusar-se a receber material escolar, uniforme ou outro objeto distribuído pela EECM; (recusa, desobediência)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 47, description: "Retirar-se da EECM, sem autorização; (sair sem permissão, fugir)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 48, description: "Sobrepor ao uniforme qualquer peça que não pertença ao mesmo; (agasalho estranho, acessório não permitido)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 49, description: "Ter em seu poder, objetos ou publicações que atentem contra a moral e os bons costumes; (pornografia, impróprio)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 50, description: "Tomar parte em jogos de azar; (aposta, jogo proibido)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 51, description: "Trazer para a EECM objetos de valor ou eletroeletrônicos sem autorização; (eletrônico, valor, proibido)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 52, description: "Usar o uniforme de forma incorreta ou desleixada; (desleixo, uniforme mal posto)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 53, description: "Utilizar-se de meios ilícitos em avaliações ou trabalhos escolares; (cola, plágio, trapaça)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 54, description: "Utilizar-se de telefone celular ou outros aparelhos eletrônicos durante a aula, sem autorização do professor; (celular, telefone, eletrônico)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 55, description: "Agir com desatenção ou falta de interesse durante a aula, instrução ou atividade escolar; (desatenção, preguiça)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 56, description: "Comparecer à EECM sem estar devidamente asseado; (higiene, asseio, sujeira)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 57, description: "Fazer uso de maquiagem excessiva, esmalte de cor não permitida ou outros adornos, quando uniformizado; (maquiagem, esmalte, adorno)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 58, description: "Manter contato físico que denote relacionamento amoroso (beijos, abraços, mãos dadas, etc.), estando uniformizado; (namoro, beijo, contato físico)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 59, description: "Omitir-se de prestar auxílio a colega, quando necessário e possível; (omissão, falta de companheirismo)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 60, description: "Proferir palavras de baixo calão; (palavrão, xingamento, baixo calão)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 61, description: "Sentar-se em locais não destinados a esse fim, como mesas, corrimãos, parapeitos, etc.; (sentar em lugar errado, postura)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
-  { code: 62, description: "Usar de gírias ao se dirigir a professores, militares ou funcionários; (gíria, falta de respeito, formalidade)", severity: "Media", points: -0.3, measure: "Repreensão / Advertência Escrita" },
+  // NATUREZA MÉDIA (27-62)
+  { code: 27, description: "Atrasar ou não atender chamado da Diretoria/Coordenação", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 28, description: "Faltar a atividade extraclasse sem justificativa", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 29, description: "Faltar a atividades escolares ou formaturas", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 30, description: "Deixar de cumprir medidas disciplinares impostas", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 31, description: "Deixar de devolver documentos assinados no prazo", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 32, description: "Deixar de devolver livros ou materiais da biblioteca", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 33, description: "Não entregar documento encaminhado aos pais", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 34, description: "Deixar de executar tarefas atribuídas pela direção", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 35, description: "Desleixo com apresentação pessoal", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 36, description: "Dirigir memoriais ou petições sem autorização", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 37, description: "Entrar ou sair da escola por locais não permitidos", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 38, description: "Espalhar boatos ou notícias tendenciosas", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 39, description: "Tocar a sirene sem permissão", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 40, description: "Fumar uniformizado ou nas imediações da escola", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 41, description: "Ingressar ou sair sem uniforme ou trocar em locais proibidos", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 42, description: "Ler ou distribuir publicações contra disciplina/moral", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 43, description: "Contato físico de cunho amoroso uniformizado", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 44, description: "Não zelar pelo nome da Instituição (Uniformizado)", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 45, description: "Negar-se a colaborar em eventos escolares oficiais", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 46, description: "Ofender moral de colegas ou membros da comunidade", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 47, description: "Portar-se de forma inconveniente em aula ou recreio", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 48, description: "Comportamento desrespeitoso em eventos sociais/esportivos", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 49, description: "Proferir palavras de baixo calão ou grafá-las", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 50, description: "Propor ou aceitar transação pecuniária sem autorização", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 51, description: "Provocar ou disseminar a discórdia entre colegas", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 52, description: "Exposição negativa de colegas em meios virtuais", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 53, description: "Retirar ou tentar retirar objeto sem autorização", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 54, description: "Sair da escola sem a devida autorização", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 55, description: "Entrar ou sair da sala de aula sem permissão", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 56, description: "Ser retirado de atividade por mau comportamento", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 57, description: "Simular doenças para esquivar-se de obrigações", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 58, description: "Tomar parte em jogos de azar ou apostas", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 59, description: "Usar instalações esportivas sem uniforme adequado", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 60, description: "Usar uniforme ou nome da escola em local inapropriado", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 61, description: "Uso não autorizado de telefone celular em aula", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
+  { code: 62, description: "Usar indevidamente distintivos ou insígnias", severity: "Media", points: -0.3, measure: "Advertência Escrita" },
 
-  // FALTAS DISCIPLINARES DE NATUREZA GRAVE (63-91) -0.50 por dia
-  { code: 63, description: "Agredir física ou moralmente qualquer pessoa no interior da EECM ou em seu entorno; (agressão, briga, soco, tapa, insulto)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 64, description: "Ameaçar ou intimidar qualquer pessoa; (ameaça, intimidação, medo)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 65, description: "Apresentar-se sob efeito de substâncias entorpecentes ou bebidas alcoólicas; (droga, álcool, bêbado)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 66, description: "Atentar contra a dignidade ou o pudor de qualquer pessoa; (assédio, atentado ao pudor, moral)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 67, description: "Cometer atos de preconceito ou discriminação de qualquer natureza; (racismo, homofobia, preconceito, discriminação)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 68, description: "Desacatar ou desrespeitar professores, militares ou funcionários da EECM; (desacato, desrespeito, autoridade)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 69, description: "Desviar ou subtrair para si ou para outrem, coisa alheia móvel; (furto, roubo, subtrair)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 70, description: "Difundir notícias falsas que possam comprometer a imagem da EECM ou de seus integrantes; (fake news, fofoca, mentira grave)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 71, description: "Dirigir-se a superiores ou autoridades de forma desrespeitosa ou insolente; (insolência, falta de respeito, superior)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 72, description: "Fazer uso, portar ou distribuir substâncias entorpecentes ou bebidas alcoólicas; (tráfico, usar droga, álcool)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 73, description: "Incentivar ou participar de movimentos de indisciplina coletiva; (motim, revolta, indisciplina coletiva)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 74, description: "Incitar ou participar de brigas ou agressões físicas; (briga, luta, confusão)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 75, description: "Manifestar-se de forma desrespeitosa contra símbolos nacionais ou da EECM; (bandeira, hino, símbolos, desrespeito)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 76, description: "Portar armas de qualquer natureza ou objetos que possam causar dano físico; (arma, faca, estilete, perigo)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 77, description: "Praticar atos libidinosos no interior da EECM ou em seu entorno; (sexo, ato libidinoso, imoralidade)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 78, description: "Praticar bullying ou cyberbullying contra colegas, professores ou funcionários; (bullying, cyberbullying, perseguição)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 79, description: "Praticar furto ou roubo; (furto, roubo, assalto)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 80, description: "Produzir ou divulgar imagens ou vídeos que atentem contra a honra da EECM ou de seus integrantes; (exposição indevida, vídeo difamatório)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 81, description: "Promover ou participar de jogos de azar com apostas em dinheiro; (aposta, jogo de azar, dinheiro)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 82, description: "Recusar-se a identificar-se quando solicitado por autoridade competente; (recusa de identificação, anonimato)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 83, description: "Usar de violência ou grave ameaça para obter qualquer vantagem; (extorsão, coação, violência)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 84, description: "Utilizar-se de documentos falsos ou adulterados; (falsificação, documento falso)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 85, description: "Vandalizar o patrimônio público ou privado; (vandalismo, depredação)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 86, description: "Praticar atos que caracterizem crime ou contravenção penal; (crime, contravenção, polícia)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 87, description: "Assediar sexualmente qualquer pessoa; (assédio sexual, importunação)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 88, description: "Fazer apologia ao crime ou a organizações criminosas; (apologia ao crime, facção)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 89, description: "Introduzir ou distribuir na EECM material inflamável ou explosivo, sem autorização; (fogo, explosivo, perigo grave)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 90, description: "Praticar atos de crueldade contra animais; (maus tratos, animais, crueldade)", severity: "Grave", points: -0.5, measure: "Suspensão" },
-  { code: 91, description: "Utilizar-se da condição de aluno da EECM para obter vantagens ilícitas; (tirar vantagem, corrupção, influência)", severity: "Grave", points: -0.5, measure: "Suspensão" }
+  // NATUREZA GRAVE (63-91)
+  { code: 63, description: "Assinar documento pelos pais ou responsáveis", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 64, description: "Causar danos intencionais ao patrimônio escolar", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 65, description: "Causar ou contribuir para acidentes de qualquer natureza", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 66, description: "Comunicação indevida (colar) em avaliações", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 67, description: "Denegrir nome da escola ou membros em redes sociais", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 68, description: "Desobedecer ou desafiar autoridade de Direção/Monitores", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 69, description: "Apologia a drogas, violência ou pornografia", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 70, description: "Entrar ou ausentar-se da escola sem autorização", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 71, description: "Extraviar documentos sob sua responsabilidade", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 72, description: "Faltar com a verdade ou usar anonimato indevido", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 73, description: "Uso ou indução ao uso de bebida alcoólica/drogas", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 74, description: "Hastear ou arriar bandeiras sem autorização", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 75, description: "Instigar colegas a cometerem faltas graves", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 76, description: "Contato físico com denotação libidinosa", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 77, description: "Publicação difamatória contra membros da comunidade", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 78, description: "Prática de Bullying ou Cyberbullying", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 79, description: "Pichar ou causar poluição visual/sonora nas imediações", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 80, description: "Portar armas ou objetos perfurocortantes (estiletes, etc)", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 81, description: "Atos contrários ao respeito aos símbolos nacionais", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 82, description: "Macular nome da escola em manifestações coletivas", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 83, description: "Promover trotes de qualquer natureza", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 84, description: "Rixas ou luta corporal dentro ou fora da escola", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 85, description: "Participação em manifestações de natureza política", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 86, description: "Rasurar, violar ou alterar documentos oficiais", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 87, description: "Representar a escola sem estar autorizado", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 88, description: "Distribuir materiais de cunho político-partidário", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 89, description: "Subtrair indevidamente valores ou objetos alheios", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 90, description: "Processos fraudulentos em trabalhos acadêmicos", severity: "Grave", points: -0.5, measure: "Suspensão" },
+  { code: 91, description: "Destruição do patrimônio pertencente à escola", severity: "Grave", points: -0.5, measure: "Suspensão" }
 ];
 
 // Add dummy data for initial state
 export const INITIAL_STUDENTS: Student[] = [
   { id: "S1", name: "Rafael Souza", class: "3º Ano C", shift: "Vespertino", points: 6.5 },
-  { id: "S2", name: "Fernanda Castro", class: "2º Ano A", shift: "Vespertino", points: 8.0 },
-  { id: "S3", name: "Pedro Santos", class: "8º Ano C", shift: "Matutino", points: 7.9 },
-  { id: "S4", name: "Ana Costa", class: "9º Ano D", shift: "Matutino", points: 8.0 },
+  { id: "S2", name: "Fernanda Castro", class: "2º Ano A", shift: "Vespertino", points: 8.5 },
+  { id: "S3", name: "Pedro Santos", class: "8º Ano C", shift: "Matutino", points: 6.9 },
+  { id: "S4", name: "Ana Costa", class: "9º Ano D", shift: "Matutino", points: 7.0 },
   { id: "S5", name: "Maria Oliveira", class: "7º Ano B", shift: "Vespertino", points: 7.7 },
   { id: "S6", name: "Bruno Andrade Tapajós", class: "1º A", shift: "Matutino", points: 8.0 }
 ];

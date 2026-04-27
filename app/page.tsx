@@ -205,53 +205,23 @@ export default function Dashboard() {
           const criticalStudents = students.map(s => ({...s, currentPoints: getStudentPoints(s.id)})).filter(s => s.currentPoints < 5.0).sort((a,b) => a.currentPoints - b.currentPoints);
           if (criticalStudents.length === 0) return null;
           return (
-            <div className="bg-red-50 dark:bg-[#2b1616] border border-red-200 dark:border-red-900/50 rounded-2xl p-5 mb-2 mt-4 shadow-sm animate-pulse-subtle">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-                <h3 className="text-red-800 dark:text-red-400 font-bold flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5" />
-                  Notificações Automáticas: Situação Crítica de Comportamento
-                </h3>
-                <span className="text-[10px] font-bold bg-red-600 text-white px-2 py-1 rounded uppercase tracking-widest">
-                  Ação Necessária: Convocar Responsáveis
-                </span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {criticalStudents.slice(0, 12).map(s => {
-                  const isGrave = s.currentPoints < 2.0;
-                  return (
-                    <div key={s.id} className={`p-4 rounded-xl border shadow-sm flex flex-col gap-3 transition-all duration-300 hover:shadow-md ${
-                      isGrave 
-                        ? 'bg-red-600 border-red-700 text-white' 
-                        : 'bg-white dark:bg-[#1a1f2e] border-red-100 dark:border-red-900/30'
-                    }`}>
-                      <div className="flex justify-between items-start">
-                        <div className="truncate pr-2">
-                          <p className={`font-bold text-sm truncate ${isGrave ? 'text-white' : 'text-slate-800 dark:text-white'}`}>{s.name}</p>
-                          <p className={`text-[10px] uppercase font-semibold ${isGrave ? 'text-red-100' : 'text-slate-500'}`}>{s.class}</p>
-                        </div>
-                        <span className={`font-black text-xs px-2 py-1 rounded shrink-0 ${
-                          isGrave ? 'bg-white text-red-600' : 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400'
-                        }`}>
-                          {s.currentPoints.toFixed(1)}
-                        </span>
-                      </div>
-                      
-                      <div className={`text-[10px] font-bold px-2 py-1 rounded text-center uppercase tracking-wider ${
-                        isGrave ? 'bg-red-800 text-red-100' : 'bg-orange-100 text-orange-700'
-                      }`}>
-                        {isGrave ? 'Nível VI: INCOMPATÍVEL' : 'Nível V: INSUFICIENTE'}
-                      </div>
-
-                      <button className={`w-full py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-colors ${
-                        isGrave 
-                          ? 'bg-white/20 hover:bg-white/30 text-white border border-white/30' 
-                          : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-400'
-                      }`}>
-                        Acionar Gestão
-                      </button>
+            <div className="bg-red-50 dark:bg-[#2b1616] border border-red-200 dark:border-red-900/50 rounded-2xl p-5 mb-2 mt-4 shadow-sm">
+              <h3 className="text-red-800 dark:text-red-400 font-bold flex items-center gap-2 mb-4">
+                <AlertTriangle className="w-5 h-5" />
+                Atenção Crítica: Alunos Próximos de Suspensão / Desligamento (Abaixo de 5.0 pts)
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {criticalStudents.slice(0, 8).map(s => (
+                  <div key={s.id} className="bg-white dark:bg-[#1a1f2e] p-3 rounded-xl border border-red-100 dark:border-red-900/30 shadow-sm flex justify-between items-center hover:-translate-y-0.5 transition-all duration-300">
+                    <div className="truncate pr-2">
+                      <p className="font-bold text-slate-800 dark:text-white text-sm truncate">{s.name}</p>
+                      <p className="text-xs text-slate-500">{s.class}</p>
                     </div>
-                  );
-                })}
+                    <span className="font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/40 px-2 py-1 rounded text-xs shrink-0">
+                      {s.currentPoints.toFixed(1)} pts
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           );

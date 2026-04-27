@@ -3,11 +3,10 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
-import { AlertTriangle, Plus, Search, X, Edit2, Archive, Printer, Sparkles } from 'lucide-react';
+import { AlertTriangle, Plus, Search, X, Edit2, Archive, Printer } from 'lucide-react';
 import { getLocalDateString, formatDate } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import SearchableSelect from '@/components/SearchableSelect';
-import { generateContentWithFallback } from '@/lib/ai';
 
 function AcidentesContent() {
   const { students, accidents, addAccident, updateAccident, archiveAccident, currentUserRole } = useAppContext();
@@ -42,39 +41,6 @@ function AcidentesContent() {
   const [medicForwarded, setMedicForwarded] = useState(false);
   const [observations, setObservations] = useState('');
   const [registeredBy, setRegisteredBy] = useState('Gestor Escolar');
-  const [isImproving, setIsImproving] = useState(false);
-
-  const handleImproveDescription = async () => {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey || !description.trim()) return;
-
-    setIsImproving(true);
-    try {
-      const student = students.find(s => s.id === selectedStudent);
-
-      const prompt = `
-        Aja como um gestor escolar profissional. Melhore e formalize o seguinte relato de ACIDENTE ESCOLAR.
-        O texto deve ser claro, objetivo, imparcial e usar linguagem técnica/formal para fins de registro oficial.
-        
-        DADOS:
-        - Aluno: ${student?.name || 'Não identificado'}
-        - Local: ${location}
-        - Parte do Corpo: ${bodyPart}
-        - Relato original: ${description}
-        
-        Retorne APENAS o texto melhorado, sem introduções ou explicações.
-      `;
-
-      const result = await generateContentWithFallback(apiKey, prompt);
-      const response = await result.response;
-      setDescription(response.text().trim());
-    } catch (error) {
-      console.error("Erro ao melhorar acidente:", error);
-      alert("Não foi possível melhorar o texto com IA no momento.");
-    } finally {
-      setIsImproving(false);
-    }
-  };
 
   const filteredAccidents = accidents.filter(a => {
     if (a.archived) return false;
@@ -397,20 +363,7 @@ function AcidentesContent() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-600 mb-1 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    Descrição do Acidente *
-                    <button
-                      type="button"
-                      onClick={handleImproveDescription}
-                      disabled={isImproving || !description.trim()}
-                      className="flex items-center gap-1 text-[10px] bg-red-50 text-red-600 px-2 py-0.5 rounded-full hover:bg-red-100 transition-all disabled:opacity-50"
-                    >
-                      <Sparkles size={10} className={isImproving ? "animate-spin" : ""} />
-                      {isImproving ? "Melhorando..." : "Melhorar com IA"}
-                    </button>
-                  </div>
-                </label>
+                <label className="block text-sm font-medium text-slate-600 mb-1">Descrição do Acidente *</label>
                 <textarea 
                   required
                   rows={2}
