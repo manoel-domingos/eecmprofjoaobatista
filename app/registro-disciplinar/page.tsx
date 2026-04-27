@@ -55,7 +55,7 @@ function RegistroDisciplinarContent() {
   const [hour, setHour] = useState('');
   const [location, setLocation] = useState('Pátio');
   const [locatedBy, setLocatedBy] = useState('');
-  const [selectedRule, setSelectedRule] = useState('');
+  const [selectedRules, setSelectedRules] = useState<string[]>([]);
   const [ruleSearch, setRuleSearch] = useState('');
   const [registeredBy, setRegisteredBy] = useState('');
   const [observations, setObservations] = useState('');
@@ -69,12 +69,12 @@ function RegistroDisciplinarContent() {
 
   const handleImproveObservations = async () => {
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey || !observations.trim() && !selectedRule) return;
+    if (!apiKey || (!observations.trim() && selectedRules.length === 0)) return;
 
     setIsImproving(true);
     try {
       const studentNames = selectedStudents.map(id => students.find(s => s.id === id)?.name).join(', ');
-      const rule = rules.find(r => r.code === parseInt(selectedRule, 10));
+      const ruleDescriptions = selectedRules.map(code => rules.find(r => r.code === parseInt(code, 10))?.description).join(', ');
 
       const prompt = `
         Aja como um gestor escolar profissional. Melhore e formalize o seguinte relato de ocorrência disciplinar para uma ata oficial.
@@ -82,7 +82,7 @@ function RegistroDisciplinarContent() {
         
         DADOS:
         - Aluno(s): ${studentNames || 'Não identificado'}
-        - Infração: ${rule?.description || 'Não especificada'}
+        - Infração(ões): ${ruleDescriptions || 'Não especificada'}
         - Relato original: ${observations || '(O usuário não descreveu, crie um modelo padrão baseado na infração)'}
         
         Retorne APENAS o texto melhorado, sem introduções ou explicações.
@@ -161,7 +161,7 @@ function RegistroDisciplinarContent() {
     .sort((a, b) => a.code - b.code)
     .slice(0, 10); // show top 10
 
-  const activeRule = rules.find(r => r.code.toString() === selectedRule);
+  const activeRule = selectedRules.length > 0 ? rules.find(r => r.code.toString() === selectedRules[0]) : undefined;
 
   const openAddModal = () => {
     const now = new Date();
@@ -180,7 +180,7 @@ function RegistroDisciplinarContent() {
     setHour(localHour);
     setLocation('Pátio');
     setLocatedBy('');
-    setSelectedRule('');
+    setSelectedRules([]);
     setRuleSearch('');
     setRegisteredBy(getLoggedUserName());
     setObservations('');
@@ -201,7 +201,7 @@ function RegistroDisciplinarContent() {
     setHour(o.hour || '');
     setLocation(o.location || 'Pátio');
     setLocatedBy(o.locatedBy || '');
-    setSelectedRule(o.ruleCode.toString());
+    setSelectedRules([o.ruleCode.toString()]);
     const rule = rules.find(r => r.code === o.ruleCode);
     setRuleSearch(rule ? rule.description : '');
     setRegisteredBy(o.registeredBy || getLoggedUserName());
@@ -319,17 +319,16 @@ function RegistroDisciplinarContent() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedStudents.length === 0 || !selectedRule) return;
-
-    const ruleCodeInt = parseInt(selectedRule, 10);
+    if (selectedStudents.length === 0 || selectedRules.length === 0) return;
 
     if (editingOccurrence) {
-       const studentId = selectedStudents[0];
-       const escalation = getEscalationStatus(studentId, ruleCodeInt);
-       const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
+      const studentId = selectedStudents[0];
+      const ruleCodeInt = parseInt(selectedRules[0], 10);
+      const escalation = getEscalationStatus(studentId, ruleCodeInt);
+      const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
 
       updateOccurrence(editingOccurrence, {
-        studentId: studentId,
+        studentId,
         date,
         hour,
         location,
@@ -346,30 +345,33 @@ function RegistroDisciplinarContent() {
       });
     } else {
       for (const studentId of selectedStudents) {
-         const escalation = getEscalationStatus(studentId, ruleCodeInt);
-         if (escalation.isEscalated) {
-            const student = students.find(s => s.id === studentId);
-            const confirmed = window.confirm(`⚠️ ATENÇÃO (${student?.name}): ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
-            if (!confirmed) continue;
-         }
-         const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
+         for (const ruleCodeStr of selectedRules) {
+             const ruleCodeInt = parseInt(ruleCodeStr, 10);
+             const escalation = getEscalationStatus(studentId, ruleCodeInt);
+             if (escalation.isEscalated) {
+                const student = students.find(s => s.id === studentId);
+                const confirmed = window.confirm(`⚠️ ATENÇÃO (${student?.name}): ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
+                if (!confirmed) continue;
+             }
+             const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
 
-         addOccurrence({
-           studentId: studentId,
-           date,
-           hour,
-           location,
-           locatedBy,
-           ruleCode: ruleCodeInt,
-           registeredBy,
-           observations,
-           measure: measureToSave,
-           videoUrls,
-           signedDocUrls,
-           durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
-           attenuatingFactors,
-           aggravatingFactors
-         });
+             addOccurrence({
+               studentId,
+               date,
+               hour,
+               location,
+               locatedBy,
+               ruleCode: ruleCodeInt,
+               registeredBy,
+               observations,
+               measure: measureToSave,
+               videoUrls,
+               signedDocUrls,
+               durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
+               attenuatingFactors,
+               aggravatingFactors
+             });
+         }
       }
     }
 
@@ -377,7 +379,7 @@ function RegistroDisciplinarContent() {
     setEditingOccurrence(null);
     // Reset form
     setSelectedStudents([]);
-    setSelectedRule('');
+    setSelectedRules([]);
     setRuleSearch('');
     setObservations('');
     setVideoUrls([]);
@@ -517,12 +519,12 @@ function RegistroDisciplinarContent() {
     if (!url) return;
 
     // If we are in the main modal (new/edit), auto-save before redirecting
-    if (isModalOpen && selectedStudents.length > 0 && selectedRule) {
-      const ruleCodeInt = parseInt(selectedRule, 10);
+    if (isModalOpen && selectedStudents.length > 0 && selectedRules.length > 0) {
       if (editingOccurrence) {
         const studentId = selectedStudents[0];
+        const ruleCodeInt = parseInt(selectedRules[0], 10);
         updateOccurrence(editingOccurrence, {
-          studentId: studentId,
+          studentId,
           date,
           hour,
           location,
@@ -532,29 +534,32 @@ function RegistroDisciplinarContent() {
           observations,
           videoUrls,
           signedDocUrls,
-          durationDays: activeRule?.severity === 'Grave' ? durationDays : undefined
+          durationDays: rules.find(r => r.code === ruleCodeInt)?.severity === 'Grave' ? durationDays : undefined
         });
       } else {
         for (const studentId of selectedStudents) {
-           addOccurrence({
-             studentId: studentId,
-             date,
-             hour,
-             location,
-             locatedBy,
-             ruleCode: ruleCodeInt,
-             registeredBy,
-             observations,
-             videoUrls,
-             signedDocUrls,
-             durationDays: activeRule?.severity === 'Grave' ? durationDays : undefined
-           });
+           for (const ruleCodeStr of selectedRules) {
+              const ruleCodeInt = parseInt(ruleCodeStr, 10);
+              addOccurrence({
+                studentId,
+                date,
+                hour,
+                location,
+                locatedBy,
+                ruleCode: ruleCodeInt,
+                registeredBy,
+                observations,
+                videoUrls,
+                signedDocUrls,
+                durationDays: rules.find(r => r.code === ruleCodeInt)?.severity === 'Grave' ? durationDays : undefined
+              });
+           }
         }
       }
       setIsModalOpen(false);
       setEditingOccurrence(null);
       setSelectedStudents([]);
-      setSelectedRule('');
+      setSelectedRules([]);
       setRuleSearch('');
       setObservations('');
       setVideoUrls([]);
@@ -1011,12 +1016,19 @@ function RegistroDisciplinarContent() {
                     />
                   </div>
                   
-                  {ruleSearch && !selectedRule && (
+                  {ruleSearch && (editingOccurrence ? selectedRules.length === 0 : true) && (
                     <div className="bg-white border border-slate-200 rounded-lg max-h-40 overflow-y-auto mt-1 mb-3">
-                      {matchedRules.map(r => (
+                      {matchedRules.filter(r => !selectedRules.includes(r.code.toString())).map(r => (
                         <div 
                           key={r.code}
-                          onClick={() => { setSelectedRule(r.code.toString()); setRuleSearch(''); }}
+                          onClick={() => { 
+                             if (editingOccurrence) {
+                               setSelectedRules([r.code.toString()]); 
+                             } else {
+                               setSelectedRules(prev => [...prev, r.code.toString()]);
+                             }
+                             setRuleSearch(''); 
+                          }}
                           className="p-3 hover:bg-slate-700 cursor-pointer border-b border-slate-200/50 last:border-0"
                         >
                           <div className="flex items-center justify-between">
@@ -1030,112 +1042,136 @@ function RegistroDisciplinarContent() {
                           <p className="text-slate-500 text-xs mt-1">{r.description}</p>
                         </div>
                       ))}
-                      {matchedRules.length === 0 && (
+                      {matchedRules.filter(r => !selectedRules.includes(r.code.toString())).length === 0 && (
                         <div className="p-3 text-sm text-slate-500">Nenhuma infração encontrada.</div>
                       )}
                     </div>
                   )}
                   
-                  {selectedRule && activeRule && (() => {
-                    const escalation = selectedStudents.length > 0 ? getEscalationStatus(selectedStudents[0], activeRule.code) : { isEscalated: false, reason: '', measure: activeRule.measure, severity: activeRule.severity };
-                    return (
-                    <div className="bg-white border border-slate-200 rounded-lg p-4 mt-2 flex justify-between items-center relative">
-                      <button 
-                        type="button"
-                        onClick={() => setSelectedRule('')}
-                        className="absolute top-2 right-2 text-slate-500 hover:text-slate-800"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                      <div className="pr-6 w-full">
-                        <p className="text-slate-800 text-sm font-medium mb-1">Cód. {activeRule.code} - {activeRule.description}</p>
+                  {selectedRules.length > 0 && (
+                    <div className="space-y-2 mb-4">
+                      {selectedRules.map(ruleCode => {
+                        const r = rules.find(x => x.code.toString() === ruleCode);
+                        if (!r) return null;
                         
-                        {escalation.isEscalated && (
-                          <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-[11px] text-orange-700 font-bold flex flex-col gap-1">
-                             <div className="flex items-center gap-2">⚠️ ATENÇÃO: {escalation.reason}!</div>
-                             <div className="font-normal">A infração será agravada automaticamente.</div>
-                          </div>
-                        )}
+                        const escalation = selectedStudents.length > 0 ? getEscalationStatus(selectedStudents[0], r.code) : { isEscalated: false, reason: '', measure: r.measure, severity: r.severity };
 
-                        <div className="flex flex-wrap items-center gap-3 mt-2">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                              escalation.severity === 'Leve' ? 'bg-blue-500/10 text-blue-500' :
-                              escalation.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
-                              'bg-red-500/10 text-red-600'
-                            }`}>
-                              Gravidade: {escalation.severity}
-                          </span>
-                          <span className="text-[11px] text-slate-500">Impacto Base: <strong className="text-red-500">{activeRule.points} pts</strong></span>
-                          <span className="text-[11px] text-slate-500">Medida Recomendada: <strong className="text-slate-800">
-                            {escalation.measure}
-                          </strong></span>
-                        </div>
-
-                        {escalation.severity === 'Grave' && (
-                          <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl space-y-4">
-                            <div>
-                              <label className="block text-[11px] font-bold text-blue-700 uppercase mb-2 tracking-wider">Tipo de Resposta Educativa (Grave)</label>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {[
-                                  'Suspensão Escolar',
-                                  'Suspensão de Recreação',
-                                  'Ação Educativa',
-                                  'Transferência Educativa'
-                                ].map(type => (
-                                  <button
-                                    key={type}
-                                    type="button"
-                                    onClick={() => {
-                                      if (type === 'Transferência Educativa' && !confirm('⚠️ A Transferência Educativa é uma medida extrema que exige aprovação do Conselho de Ensino Disciplinar. Deseja prosseguir com a solicitação?')) return;
-                                      setGraveMeasureType(type as any);
-                                    }}
-                                    className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
-                                      graveMeasureType === type 
-                                        ? 'bg-blue-600 border-blue-600 text-white shadow-md' 
-                                        : 'bg-white border-blue-100 text-blue-600 hover:bg-blue-50'
-                                    }`}
-                                  >
-                                    {type}
-                                  </button>
-                                ))}
+                        return (
+                          <div key={ruleCode} className="bg-white border border-slate-200 rounded-lg p-4 flex justify-between items-center relative">
+                            <button 
+                              type="button"
+                              onClick={() => setSelectedRules(prev => prev.filter(x => x !== ruleCode))}
+                              className="absolute top-2 right-2 text-slate-500 hover:text-slate-800"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                            <div className="pr-6 w-full">
+                              <p className="text-slate-800 text-sm font-medium mb-1">Cód. {r.code} - {r.description}</p>
+                              
+                              {escalation.isEscalated && selectedStudents.length === 1 && (
+                                <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-[11px] text-orange-700 font-bold flex flex-col gap-1">
+                                   <div className="flex items-center gap-2">⚠️ ATENÇÃO: {escalation.reason}!</div>
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${escalation.severity === 'Grave' ? 'bg-red-100 text-red-700' : escalation.severity === 'Media' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
+                                  {escalation.measure}
+                                </span>
+                                <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded">
+                                  {r.points} pts
+                                </span>
                               </div>
                             </div>
-
-                            {graveMeasureType === 'Suspensão Escolar' && (
-                              <div className="animate-in fade-in slide-in-from-top-1">
-                                <label className="block text-[10px] font-bold text-blue-700 uppercase mb-2">Duração (Dias Letivos)</label>
-                                <div className="flex items-center gap-4">
-                                  <input 
-                                    type="range" 
-                                    min="1" 
-                                    max="3" 
-                                    value={durationDays}
-                                    onChange={(e) => setDurationDays(parseInt(e.target.value))}
-                                    className="flex-1 h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
-                                  />
-                                  <span className="text-sm font-bold text-blue-700 w-12 text-center bg-white px-2 py-1 rounded border border-blue-200">
-                                    {durationDays} {durationDays === 1 ? 'dia' : 'dias'}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-
-                            {graveMeasureType === 'Ação Educativa' && (
-                              <div className="p-2 bg-white/50 rounded border border-blue-100 text-[10px] text-blue-600 italic">
-                                * Envolve reparação de dano, ação social ou preservação ambiental.
-                              </div>
-                            )}
-
-                            {graveMeasureType === 'Transferência Educativa' && (
-                              <div className="p-2 bg-red-100 rounded border border-red-200 text-[10px] text-red-700 font-bold">
-                                ⚠️ BLOQUEADO: Exige deliberação do Conselho de Ensino Disciplinar.
-                              </div>
-                            )}
                           </div>
-                        )}
-                      </div>
+                        );
+                      })}
+                      
+                      {selectedRules.length > 1 && (
+                         <div className="flex justify-between items-center bg-slate-50 border border-slate-200 rounded-lg p-3">
+                           <span className="text-sm font-bold text-slate-700">Total de Pontos (somados):</span>
+                           <span className="text-sm font-bold text-red-600">
+                             {selectedRules.reduce((sum, code) => sum + (rules.find(r => r.code === parseInt(code, 10))?.points || 0), 0).toFixed(1)} pts
+                           </span>
+                         </div>
+                      )}
                     </div>
-                  )})()}
+                  )}
+
+                  {selectedRules.some(c => rules.find(x => x.code.toString() === c)?.severity === 'Grave') && (() => {
+                    const worstRule = selectedRules.map(c => rules.find(r => r.code.toString() === c)).filter(Boolean).sort((a,b) => (a!.points - b!.points))[0];
+                    if (worstRule!.severity !== 'Grave') return null;
+                    return (
+                     <div className="bg-red-50 p-3 rounded-lg border border-red-100 mt-2 mb-3">
+                        <div className="flex flex-wrap items-center gap-3 mt-2">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-500/10 text-red-600">
+                              Gravidade: Grave
+                          </span>
+                        </div>
+
+                        <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl space-y-4">
+                          <div>
+                            <label className="block text-[11px] font-bold text-blue-700 uppercase mb-2 tracking-wider">Tipo de Resposta Educativa (Grave)</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {[
+                                'Suspensão Escolar',
+                                'Suspensão de Recreação',
+                                'Ação Educativa',
+                                'Transferência Educativa'
+                              ].map(type => (
+                                <button
+                                  key={type}
+                                  type="button"
+                                  onClick={() => {
+                                    if (type === 'Transferência Educativa' && !confirm('⚠️ A Transferência Educativa é uma medida extrema que exige aprovação do Conselho de Ensino Disciplinar. Deseja prosseguir com a solicitação?')) return;
+                                    setGraveMeasureType(type as any);
+                                  }}
+                                  className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
+                                    graveMeasureType === type 
+                                      ? 'bg-blue-600 border-blue-600 text-white shadow-md' 
+                                      : 'bg-white border-blue-100 text-blue-600 hover:bg-blue-50'
+                                  }`}
+                                >
+                                  {type}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {graveMeasureType === 'Suspensão Escolar' && (
+                            <div className="animate-in fade-in slide-in-from-top-1">
+                              <label className="block text-[10px] font-bold text-blue-700 uppercase mb-2">Duração (Dias Letivos)</label>
+                              <div className="flex items-center gap-4">
+                                <input 
+                                  type="range" 
+                                  min="1" 
+                                  max="3" 
+                                  value={durationDays}
+                                  onChange={(e) => setDurationDays(parseInt(e.target.value))}
+                                  className="flex-1 h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                                />
+                                <span className="text-sm font-bold text-blue-700 w-12 text-center bg-white px-2 py-1 rounded border border-blue-200">
+                                  {durationDays} {durationDays === 1 ? 'dia' : 'dias'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+
+                          {graveMeasureType === 'Ação Educativa' && (
+                            <div className="p-2 bg-white/50 rounded border border-blue-100 text-[10px] text-blue-600 italic">
+                              * Envolve reparação de dano, ação social ou preservação ambiental.
+                            </div>
+                          )}
+
+                          {graveMeasureType === 'Transferência Educativa' && (
+                            <div className="p-2 bg-red-100 rounded border border-red-200 text-[10px] text-red-700 font-bold">
+                              ⚠️ BLOQUEADO: Exige deliberação do Conselho de Ensino Disciplinar.
+                            </div>
+                          )}
+                        </div>
+                     </div>
+                    )
+                  })()}
                 </div>
 
                 <div className="flex items-end gap-2">
@@ -1175,7 +1211,7 @@ function RegistroDisciplinarContent() {
                       <button
                         type="button"
                         onClick={handleImproveObservations}
-                        disabled={isImproving || (!observations.trim() && !selectedRule)}
+                        disabled={isImproving || (!observations.trim() && selectedRules.length === 0)}
                         className="flex items-center gap-1 text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full hover:bg-blue-100 transition-all disabled:opacity-50"
                       >
                         <Sparkles size={10} className={isImproving ? "animate-spin" : ""} />
@@ -1348,7 +1384,7 @@ function RegistroDisciplinarContent() {
                 </div>
               </div>
 
-              {selectedRule === '84' && (
+              {selectedRules.includes('84') && (
                 <div className="mt-6 p-5 bg-amber-50 dark:bg-amber-500/10 border-l-4 border-amber-500 rounded-r-2xl shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
                   <div className="flex items-start gap-4">
                     <div className="w-10 h-10 bg-amber-100 dark:bg-amber-500/20 rounded-full flex items-center justify-center shrink-0">
@@ -1472,7 +1508,7 @@ function RegistroDisciplinarContent() {
                   </button>
                   <button 
                     type="submit" 
-                    disabled={selectedStudents.length === 0 || !selectedRule}
+                    disabled={selectedStudents.length === 0 || selectedRules.length === 0}
                     className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {editingOccurrence ? 'Salvar Alterações' : 'Confirmar Registro'}
