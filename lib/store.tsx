@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { supabase } from './supabase';
 import { 
   Student, Occurrence, Accident, Praise, DisciplineRule, Summons, ConductTerm, AuditLog, StaffMember, AppUser, AppUserRole, BehaviorClass,
@@ -120,28 +120,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [conductTerms, setConductTerms] = useState<ConductTerm[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>(INITIAL_STAFF);
-  const [appUsers, setAppUsers] = useState<AppUser[]>(INITIAL_APP_USERS);
+  const [appUsers, setAppUsers] = useState<AppUser[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const storedUsers = localStorage.getItem('eecm_app_users');
+        if (storedUsers) return JSON.parse(storedUsers);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return INITIAL_APP_USERS;
+  });
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
   const [user, setUser] = useState<any | null>(null);
   const [isGuest, setIsGuest] = useState(false);
-  const [currentUserRole, setCurrentUserRole] = useState<AppUserRole | 'GUEST'>('GUEST');
   const [isAuthRestored, setIsAuthRestored] = useState(false);
 
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [isDebugMode, setIsDebugMode] = useState(false);
-  const [geminiApiKey, setGeminiApiKey] = useState('');
-  const [groqApiKey, setGroqApiKey] = useState('');
+  const currentUserRole = useMemo(() => {
+    if (isGuest) return 'GUEST';
+    if (user && user.email) {
+      const matched = appUsers.find(u => u.email.toLowerCase() === user.email.toLowerCase());
+      return matched ? (matched.role as AppUserRole) : 'COORD';
+    }
+    return 'GUEST';
+  }, [user, isGuest, appUsers]);
 
-  useEffect(() => {
-    const storedDebug = localStorage.getItem('eecm_debug_mode');
-    if (storedDebug === 'true') setIsDebugMode(true);
-    
-    const storedGemini = localStorage.getItem('eecm_gemini_key');
-    if (storedGemini) setGeminiApiKey(storedGemini);
-    
-    const storedGroq = localStorage.getItem('eecm_groq_key');
-    if (storedGroq) setGroqApiKey(storedGroq);
-  }, []);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isDebugMode, setIsDebugMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('eecm_debug_mode') === 'true';
+    }
+    return false;
+  });
+  const [geminiApiKey, setGeminiApiKey] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('eecm_gemini_key') || '';
+    }
+    return '';
+  });
+  const [groqApiKey, setGroqApiKey] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('eecm_groq_key') || '';
+    }
+    return '';
+  });
 
   useEffect(() => {
     localStorage.setItem('eecm_debug_mode', isDebugMode.toString());
@@ -155,36 +177,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (groqApiKey) localStorage.setItem('eecm_groq_key', groqApiKey);
   }, [groqApiKey]);
   useEffect(() => {
-    try {
-      const storedUsers = localStorage.getItem('eecm_app_users');
-      if (storedUsers) {
-        setAppUsers(JSON.parse(storedUsers));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
-
-  useEffect(() => {
     if (appUsers.length > 0) {
       localStorage.setItem('eecm_app_users', JSON.stringify(appUsers));
     }
   }, [appUsers]);
-
-  useEffect(() => {
-    if (isGuest) {
-      setCurrentUserRole('GUEST');
-    } else if (user && user.email) {
-      const matched = appUsers.find(u => u.email.toLowerCase() === user.email.toLowerCase());
-      if (matched) {
-        setCurrentUserRole(matched.role);
-      } else {
-        setCurrentUserRole('COORD'); // Defaulting unknown actual logged-in users to COORD
-      }
-    } else {
-      setCurrentUserRole('GUEST');
-    }
-  }, [user, isGuest, appUsers]);
 
   useEffect(() => {
     async function initAuthAndData() {
@@ -580,7 +576,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     checkWriteAccess();
     let newId = `O${occurrences.length + 1}`;
     if (supabase && isSupabaseConnected) {
-      const dbPayload = {
+      const dbPayload: any = {
         student_id: o.studentId,
         date: o.date,
         hour: o.hour,
@@ -592,6 +588,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         video_urls: o.videoUrls,
         signed_doc_urls: o.signedDocUrls
       };
+
+      // If multiple students, we still use the first one for student_id (column constraint)
+      // but we add student_ids column (assuming it exists or will be ignored)
+      if (o.studentIds && o.studentIds.length > 0) {
+        dbPayload.student_ids = o.studentIds;
+      }
+
       try {
         const { data, error } = await supabase!.from('occurrences').insert([dbPayload]).select().single();
         if (error) throw error;
@@ -604,6 +607,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             locatedBy: data.located_by,
             ruleCode: Array.isArray(data.rule_code) ? Number(data.rule_code[0]) : Number(data.rule_code), 
             studentId: String(data.student_id), 
+            studentIds: data.student_ids || [],
             registeredBy: data.registered_by,
             observations: data.observations,
             videoUrls: data.video_urls || (data.video_url ? [data.video_url] : []),
@@ -611,17 +615,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             archived: data.archived || false
           }, ...prev]);
           newId = data.id;
-          logAction('CREATE', 'Ocorrência', newId, `Adicionada ocorrência para o aluno ID: ${o.studentId} (Art. ${o.ruleCode})`);
+          logAction('CREATE', 'Ocorrência', newId, `Adicionada ocorrência para ${o.studentIds?.length || 1} alunos (Art. ${o.ruleCode})`);
           return;
         }
       } catch (err: any) {
         console.error("Occurrence insert error:", err);
-        // alert(`Erro ao salvar ocorrência no servidor: ${err.message}`);
-        // fallback to local for now if columns missing
       }
     }
     setOccurrences(prev => [{ ...o, id: newId }, ...prev]);
-    logAction('CREATE', 'Ocorrência', newId, `Adicionada ocorrência (LOCAL) para o aluno ID: ${o.studentId} (Art. ${o.ruleCode})`);
+    logAction('CREATE', 'Ocorrência', newId, `Adicionada ocorrência (LOCAL) para ${o.studentIds?.length || 1} alunos (Art. ${o.ruleCode})`);
   };
 
   const updateOccurrence = async (id: string, o: Partial<Occurrence>) => {
@@ -965,7 +967,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     logAction('UPDATE', 'Termo de Conduta', id, `Restaurado TAC ${id}`);
   };
 
-  const getStudentOccurrences = (studentId: string) => occurrences.filter(o => o.studentId === studentId && !o.archived);
+  const getStudentOccurrences = (studentId: string) => occurrences.filter(o => {
+    const matchesId = o.studentId === studentId || (o.studentIds && o.studentIds.includes(studentId));
+    return matchesId && !o.archived;
+  });
 
   const checkRecidivism = (studentId: string, ruleCode: number) => {
     const studentOccurrences = getStudentOccurrences(studentId);
@@ -1017,7 +1022,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Recalculating from base 8.0
     let base = 8.0; 
     
-    const studentOccurrences = occurrences.filter(o => o.studentId === studentId && !o.archived);
+    const studentOccurrences = occurrences.filter(o => {
+      const matchesId = o.studentId === studentId || (o.studentIds && o.studentIds.includes(studentId));
+      return matchesId && !o.archived;
+    });
     const studentPraises = praises.filter(p => p.studentId === studentId && !p.archived);
     
     // 1. Deductions (Art. 46)

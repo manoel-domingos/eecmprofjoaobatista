@@ -29,6 +29,7 @@ export interface DisciplineRule {
 export interface Occurrence {
   id: string;
   studentId: string;
+  studentIds?: string[]; // Multiple students in one occurrence
   date: string;
   hour?: string;
   location?: string;

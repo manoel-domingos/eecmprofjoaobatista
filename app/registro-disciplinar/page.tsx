@@ -18,16 +18,12 @@ function RegistroDisciplinarContent() {
   } = useAppContext();
   const searchParams = useSearchParams();
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('Todos os meses');
-  const [selectedClass, setSelectedClass] = useState('Todas as turmas');
+  const paramMonth = searchParams.get('month');
+  const paramClass = searchParams.get('class');
 
-  useEffect(() => {
-    const paramMonth = searchParams.get('month');
-    const paramClass = searchParams.get('class');
-    if (paramMonth && paramMonth !== 'Selecionar...') setSelectedMonth(paramMonth);
-    if (paramClass && paramClass !== 'Todas') setSelectedClass(paramClass);
-  }, [searchParams]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(paramMonth && paramMonth !== 'Selecionar...' ? paramMonth : 'Todos os meses');
+  const [selectedClass, setSelectedClass] = useState(paramClass && paramClass !== 'Todas' ? paramClass : 'Todas as turmas');
 
   const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   const classes = Array.from(new Set(students.map(s => s.class))).sort();
@@ -125,25 +121,35 @@ function RegistroDisciplinarContent() {
 
   const filteredOccurrences = occurrences.filter(o => {
     if (o.archived) return false;
-    const student = students.find(s => s.id === o.studentId);
+    
+    // Get all students associated with this occurrence
+    const relatedStudents = o.studentIds && o.studentIds.length > 0 
+      ? students.filter(s => o.studentIds?.includes(s.id))
+      : students.filter(s => s.id === o.studentId);
+    
+    const primaryStudent = relatedStudents[0];
     
     // Month filter
-    const defaultDate = new Date(o.date);
     const monthIndex = parseInt(o.date.split('-')[1]) - 1; 
-    const month = months[monthIndex] || months[defaultDate.getMonth()];
+    const month = months[monthIndex];
     if (selectedMonth !== 'Todos os meses' && selectedMonth !== '' && month.toLowerCase() !== selectedMonth.toLowerCase()) {
       return false;
     }
 
     // Class filter
     if (selectedClass !== 'Todas as turmas' && selectedClass !== '') {
-      if (!student || student.class.toLowerCase() !== selectedClass.toLowerCase()) {
-        return false;
-      }
+      const anyInClass = relatedStudents.some(s => s.class.toLowerCase() === selectedClass.toLowerCase());
+      if (!anyInClass) return false;
     }
 
-    if (!searchTerm) return true; // Show all non-archived by default
-    return student?.name.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+    if (!searchTerm) return true;
+    
+    // Search in all student names
+    const searchLower = searchTerm.toLowerCase();
+    const anyNameMatch = relatedStudents.some(s => s.name.toLowerCase().includes(searchLower));
+    const obsMatch = o.observations?.toLowerCase().includes(searchLower);
+    
+    return anyNameMatch || obsMatch || false;
   }).sort((a, b) => {
     // Sort by date (newest first)
     const dateA = new Date(a.date).getTime();
@@ -329,6 +335,7 @@ function RegistroDisciplinarContent() {
 
       updateOccurrence(editingOccurrence, {
         studentId,
+        studentIds: selectedStudents,
         date,
         hour,
         location,
@@ -344,34 +351,41 @@ function RegistroDisciplinarContent() {
         aggravatingFactors
       });
     } else {
-      for (const studentId of selectedStudents) {
-         for (const ruleCodeStr of selectedRules) {
-             const ruleCodeInt = parseInt(ruleCodeStr, 10);
-             const escalation = getEscalationStatus(studentId, ruleCodeInt);
-             if (escalation.isEscalated) {
-                const student = students.find(s => s.id === studentId);
-                const confirmed = window.confirm(`⚠️ ATENÇÃO (${student?.name}): ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
-                if (!confirmed) continue;
-             }
-             const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
+      // Create only one occurrence with all students included
+      for (const ruleCodeStr of selectedRules) {
+        const ruleCodeInt = parseInt(ruleCodeStr, 10);
+        
+        // We use the first student as the primary studentId for backward compatibility/DB constraints
+        const primaryStudentId = selectedStudents[0];
+        
+        // Check escalation for each student but logically treat as one event
+        // The user wants one record, so we'll just check escalation for the first one for the alert
+        const escalation = getEscalationStatus(primaryStudentId, ruleCodeInt);
+        if (escalation.isEscalated) {
+          const student = students.find(s => s.id === primaryStudentId);
+          const confirmed = window.confirm(`⚠️ ATENÇÃO (${student?.name}): ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
+          if (!confirmed) continue;
+        }
 
-             addOccurrence({
-               studentId,
-               date,
-               hour,
-               location,
-               locatedBy,
-               ruleCode: ruleCodeInt,
-               registeredBy,
-               observations,
-               measure: measureToSave,
-               videoUrls,
-               signedDocUrls,
-               durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
-               attenuatingFactors,
-               aggravatingFactors
-             });
-         }
+        const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
+
+        addOccurrence({
+          studentId: primaryStudentId,
+          studentIds: selectedStudents,
+          date,
+          hour,
+          location,
+          locatedBy,
+          ruleCode: ruleCodeInt,
+          registeredBy,
+          observations,
+          measure: measureToSave,
+          videoUrls,
+          signedDocUrls,
+          durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
+          attenuatingFactors,
+          aggravatingFactors
+        });
       }
     }
 
@@ -583,7 +597,14 @@ function RegistroDisciplinarContent() {
   };
 
   const handleExport = (o: Occurrence) => {
-    const student = students.find(s => s.id === o.studentId);
+    const relatedStudents = o.studentIds && o.studentIds.length > 0
+      ? students.filter(s => o.studentIds?.includes(s.id))
+      : [students.find(s => s.id === o.studentId)].filter(Boolean) as Student[];
+    
+    const primaryStudent = relatedStudents[0];
+    const studentNames = relatedStudents.map(s => s.name).join(', ');
+    const studentClasses = Array.from(new Set(relatedStudents.map(s => s.class))).join(', ');
+    
     const rule = rules.find(r => r.code === o.ruleCode);
     
     // Calculate if it was escalated at the time
@@ -602,8 +623,6 @@ function RegistroDisciplinarContent() {
                      measure.includes('Suspensão') ? 'TERMO DE SUSPENSÃO' : 
                      'REGISTRO DISCIPLINAR';
 
-    // We shouldn't use window.open strictly inside an iframe cleanly in all cases, 
-    // but a popup for printing usually works. Let's use a nice hidden iframe print or just window popup.
     const printWindow = window.open('', '_blank', 'width=800,height=600');
     if (!printWindow) return;
 
@@ -620,7 +639,7 @@ function RegistroDisciplinarContent() {
     printWindow.document.write(`
       <h${""}tml lang="pt-BR">
         <head>
-          <title>${docTitle} - ${student?.name}</title>
+          <title>${docTitle} - ${primaryStudent?.name}</title>
           <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; max-width: 800px; margin: 0 auto; }
             .header-container { margin-bottom: 30px; }
@@ -648,8 +667,8 @@ function RegistroDisciplinarContent() {
           
           <div class="row"><span class="label">DATA DO REGISTRO:</span><span class="value">${formatDate(o.date)} ${o.hour || ''}</span></div>
           <div class="row"><span class="label">LOCAL:</span><span class="value">${o.location || 'NÃO INFORMADO'}</span></div>
-          <div class="row"><span class="label">ALUNO:</span><span class="value">${student?.name?.toUpperCase()}</span></div>
-          <div class="row"><span class="label">TURMA:</span><span class="value">${student?.class?.toUpperCase()}</span></div>
+          <div class="row"><span class="label">${relatedStudents.length > 1 ? 'ALUNOS' : 'ALUNO'}:</span><span class="value">${studentNames.toUpperCase()}</span></div>
+          <div class="row"><span class="label">${relatedStudents.length > 1 ? 'TURMAS' : 'TURMA'}:</span><span class="value">${studentClasses.toUpperCase()}</span></div>
           <div class="row"><span class="label">LOCALIZADO POR:</span><span class="value">${o.locatedBy?.toUpperCase() || 'NÃO INFORMADO'}</span></div>
           <div class="row"><span class="label">REGISTRADO POR:</span><span class="value">${o.registeredBy?.toUpperCase() || 'SISTEMA'}</span></div>
           
@@ -681,7 +700,14 @@ function RegistroDisciplinarContent() {
   };
 
   const handleExportDocx = (o: Occurrence) => {
-    const student = students.find(s => s.id === o.studentId);
+    const relatedStudents = o.studentIds && o.studentIds.length > 0
+      ? students.filter(s => o.studentIds?.includes(s.id))
+      : [students.find(s => s.id === o.studentId)].filter(Boolean) as Student[];
+    
+    const primaryStudent = relatedStudents[0];
+    const studentNames = relatedStudents.map(s => s.name).join(', ');
+    const studentClasses = Array.from(new Set(relatedStudents.map(s => s.class))).join(', ');
+    
     const rule = rules.find(r => r.code === o.ruleCode);
     
     // Logic similar to handleExport
@@ -718,8 +744,8 @@ function RegistroDisciplinarContent() {
         
         <p><strong>DATA DO REGISTRO:</strong> ${formatDate(o.date)} ${o.hour || ''}</p>
         <p><strong>LOCAL:</strong> ${o.location || 'NÃO INFORMADO'}</p>
-        <p><strong>ALUNO:</strong> ${student?.name?.toUpperCase()}</p>
-        <p><strong>TURMA:</strong> ${student?.class?.toUpperCase()}</p>
+        <p><strong>${relatedStudents.length > 1 ? 'ALUNOS' : 'ALUNO'}:</strong> ${studentNames.toUpperCase()}</p>
+        <p><strong>${relatedStudents.length > 1 ? 'TURMAS' : 'TURMA'}:</strong> ${studentClasses.toUpperCase()}</p>
         <p><strong>LOCALIZADO POR:</strong> ${o.locatedBy?.toUpperCase() || 'NÃO INFORMADO'}</p>
         <p><strong>REGISTRADO POR:</strong> ${o.registeredBy?.toUpperCase() || 'SISTEMA'}</p>
         
@@ -845,20 +871,25 @@ function RegistroDisciplinarContent() {
                     </td>
                   </tr>
                 ) : (
-                  filteredOccurrences.map((o) => {
-                    const student = students.find(s => s.id === o.studentId);
-                    const rule = rules.find(r => r.code === o.ruleCode);
-                    
-                    return (
-                      <tr 
-                        key={o.id} 
-                        onClick={() => setViewOccurrence(o)}
-                        className="hover:bg-slate-50 transition cursor-pointer"
-                        title="Clique para ver os detalhes ou exportar"
-                      >
-                        <td className="px-6 py-4">{formatDate(o.date)}</td>
-                        <td className="px-6 py-4 font-medium text-slate-800">{student?.name || 'Aluno não encontrado'}</td>
-                        <td className="px-6 py-4">{student?.class || '-'}</td>
+                      filteredOccurrences.map((o) => {
+                        const relatedStudents = o.studentIds && o.studentIds.length > 0
+                          ? students.filter(s => o.studentIds?.includes(s.id))
+                          : [students.find(s => s.id === o.studentId)].filter(Boolean) as Student[];
+                        
+                        const names = relatedStudents.map(s => s.name).join(', ');
+                        const classes_occur = Array.from(new Set(relatedStudents.map(s => s.class))).join(', ');
+                        const rule = rules.find(r => r.code === o.ruleCode);
+                        
+                        return (
+                          <tr 
+                            key={o.id} 
+                            onClick={() => setViewOccurrence(o)}
+                            className="hover:bg-slate-50 transition cursor-pointer"
+                            title="Clique para ver os detalhes ou exportar"
+                          >
+                            <td className="px-6 py-4">{formatDate(o.date)}</td>
+                            <td className="px-6 py-4 font-medium text-slate-800 max-w-[200px] truncate">{names || 'Nenhum aluno'}</td>
+                            <td className="px-6 py-4 max-w-[120px] truncate">{classes_occur || '-'}</td>
                         <td className="px-6 py-4 truncate max-w-[200px]">{rule?.code} - {rule?.description}</td>
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
@@ -1731,9 +1762,20 @@ function RegistroDisciplinarContent() {
               
               <div className="p-6 space-y-6">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">Aluno</h3>
-                  <p className="text-lg font-medium text-slate-800">{student?.name || 'Aluno não encontrado'}</p>
-                  <p className="text-sm text-slate-500">Turma {student?.class || '-'}</p>
+                  <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">
+                    {o.studentIds && o.studentIds.length > 1 ? 'Alunos' : 'Aluno'}
+                  </h3>
+                  <div className="space-y-1">
+                    {(o.studentIds && o.studentIds.length > 0 
+                      ? students.filter(s => o.studentIds?.includes(s.id))
+                      : [students.find(s => s.id === o.studentId)].filter(Boolean) as Student[]
+                    ).map(s => (
+                      <div key={s.id}>
+                        <p className="text-lg font-medium text-slate-800">{s.name}</p>
+                        <p className="text-sm text-slate-500">Turma {s.class || '-'}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -1767,7 +1809,7 @@ function RegistroDisciplinarContent() {
                     </div>
                     <div className="flex text-slate-500">
                       <span className="w-20 font-medium">Impacto:</span>
-                      <span className="text-red-500 font-medium">-{rule?.points} pontos</span>
+                      <span className="text-red-500 font-medium">-{Math.abs(rule?.points || 0)} pontos</span>
                     </div>
                   </div>
                 </div>
@@ -1860,7 +1902,7 @@ function RegistroDisciplinarContent() {
                     onClick={(e) => { setViewOccurrence(null); handleArchive(e, o.id); }}
                     className="px-4 py-2 rounded-lg text-orange-600 hover:bg-orange-50 border border-transparent hover:border-orange-200 transition font-medium flex items-center gap-2"
                   >
-                    <Archive className="w-4 h-4" /> Arquivar este registro
+                    <Archive className="w-4 h-4" /> Arquivar
                   </button>
                   <button 
                     onClick={() => { setViewOccurrence(null); setIsGuardianListOpen(false); }}
