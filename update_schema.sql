@@ -16,5 +16,12 @@ ALTER TABLE students ADD COLUMN IF NOT EXISTS cpf TEXT;
 ALTER TABLE students ADD COLUMN IF NOT EXISTS "registrationNumber" TEXT;
 ALTER TABLE students ADD COLUMN IF NOT EXISTS "birthDate" TEXT;
 
+-- occurrences columns
+ALTER TABLE occurrences ADD COLUMN IF NOT EXISTS hour TEXT;
+ALTER TABLE occurrences ADD COLUMN IF NOT EXISTS location TEXT;
+ALTER TABLE occurrences ADD COLUMN IF NOT EXISTS located_by TEXT;
+ALTER TABLE occurrences ADD COLUMN IF NOT EXISTS video_urls JSONB;
+ALTER TABLE occurrences ADD COLUMN IF NOT EXISTS signed_doc_urls JSONB;
+
 -- Atualizar o cache do Supabase imediatamente
 NOTIFY pgrst, 'reload schema';
