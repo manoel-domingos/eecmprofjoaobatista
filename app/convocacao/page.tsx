@@ -95,8 +95,8 @@ export default function ConvocacaoPais() {
         </head>
         <body>
           <div class="header">
-            <div class="title">CARTA DE CONVOCAÇÃO Nº ${s.id.slice(-4).toUpperCase()}</div>
-            <div>Escola Estadual Cívico-Militar</div>
+            <img src="/CABEÇALHO JB.png" style="width: 100%; height: auto;" alt="Cabeçalho">
+            <div class="title" style="margin-top: 20px;">CARTA DE CONVOCAÇÃO Nº ${s.id.slice(-4).toUpperCase()}</div>
           </div>
           <div class="date">São Paulo, ${new Date().toLocaleDateString('pt-BR')}</div>
           <div class="content">

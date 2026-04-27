@@ -109,10 +109,7 @@ export default function Relatorios() {
           
           {/* Header Imitating the image */}
           <div className="text-center mb-8">
-            <h2 className="font-bold text-lg leading-tight uppercase">Estado de Mato Grosso</h2>
-            <h3 className="font-semibold text-sm leading-tight uppercase">Secretaria de Estado de Educação de Mato Grosso</h3>
-            <h3 className="font-semibold text-sm leading-tight uppercase">Coordenadoria de Escolas Cívico-Militares</h3>
-            <h3 className="font-bold mt-2 text-md leading-tight uppercase">Escola Estadual Cívico-Militar</h3>
+            <img src="/CABEÇALHO JB.png" className="w-full h-auto" alt="Cabeçalho Oficial" />
           </div>
 
           <div className="border border-slate-900 rounded p-4 mb-8 text-center bg-slate-50 print:bg-white">

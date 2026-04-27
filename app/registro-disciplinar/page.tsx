@@ -597,31 +597,8 @@ function RegistroDisciplinarContent() {
       : Math.abs(rule?.points || 0);
 
     const headerHtml = `
-      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-           <div style="display: flex; flex-direction: column; text-align: right; line-height: 1;">
-              <span style="font-size: 8px; font-weight: bold; color: #1e3a8a;">SEDUC</span>
-              <span style="font-size: 6px; color: #1e3a8a;">Secretaria de Estado de Educação</span>
-           </div>
-           <div style="height: 30px; width: 1px; background: #cbd5e1;"></div>
-           <div style="display: flex; flex-direction: column; line-height: 1;">
-              <span style="font-size: 10px; font-weight: bold; color: #1e3a8a;">Governo de</span>
-              <span style="font-size: 14px; font-weight: 900; color: #1e3a8a; margin-top: -2px;">Mato Grosso</span>
-           </div>
-        </div>
-        <div style="text-align: center; flex: 1; padding: 0 20px;">
-          <h2 style="font-size: 16px; font-weight: 800; color: #1e3a8a; margin: 0; text-transform: uppercase;">E.E CÍVICO-MILITAR</h2>
-          <h2 style="font-size: 16px; font-weight: 800; color: #1e3a8a; margin: 0; text-transform: uppercase;">PROF. JOÃO BATISTA</h2>
-        </div>
-        <div style="display: flex; align-items: center; gap: 5px;">
-           <div style="text-align: right; display: flex; flex-direction: column;">
-             <span style="font-size: 6px; font-weight: bold; color: #1e3a8a; text-transform: uppercase;">Escola Estadual</span>
-             <span style="font-size: 6px; font-weight: bold; color: #1e3a8a; text-transform: uppercase;">Cívico-Militar</span>
-           </div>
-           <div style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 4px; display: flex; items-center; justify-content: center;">
-              <svg viewBox="0 0 24 24" fill="#1e3a8a" width="30" height="30"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z"/></svg>
-           </div>
-        </div>
+      <div style="width: 100%; margin-bottom: 20px;">
+        <img src="/CABEÇALHO JB.png" style="width: 100%; height: auto;" alt="Cabeçalho Oficial">
       </div>
     `;
 
@@ -712,12 +689,15 @@ function RegistroDisciplinarContent() {
       ? 0.50 * (o.durationDays || 1) 
       : Math.abs(rule?.points || 0);
 
+    const headerHtmlDocx = `
+      <div style="width: 100%; margin-bottom: 20px;">
+        <img src="${window.location.origin}/CABEÇALHO JB.png" width="100%" style="width: 100%; height: auto;" alt="Cabeçalho">
+      </div>
+    `;
+
     const htmlContent = `
       <div style="font-family: Arial, sans-serif;">
-        <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
-          <h2 style="margin: 0;">E.E CÍVICO-MILITAR PROF. JOÃO BATISTA</h2>
-          <p style="margin: 5px 0;">Governo do Estado de Mato Grosso - SEDUC</p>
-        </div>
+        ${headerHtmlDocx}
         
         <h1 style="text-align: center; font-size: 18pt; text-decoration: underline; margin-bottom: 30px;">${docTitle}</h1>
         

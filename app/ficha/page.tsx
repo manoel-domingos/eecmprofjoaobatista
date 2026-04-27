@@ -54,14 +54,14 @@ export default function FichaDisciplinar() {
                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition text-sm shadow-sm"
                 onClick={() => {
                    // DOCX Export for Ficha
+                   const headerHtmlDocx = `
+                    <div style="width: 100%; margin-bottom: 20px;">
+                      <img src="${window.location.origin}/CABEÇALHO JB.png" width="100%" style="width: 100%; height: auto;" alt="Cabeçalho">
+                    </div>
+                   `;
                    const htmlContent = `
                     <div style="font-family: Arial, sans-serif; padding: 20pt;">
-                      <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 20px;">
-                        <div style="text-align: center; flex: 1;">
-                          <h2 style="font-size: 14pt; margin: 0; color: #1e3a8a;">E.E CÍVICO-MILITAR PROF. JOÃO BATISTA</h2>
-                          <p style="font-size: 10pt; margin: 5pt 0;">FICHA DISCIPLINAR INDIVIDUAL (ANEXO II)</p>
-                        </div>
-                      </div>
+                      ${headerHtmlDocx}
                       
                       <div style="border: 1px solid #000; padding: 10pt; margin-bottom: 20pt;">
                         <p><strong>NOME:</strong> ${student.name?.toUpperCase()}</p>
@@ -120,29 +120,7 @@ export default function FichaDisciplinar() {
             </div>
 
             <div className="hidden print:block mb-8">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '2px solid #1e3a8a', paddingBottom: '10px', marginBottom: '20px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'right', lineHeight: '1' }}>
-                    <span style={{ fontSize: '8px', fontWeight: 'bold', color: '#1e3a8a' }}>SEDUC</span>
-                    <span style={{ fontSize: '6px', color: '#1e3a8a' }}>Secretaria de Estado de Educação</span>
-                  </div>
-                  <div style={{ height: '30px', width: '1px', background: '#cbd5e1' }}></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1' }}>
-                    <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#1e3a8a' }}>Governo de</span>
-                    <span style={{ fontSize: '14px', fontWeight: '900', color: '#1e3a8a', marginTop: '-2px' }}>Mato Grosso</span>
-                  </div>
-                </div>
-                <div style={{ textAlign: 'center', flex: 1, padding: '0 20px' }}>
-                  <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#1e3a8a', margin: 0, textTransform: 'uppercase' }}>E.E CÍVICO-MILITAR</h2>
-                  <h2 style={{ fontSize: '16px', fontWeight: '800', color: '#1e3a8a', margin: 0, textTransform: 'uppercase' }}>PROF. JOÃO BATISTA</h2>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '6px', fontWeight: 'bold', color: '#1e3a8a', textTransform: 'uppercase' }}>Escola Estadual</span>
-                    <span style={{ fontSize: '6px', fontWeight: 'bold', color: '#1e3a8a', textTransform: 'uppercase' }}>Cívico-Militar</span>
-                  </div>
-                </div>
-              </div>
+              <img src="/CABEÇALHO JB.png" className="w-full h-auto" alt="Cabeçalho Oficial" />
             </div>
 
             <div className="text-center mb-8">

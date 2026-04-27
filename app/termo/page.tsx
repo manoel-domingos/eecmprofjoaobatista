@@ -92,8 +92,8 @@ export default function TermoDeConduta() {
         </head>
         <body>
           <div class="header">
-            <div class="title">TERMO DE ADEQUAÇÃO DE CONDUTA (TAC)</div>
-            <div>Escola Estadual Cívico-Militar</div>
+            <img src="/CABEÇALHO JB.png" style="width: 100%; height: auto;" alt="Cabeçalho">
+            <div class="title" style="margin-top: 20px;">TERMO DE ADEQUAÇÃO DE CONDUTA (TAC)</div>
           </div>
           <div class="content">
             <p>Pelo presente termo, o(a) aluno(a) <strong>${student?.name}</strong>, regularmente matriculado no <strong>${student?.class}</strong>, e seu responsável legal, Sr(a). <strong>${t.guardianName}</strong>, declaram estar cientes das faltas disciplinares cometidas e assumem o compromisso de adequação de conduta conforme as normas do Regimento Escolar.</p>
