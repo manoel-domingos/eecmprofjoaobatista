@@ -64,7 +64,7 @@ export default function FaltasDisciplinares() {
         {/* Legend */}
         <div className="flex gap-4">
            <div className="px-3 py-1.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium">Leve: -0.1 a -0.2 pontos</div>
-           <div className="px-3 py-1.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-medium">Média: -0.3 a -0.4 pontos</div>
+           <div className="px-3 py-1.5 rounded-md bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 text-xs font-medium">Média: -0.3 a -0.4 pontos</div>
            <div className="px-3 py-1.5 rounded-md bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium">Grave: -0.5 ou mais pontos</div>
         </div>
 
@@ -110,7 +110,7 @@ export default function FaltasDisciplinares() {
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium uppercase ${
                             r.severity === 'Leve' ? 'bg-blue-500/10 text-blue-400' :
-                            r.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-400' :
+                            r.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
                             'bg-red-500/10 text-red-400'
                         }`}>
                             {r.severity}

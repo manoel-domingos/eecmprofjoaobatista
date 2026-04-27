@@ -134,7 +134,7 @@ function ElogiosContent() {
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-t-4 border-t-slate-200">
-            <p className="text-2xl font-bold text-yellow-400">{filteredPraises.length}</p>
+            <p className="text-2xl font-bold text-yellow-600">{filteredPraises.length}</p>
             <p className="text-slate-500 text-sm mt-1">Total de Elogios</p>
           </div>
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-t-4 border-t-slate-200">
@@ -153,7 +153,7 @@ function ElogiosContent() {
              <div className="flex flex-wrap gap-4 w-full md:w-auto">
                <button 
                  onClick={openAddModal}
-                 className="bg-yellow-600/20 text-yellow-500 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2 shrink-0"
+                 className="bg-yellow-600/20 text-yellow-600 px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-2 shrink-0"
                >
                  <Star className="w-4 h-4" /> Registrar Elogio
                </button>
@@ -235,7 +235,7 @@ function ElogiosContent() {
                         <td className="px-6 py-4">{student?.class}</td>
                         <td className="px-6 py-4 truncate max-w-[300px]" title={p.description}>{p.description}</td>
                         <td className="px-6 py-4">
-                           <span className="bg-yellow-500/10 text-yellow-500 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
+                           <span className="bg-yellow-500/10 text-yellow-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
                              {p.type}
                            </span>
                         </td>

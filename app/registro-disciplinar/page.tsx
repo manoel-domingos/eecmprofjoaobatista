@@ -894,7 +894,7 @@ function RegistroDisciplinarContent() {
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             rule?.severity === 'Leve' ? 'bg-blue-500/10 text-blue-400' :
-                            rule?.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-400' :
+                            rule?.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
                             'bg-red-500/10 text-red-400'
                           }`}>
                             {rule?.severity}
@@ -1066,7 +1066,7 @@ function RegistroDisciplinarContent() {
                             <span className="text-slate-800 text-sm font-medium">Cód. {r.code}</span>
                             <span className={`text-xs px-2 py-0.5 rounded ${
                               r.severity === 'Leve' ? 'bg-blue-500/20 text-blue-400' :
-                              r.severity === 'Media' ? 'bg-yellow-500/20 text-yellow-400' :
+                              r.severity === 'Media' ? 'bg-yellow-500/20 text-yellow-600' :
                               'bg-red-500/20 text-red-400'
                             }`}>{r.severity}</span>
                           </div>

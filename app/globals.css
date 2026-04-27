@@ -35,13 +35,13 @@
 }
 
 @theme {
-  --color-yellow-100: #fcffc7;
-  --color-yellow-200: #f8ff80;
-  --color-yellow-300: #f4ff3b;
-  --color-yellow-400: #f0ff00;
-  --color-yellow-500: #d6e600;
-  --color-yellow-600: #a7b300;
-  --color-yellow-700: #7d8500;
+  --color-yellow-100: #fef9c3;
+  --color-yellow-200: #fef08a;
+  --color-yellow-300: #fde047;
+  --color-yellow-400: #facc15;
+  --color-yellow-500: #eab308;
+  --color-yellow-600: #ca8a04;
+  --color-yellow-700: #a16207;
 }
 
 @layer utilities {
