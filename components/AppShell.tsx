@@ -331,7 +331,7 @@ function TopbarLayout({
               <Menu className="w-6 h-6" />
             </button>
             <img
-              src="/logo.png"
+              src="/logo_dash.svg"
               alt="EECM"
               className="w-16 h-16 md:w-[88px] md:h-[88px] object-contain shrink-0 drop-shadow-sm"
             />
@@ -436,7 +436,7 @@ function GroupPill({
 
       {open && (
         <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 z-[200] min-w-[240px]">
-          <div className="glass-card absolute z-[210] w-full mt-2 max-h-60 flex flex-col py-1.5 overflow-hidden !rounded-3xl shadow-2xl">
+          <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-3xl absolute z-[210] w-full mt-2 max-h-60 flex flex-col py-1.5 overflow-hidden !rounded-3xl shadow-2xl border border-slate-200/60 dark:border-slate-700/60">
             {group.children!.map((item) => {
               const active = pathname === item.href;
               return (
