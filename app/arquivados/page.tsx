@@ -11,7 +11,8 @@ type TabType = 'alunos' | 'ocorrencias' | 'acidentes' | 'elogios' | 'termos' | '
 
 export default function Arquivados() {
   const { students, occurrences, accidents, praises, conductTerms, summons, rules,
-    restoreStudent, restoreOccurrence, restoreAccident, restorePraise, restoreConductTerm, restoreSummons } = useAppContext();
+    restoreStudent, restoreOccurrence, restoreAccident, restorePraise, restoreConductTerm, restoreSummons,
+    deleteStudent, deleteOccurrence, deleteAccident, deletePraise, deleteConductTerm, deleteSummons } = useAppContext();
   const [activeTab, setActiveTab] = useState<TabType>('alunos');
   const [selectedItem, setSelectedItem] = useState<{type: string, id: string, data: any} | null>(null);
 
@@ -28,6 +29,23 @@ export default function Arquivados() {
     } catch (error) {
       console.error(error);
       alert('Erro ao restaurar');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedItem) return;
+    if (!confirm('Tem certeza que deseja excluir DEIFINITIVAMENTE este item? Esta ação NÃO pode ser desfeita.')) return;
+    try {
+      if (selectedItem.type === 'aluno') await deleteStudent(selectedItem.id);
+      if (selectedItem.type === 'ocorrencia') await deleteOccurrence(selectedItem.id);
+      if (selectedItem.type === 'acidente') await deleteAccident(selectedItem.id);
+      if (selectedItem.type === 'elogio') await deletePraise(selectedItem.id);
+      if (selectedItem.type === 'termo') await deleteConductTerm(selectedItem.id);
+      if (selectedItem.type === 'convocacao') await deleteSummons(selectedItem.id);
+      setSelectedItem(null);
+    } catch (error) {
+      console.error(error);
+      alert('Erro ao deletar');
     }
   };
 
@@ -308,19 +326,27 @@ export default function Arquivados() {
                </div>
             )}
             
-            <div className="pt-6 mt-4 border-t flex justify-end gap-3 border-slate-200">
+            <div className="pt-6 mt-4 border-t flex justify-between items-center gap-3 border-slate-200">
               <button
-                onClick={() => setSelectedItem(null)}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                onClick={handleDelete}
+                className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-sm font-medium"
               >
-                Cancelar
+                <Trash2 className="w-4 h-4" /> Excluir Definitivamente
               </button>
-              <button
-                onClick={handleRestore}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-              >
-                <ArrowUpCircle className="w-4 h-4" /> Restaurar
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleRestore}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm font-medium"
+                >
+                  <ArrowUpCircle className="w-4 h-4" /> Restaurar
+                </button>
+              </div>
             </div>
           </div>
         )}

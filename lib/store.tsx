@@ -47,6 +47,7 @@ interface AppContextType extends AppState {
   updateStudent: (id: string, s: Partial<Student>) => Promise<void>;
   archiveStudent: (id: string) => Promise<void>;
   restoreStudent: (id: string) => Promise<void>;
+  deleteStudent: (id: string) => Promise<void>;
   deleteAllStudents: () => Promise<void>;
   refreshData: () => Promise<void>;
 
@@ -54,26 +55,31 @@ interface AppContextType extends AppState {
   updateOccurrence: (id: string, o: Partial<Occurrence>) => Promise<void>;
   archiveOccurrence: (id: string) => Promise<void>;
   restoreOccurrence: (id: string) => Promise<void>;
+  deleteOccurrence: (id: string) => Promise<void>;
   
   addAccident: (a: Omit<Accident, 'id'>) => Promise<void>;
   updateAccident: (id: string, a: Partial<Accident>) => Promise<void>;
   archiveAccident: (id: string) => Promise<void>;
   restoreAccident: (id: string) => Promise<void>;
+  deleteAccident: (id: string) => Promise<void>;
   
   addPraise: (p: Omit<Praise, 'id'>) => Promise<void>;
   updatePraise: (id: string, p: Partial<Praise>) => Promise<void>;
   archivePraise: (id: string) => Promise<void>;
   restorePraise: (id: string) => Promise<void>;
+  deletePraise: (id: string) => Promise<void>;
 
   addSummons: (s: Omit<Summons, 'id'>) => Promise<void>;
   updateSummons: (id: string, s: Partial<Summons>) => Promise<void>;
   archiveSummons: (id: string) => Promise<void>;
   restoreSummons: (id: string) => Promise<void>;
+  deleteSummons: (id: string) => Promise<void>;
 
   addConductTerm: (t: Omit<ConductTerm, 'id'>) => Promise<void>;
   updateConductTerm: (id: string, t: Partial<ConductTerm>) => Promise<void>;
   archiveConductTerm: (id: string) => Promise<void>;
   restoreConductTerm: (id: string) => Promise<void>;
+  deleteConductTerm: (id: string) => Promise<void>;
 
   updateRule: (code: number, r: Partial<DisciplineRule>) => Promise<void>;
   addStaffMember: (s: Omit<StaffMember, 'id'>) => Promise<void>;
@@ -462,14 +468,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const archiveStudent = async (id: string) => {
     checkWriteAccess();
-    // Column 'archived' does not exist in Supabase yet
+    if (supabase && isSupabaseConnected) await supabase.from('students').update({ archived: true }).eq('id', id);
     setStudents(prev => prev.map(item => item.id === id ? { ...item, archived: true } : item));
     logAction('UPDATE', 'Aluno', id, `Arquivado aluno: ${id}`);
   };
 
+  const deleteStudent = async (id: string) => {
+    checkWriteAccess();
+    if (supabase && isSupabaseConnected) await supabase.from('students').delete().eq('id', id);
+    setStudents(prev => prev.filter(item => item.id !== id));
+    logAction('DELETE', 'Aluno', id, `Excluído aluno definitivamente: ${id}`);
+  };
+
   const restoreStudent = async (id: string) => {
     checkWriteAccess();
-    // Column 'archived' does not exist in Supabase yet
+    if (supabase && isSupabaseConnected) await supabase.from('students').update({ archived: false }).eq('id', id);
     setStudents(prev => prev.map(item => item.id === id ? { ...item, archived: false } : item));
     logAction('UPDATE', 'Aluno', id, `Restaurado aluno: ${id}`);
   };
@@ -641,14 +654,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const archiveOccurrence = async (id: string) => {
     checkWriteAccess();
-    // Column 'archived' does not exist in Supabase yet
+    if (supabase && isSupabaseConnected) await supabase.from('occurrences').update({ archived: true }).eq('id', id);
     setOccurrences(prev => prev.map(item => item.id === id ? { ...item, archived: true } : item));
     logAction('UPDATE', 'Ocorrência', id, `Arquivada ocorrência ${id}`);
   };
 
+  const deleteOccurrence = async (id: string) => {
+    checkWriteAccess();
+    if (supabase && isSupabaseConnected) await supabase.from('occurrences').delete().eq('id', id);
+    setOccurrences(prev => prev.filter(item => item.id !== id));
+    logAction('DELETE', 'Ocorrência', id, `Excluída ocorrência definitivamente ${id}`);
+  };
+
   const restoreOccurrence = async (id: string) => {
     checkWriteAccess();
-    // Column 'archived' does not exist in Supabase yet
+    if (supabase && isSupabaseConnected) await supabase.from('occurrences').update({ archived: false }).eq('id', id);
     setOccurrences(prev => prev.map(item => item.id === id ? { ...item, archived: false } : item));
     logAction('UPDATE', 'Ocorrência', id, `Restaurada ocorrência ${id}`);
   };
@@ -711,14 +731,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const archiveAccident = async (id: string) => {
     checkWriteAccess();
-    // Column 'archived' does not exist in Supabase yet
+    if (supabase && isSupabaseConnected) await supabase.from('accidents').update({ archived: true }).eq('id', id);
     setAccidents(prev => prev.map(item => item.id === id ? { ...item, archived: true } : item));
     logAction('UPDATE', 'Acidente', id, `Arquivado acidente ${id}`);
   };
 
+  const deleteAccident = async (id: string) => {
+    checkWriteAccess();
+    if (supabase && isSupabaseConnected) await supabase.from('accidents').delete().eq('id', id);
+    setAccidents(prev => prev.filter(item => item.id !== id));
+    logAction('DELETE', 'Acidente', id, `Excluído acidente definitivamente ${id}`);
+  };
+
   const restoreAccident = async (id: string) => {
     checkWriteAccess();
-    // Column 'archived' does not exist in Supabase yet
+    if (supabase && isSupabaseConnected) await supabase.from('accidents').update({ archived: false }).eq('id', id);
     setAccidents(prev => prev.map(item => item.id === id ? { ...item, archived: false } : item));
     logAction('UPDATE', 'Acidente', id, `Restaurado acidente ${id}`);
   };
@@ -771,14 +798,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const archivePraise = async (id: string) => {
     checkWriteAccess();
-    // Column 'archived' does not exist in Supabase yet
+    if (supabase && isSupabaseConnected) await supabase.from('praises').update({ archived: true }).eq('id', id);
     setPraises(prev => prev.map(item => item.id === id ? { ...item, archived: true } : item));
     logAction('UPDATE', 'Elogio', id, `Arquivado elogio ${id}`);
   };
 
+  const deletePraise = async (id: string) => {
+    checkWriteAccess();
+    if (supabase && isSupabaseConnected) await supabase.from('praises').delete().eq('id', id);
+    setPraises(prev => prev.filter(item => item.id !== id));
+    logAction('DELETE', 'Elogio', id, `Excluído elogio definitivamente ${id}`);
+  };
+
   const restorePraise = async (id: string) => {
     checkWriteAccess();
-    // Column 'archived' does not exist in Supabase yet
+    if (supabase && isSupabaseConnected) await supabase.from('praises').update({ archived: false }).eq('id', id);
     setPraises(prev => prev.map(item => item.id === id ? { ...item, archived: false } : item));
     logAction('UPDATE', 'Elogio', id, `Restaurado elogio ${id}`);
   };
@@ -845,14 +879,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const archiveSummons = async (id: string) => {
     checkWriteAccess();
-    // Column 'archived' does not exist in Supabase yet
+    if (supabase && isSupabaseConnected) await supabase.from('summons').update({ archived: true }).eq('id', id);
     setSummons(prev => prev.map(item => item.id === id ? { ...item, archived: true } : item));
     logAction('UPDATE', 'Convocação', id, `Arquivada convocação ${id}`);
   };
 
+  const deleteSummons = async (id: string) => {
+    checkWriteAccess();
+    if (supabase && isSupabaseConnected) await supabase.from('summons').delete().eq('id', id);
+    setSummons(prev => prev.filter(item => item.id !== id));
+    logAction('DELETE', 'Convocação', id, `Excluída convocação definitivamente ${id}`);
+  };
+
   const restoreSummons = async (id: string) => {
     checkWriteAccess();
-    // Column 'archived' does not exist in Supabase yet
+    if (supabase && isSupabaseConnected) await supabase.from('summons').update({ archived: false }).eq('id', id);
     setSummons(prev => prev.map(item => item.id === id ? { ...item, archived: false } : item));
     logAction('UPDATE', 'Convocação', id, `Restaurada convocação ${id}`);
   };
@@ -905,14 +946,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const archiveConductTerm = async (id: string) => {
     checkWriteAccess();
-    // Column 'archived' does not exist in Supabase yet
+    if (supabase && isSupabaseConnected) await supabase.from('conduct_terms').update({ archived: true }).eq('id', id);
     setConductTerms(prev => prev.map(item => item.id === id ? { ...item, archived: true } : item));
     logAction('UPDATE', 'Termo de Conduta', id, `Arquivado TAC ${id}`);
   };
 
+  const deleteConductTerm = async (id: string) => {
+    checkWriteAccess();
+    if (supabase && isSupabaseConnected) await supabase.from('conduct_terms').delete().eq('id', id);
+    setConductTerms(prev => prev.filter(item => item.id !== id));
+    logAction('DELETE', 'Termo de Conduta', id, `Excluído TAC definitivamente ${id}`);
+  };
+
   const restoreConductTerm = async (id: string) => {
     checkWriteAccess();
-    // Column 'archived' does not exist in Supabase yet
+    if (supabase && isSupabaseConnected) await supabase.from('conduct_terms').update({ archived: false }).eq('id', id);
     setConductTerms(prev => prev.map(item => item.id === id ? { ...item, archived: false } : item));
     logAction('UPDATE', 'Termo de Conduta', id, `Restaurado TAC ${id}`);
   };
@@ -1114,12 +1162,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setGuestMode, setMockUser, logout,
       logAction, refreshData,
       addAppUser, updateAppUser, deleteAppUser,
-      addStudent, importStudents, updateStudent, archiveStudent, restoreStudent, deleteAllStudents,
-      addOccurrence, updateOccurrence, archiveOccurrence, restoreOccurrence,
-      addAccident, updateAccident, archiveAccident, restoreAccident,
-      addPraise, updatePraise, archivePraise, restorePraise,
-      addSummons, updateSummons, archiveSummons, restoreSummons,
-      addConductTerm, updateConductTerm, archiveConductTerm, restoreConductTerm,
+      addStudent, importStudents, updateStudent, archiveStudent, restoreStudent, deleteStudent, deleteAllStudents,
+      addOccurrence, updateOccurrence, archiveOccurrence, restoreOccurrence, deleteOccurrence,
+      addAccident, updateAccident, archiveAccident, restoreAccident, deleteAccident,
+      addPraise, updatePraise, archivePraise, restorePraise, deletePraise,
+      addSummons, updateSummons, archiveSummons, restoreSummons, deleteSummons,
+      addConductTerm, updateConductTerm, archiveConductTerm, restoreConductTerm, deleteConductTerm,
       updateRule, addStaffMember,
       getStudentPoints, getStudentBehavior, getStudentOccurrences, checkRecidivism, getEscalationStatus
     }}>
