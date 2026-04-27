@@ -320,9 +320,9 @@ function TopbarLayout({
 
   return (
     <>
-      <header className="z-[100] px-4 pt-2 pb-1 space-y-2 pointer-events-none sticky top-0">
+      <header className="z-30 px-4 pt-2 pb-1 space-y-2 pointer-events-none">
         {/* top row: logo + right controls */}
-        <div className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/50 dark:border-slate-800/60 shadow-md rounded-full flex items-center justify-between gap-4 px-4 md:px-6 py-1">
+        <div className="pointer-events-auto bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/40 dark:border-slate-800/50 shadow-sm rounded-full flex items-center justify-between gap-4 px-4 md:px-6 py-1">
           <div className="flex items-center gap-3 min-w-0">
             <button
               className="p-1 -ml-1 text-slate-500 dark:text-slate-400 md:hidden"
@@ -331,7 +331,7 @@ function TopbarLayout({
               <Menu className="w-6 h-6" />
             </button>
             <img
-              src="/nova_logo.png"
+              src="/logo.png"
               alt="EECM"
               className="w-16 h-16 md:w-[88px] md:h-[88px] object-contain shrink-0 drop-shadow-sm"
             />
@@ -435,8 +435,8 @@ function GroupPill({
       </button>
 
       {open && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 z-[110] min-w-[240px]">
-          <div className="glass-card absolute z-[120] w-full mt-2 max-h-60 flex flex-col py-1.5 overflow-hidden !rounded-3xl">
+        <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 z-[200] min-w-[240px]">
+          <div className="glass-card absolute z-[210] w-full mt-2 max-h-60 flex flex-col py-1.5 overflow-hidden !rounded-3xl shadow-2xl">
             {group.children!.map((item) => {
               const active = pathname === item.href;
               return (
