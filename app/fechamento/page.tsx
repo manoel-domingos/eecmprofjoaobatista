@@ -6,8 +6,20 @@ import { Award, AlertTriangle } from 'lucide-react';
 import { useAppContext } from '@/lib/store';
 
 export default function FechamentoAno() {
-  const { students } = useAppContext();
+  const { students, currentUserRole } = useAppContext();
   const [confirmText, setConfirmText] = useState('');
+
+  if (currentUserRole !== 'GESTOR') {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center p-12 text-center">
+           <AlertTriangle className="w-12 h-12 text-orange-400 mb-4" />
+           <h2 className="text-xl font-bold text-slate-800">Acesso Restrito</h2>
+           <p className="text-slate-500 mt-2">Somente gestores podem realizar o fechamento do ano letivo.</p>
+        </div>
+      </AppShell>
+    );
+  }
 
   const handleCloseYear = () => {
     if (confirmText !== 'FECHAR 2026') return;

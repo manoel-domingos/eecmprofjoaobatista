@@ -8,7 +8,7 @@ import { Summons } from '@/lib/data';
 import { getLocalDateString, formatDate } from '@/lib/utils';
 
 export default function ConvocacaoPais() {
-  const { students, summons, addSummons, updateSummons, archiveSummons } = useAppContext();
+  const { students, summons, addSummons, updateSummons, archiveSummons, currentUserRole } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSummons, setEditingSummons] = useState<string | null>(null);
@@ -131,12 +131,14 @@ export default function ConvocacaoPais() {
             <h1 className="text-2xl font-bold text-slate-800">Convocação de Pais</h1>
             <p className="text-slate-500 text-sm">Gerenciamento de convocações oficiais.</p>
           </div>
-          <button 
-            onClick={openAddModal}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"
-          >
-            <Plus className="w-5 h-5" /> Nova Convocação
-          </button>
+          {currentUserRole !== 'GUEST' && (
+            <button 
+              onClick={openAddModal}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"
+            >
+              <Plus className="w-5 h-5" /> Nova Convocação
+            </button>
+          )}
         </div>
 
         {/* List Card */}
@@ -196,13 +198,15 @@ export default function ConvocacaoPais() {
                              >
                                <Printer className="w-4 h-4" />
                              </button>
-                             <button 
-                               onClick={() => openEditModal(s)}
-                               className="p-1.5 text-slate-400 hover:text-blue-500 transition"
-                               title="Editar"
-                             >
-                               <Edit2 className="w-4 h-4" />
-                             </button>
+                             {currentUserRole !== 'GUEST' && (
+                               <button 
+                                 onClick={() => openEditModal(s)}
+                                 className="p-1.5 text-slate-400 hover:text-blue-500 transition"
+                                 title="Editar"
+                               >
+                                 <Edit2 className="w-4 h-4" />
+                               </button>
+                             )}
                           </div>
                         </td>
                       </tr>

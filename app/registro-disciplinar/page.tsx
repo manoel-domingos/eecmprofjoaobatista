@@ -5,7 +5,7 @@ import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
 import { Search, Plus, X, Edit2, Archive, Video, FileText, Camera, Clock, MapPin, UserPlus, Trash2, MessageSquare, Phone, Printer, Sparkles, AlertTriangle } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
-import { Occurrence, StaffMember } from '@/lib/data';
+import { Occurrence, StaffMember, Student } from '@/lib/data';
 import { getLocalDateString, getLocalTimeString, formatDate, formatPhoneForWhatsApp } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import { generateContentWithFallback } from '@/lib/ai';
@@ -1110,7 +1110,7 @@ function RegistroDisciplinarContent() {
                                   {escalation.measure}
                                 </span>
                                 <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded">
-                                  {r.points} pts
+                                  {Math.abs(r.points)} pts
                                 </span>
                               </div>
                             </div>
@@ -1122,7 +1122,7 @@ function RegistroDisciplinarContent() {
                          <div className="flex justify-between items-center bg-slate-50 border border-slate-200 rounded-lg p-3">
                            <span className="text-sm font-bold text-slate-700">Total de Pontos (somados):</span>
                            <span className="text-sm font-bold text-red-600">
-                             {selectedRules.reduce((sum, code) => sum + (rules.find(r => r.code === parseInt(code, 10))?.points || 0), 0).toFixed(1)} pts
+                             {Math.abs(selectedRules.reduce((sum, code) => sum + (rules.find(r => r.code === parseInt(code, 10))?.points || 0), 0)).toFixed(1)} pts
                            </span>
                          </div>
                       )}
@@ -1898,12 +1898,14 @@ function RegistroDisciplinarContent() {
                 </div>
 
                 <div className="flex justify-end gap-3 flex-wrap">
-                  <button 
-                    onClick={(e) => { setViewOccurrence(null); handleArchive(e, o.id); }}
-                    className="px-4 py-2 rounded-lg text-orange-600 hover:bg-orange-50 border border-transparent hover:border-orange-200 transition font-medium flex items-center gap-2"
-                  >
-                    <Archive className="w-4 h-4" /> Arquivar
-                  </button>
+                  {currentUserRole !== 'GUEST' && (
+                    <button 
+                      onClick={(e) => { setViewOccurrence(null); handleArchive(e, o.id); }}
+                      className="px-4 py-2 rounded-lg text-orange-600 hover:bg-orange-50 border border-transparent hover:border-orange-200 transition font-medium flex items-center gap-2"
+                    >
+                      <Archive className="w-4 h-4" /> Arquivar
+                    </button>
+                  )}
                   <button 
                     onClick={() => { setViewOccurrence(null); setIsGuardianListOpen(false); }}
                     className="px-4 py-2 rounded-lg text-slate-600 hover:bg-white border border-transparent hover:border-slate-200 transition font-medium"

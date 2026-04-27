@@ -91,7 +91,7 @@ export default function ConfiguracoesPage() {
           <ul className="list-disc ml-5 mt-1 space-y-1">
             <li><strong>Gestor:</strong> Acesso total ao sistema, inclusive a esta tela de configuração.</li>
             <li><strong>Coordenador / Monitor:</strong> Acesso de gravação (adicionar, editar dados), mas não pode mudar papéis.</li>
-            <li><strong>Qualquer outro e-mail:</strong> Terá permissão automática de "Convidado" (Somente Leitura).</li>
+            <li><strong>Qualquer outro e-mail:</strong> Terá permissão automática de &quot;Convidado&quot; (Somente Leitura).</li>
           </ul>
         </div>
       </div>

@@ -8,7 +8,7 @@ import { ConductTerm } from '@/lib/data';
 import { getLocalDateString, formatDate } from '@/lib/utils';
 
 export default function TermoDeConduta() {
-  const { students, conductTerms, addConductTerm, updateConductTerm, archiveConductTerm } = useAppContext();
+  const { students, conductTerms, addConductTerm, updateConductTerm, archiveConductTerm, currentUserRole } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTerm, setEditingTerm] = useState<string | null>(null);
@@ -133,12 +133,14 @@ export default function TermoDeConduta() {
             <h1 className="text-2xl font-bold text-slate-800">Termo de Adequação de Conduta</h1>
             <p className="text-slate-500 text-sm">Gerenciamento de termos de conduta (TAC).</p>
           </div>
-          <button 
-            onClick={openAddModal}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"
-          >
-            <Plus className="w-5 h-5" /> Novo TAC
-          </button>
+          {currentUserRole !== 'GUEST' && (
+            <button 
+              onClick={openAddModal}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"
+            >
+              <Plus className="w-5 h-5" /> Novo TAC
+            </button>
+          )}
         </div>
 
         {/* List Card */}
@@ -194,13 +196,15 @@ export default function TermoDeConduta() {
                             >
                                <Printer className="w-4 h-4" />
                             </button>
-                            <button 
-                               onClick={() => openEditModal(t)}
-                               className="p-1.5 text-slate-400 hover:text-blue-500 transition"
-                               title="Editar"
-                            >
-                               <Edit2 className="w-4 h-4" />
-                            </button>
+                            {currentUserRole !== 'GUEST' && (
+                              <button 
+                                onClick={() => openEditModal(t)}
+                                className="p-1.5 text-slate-400 hover:text-blue-500 transition"
+                                title="Editar"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

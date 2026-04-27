@@ -9,7 +9,7 @@ import { useSearchParams } from 'next/navigation';
 import SearchableSelect from '@/components/SearchableSelect';
 
 function ElogiosContent() {
-  const { students, praises, addPraise, updatePraise, archivePraise } = useAppContext();
+  const { students, praises, addPraise, updatePraise, archivePraise, currentUserRole } = useAppContext();
   const searchParams = useSearchParams();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -123,12 +123,14 @@ function ElogiosContent() {
             <h1 className="text-2xl font-bold text-slate-800">Elogios e Bonificações</h1>
             <p className="text-slate-500 text-sm">O registros somam pontos à nota de comportamento.</p>
           </div>
-          <button 
-            onClick={openAddModal}
-            className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"
-          >
-            <Plus className="w-5 h-5" /> Registrar Elogio
-          </button>
+          {currentUserRole !== 'GUEST' && (
+            <button 
+              onClick={openAddModal}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition"
+            >
+              <Plus className="w-5 h-5" /> Registrar Elogio
+            </button>
+          )}
         </div>
 
         {/* Stats */}
@@ -249,13 +251,15 @@ function ElogiosContent() {
                              >
                                 <Printer className="w-4 h-4" />
                              </button>
-                             <button 
-                               onClick={() => openEditModal(p)}
-                               className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors"
-                               title="Editar"
-                             >
-                                <Edit2 className="w-4 h-4" />
-                             </button>
+                             {currentUserRole !== 'GUEST' && (
+                               <button 
+                                 onClick={() => openEditModal(p)}
+                                 className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors"
+                                 title="Editar"
+                               >
+                                  <Edit2 className="w-4 h-4" />
+                               </button>
+                             )}
                           </div>
                         </td>
                       </tr>

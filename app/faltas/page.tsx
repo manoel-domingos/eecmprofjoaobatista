@@ -7,7 +7,7 @@ import { DisciplineRule } from '@/lib/data';
 import { BookOpen, Search, Edit2, X } from 'lucide-react';
 
 export default function FaltasDisciplinares() {
-  const { rules, updateRule } = useAppContext();
+  const { rules, updateRule, currentUserRole } = useAppContext();
   const [searchTerm, setSearchTerm] = useState('');
   const [editingRule, setEditingRule] = useState<DisciplineRule | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -119,12 +119,14 @@ export default function FaltasDisciplinares() {
                       <td className="px-6 py-4 text-center font-bold text-red-400">{r.points}</td>
                       <td className="px-6 py-4 text-slate-500">{r.measure}</td>
                       <td className="px-6 py-4 text-center text-slate-400">
-                         <button 
-                           onClick={() => openEditModal(r)}
-                           className="hover:text-slate-800 transition p-1"
-                         >
-                           <Edit2 className="w-4 h-4" />
-                         </button>
+                         {currentUserRole !== 'GUEST' && (
+                           <button 
+                             onClick={() => openEditModal(r)}
+                             className="hover:text-slate-800 transition p-1"
+                           >
+                             <Edit2 className="w-4 h-4" />
+                           </button>
+                         )}
                       </td>
                     </tr>
                   ))

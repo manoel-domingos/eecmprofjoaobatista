@@ -12,7 +12,7 @@ type TabType = 'alunos' | 'ocorrencias' | 'acidentes' | 'elogios' | 'termos' | '
 export default function Arquivados() {
   const { students, occurrences, accidents, praises, conductTerms, summons, rules,
     restoreStudent, restoreOccurrence, restoreAccident, restorePraise, restoreConductTerm, restoreSummons,
-    deleteStudent, deleteOccurrence, deleteAccident, deletePraise, deleteConductTerm, deleteSummons } = useAppContext();
+    deleteStudent, deleteOccurrence, deleteAccident, deletePraise, deleteConductTerm, deleteSummons, currentUserRole } = useAppContext();
   const [activeTab, setActiveTab] = useState<TabType>('alunos');
   const [selectedItem, setSelectedItem] = useState<{type: string, id: string, data: any} | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -335,12 +335,14 @@ export default function Arquivados() {
             )}
             
             <div className="pt-6 mt-4 border-t flex justify-between items-center gap-3 border-slate-200">
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-sm font-medium"
-              >
-                <Trash2 className="w-4 h-4" /> Excluir permanentemente
-              </button>
+              {currentUserRole !== 'GUEST' && (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-sm font-medium"
+                >
+                  <Trash2 className="w-4 h-4" /> Excluir permanentemente
+                </button>
+              )}
               <div className="flex gap-3">
                 <button
                   onClick={() => setSelectedItem(null)}
@@ -348,12 +350,14 @@ export default function Arquivados() {
                 >
                   Cancelar
                 </button>
-                <button
-                  onClick={handleRestore}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm font-medium"
-                >
-                  <ArrowUpCircle className="w-4 h-4" /> Restaurar
-                </button>
+                {currentUserRole !== 'GUEST' && (
+                  <button
+                    onClick={handleRestore}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm font-medium"
+                  >
+                    <ArrowUpCircle className="w-4 h-4" /> Restaurar
+                  </button>
+                )}
               </div>
             </div>
           </div>
