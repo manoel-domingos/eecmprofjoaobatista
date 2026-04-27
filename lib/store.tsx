@@ -276,7 +276,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             hour: o.hour,
             location: o.location,
             locatedBy: o.located_by,
-            ruleCode: Number(o.rule_code), 
+            ruleCode: Array.isArray(o.rule_code) ? Number(o.rule_code[0]) : Number(o.rule_code), 
             studentId: String(o.student_id), 
             registeredBy: o.registered_by,
             observations: o.observations,
@@ -515,7 +515,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         hour: o.hour,
         location: o.location,
         locatedBy: o.located_by,
-        ruleCode: Number(o.rule_code), 
+        ruleCode: Array.isArray(o.rule_code) ? Number(o.rule_code[0]) : Number(o.rule_code), 
         studentId: String(o.student_id), 
         registeredBy: o.registered_by,
         observations: o.observations,
@@ -573,7 +573,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         hour: o.hour,
         location: o.location,
         located_by: o.locatedBy,
-        rule_code: o.ruleCode,
+        rule_code: [o.ruleCode],
         registered_by: o.registeredBy,
         observations: o.observations,
         video_urls: o.videoUrls,
@@ -589,7 +589,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             hour: data.hour,
             location: data.location,
             locatedBy: data.located_by,
-            ruleCode: Number(data.rule_code), 
+            ruleCode: Array.isArray(data.rule_code) ? Number(data.rule_code[0]) : Number(data.rule_code), 
             studentId: String(data.student_id), 
             registeredBy: data.registered_by,
             observations: data.observations,
@@ -620,7 +620,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (o.hour) dbPayload.hour = o.hour;
       if (o.location) dbPayload.location = o.location;
       if (o.locatedBy) dbPayload.located_by = o.locatedBy;
-      if (o.ruleCode) dbPayload.rule_code = o.ruleCode;
+      if (o.ruleCode) dbPayload.rule_code = [o.ruleCode];
       if (o.registeredBy) dbPayload.registered_by = o.registeredBy;
       if (o.observations !== undefined) dbPayload.observations = o.observations;
       if (o.videoUrls) dbPayload.video_urls = o.videoUrls;
