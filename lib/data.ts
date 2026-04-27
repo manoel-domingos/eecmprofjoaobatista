@@ -39,6 +39,10 @@ export interface Occurrence {
   archived?: boolean;
   videoUrls?: string[];
   signedDocUrls?: string[];
+  durationDays?: number;
+  measure?: string;
+  attenuatingFactors?: string[];
+  aggravatingFactors?: string[];
 }
 
 export interface StaffMember {

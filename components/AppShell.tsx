@@ -320,9 +320,9 @@ function TopbarLayout({
 
   return (
     <>
-      <header className="z-30 px-4 pt-2 pb-1 space-y-2 pointer-events-none">
+      <header className="z-[100] px-4 pt-2 pb-1 space-y-2 pointer-events-none sticky top-0">
         {/* top row: logo + right controls */}
-        <div className="pointer-events-auto bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border border-white/40 dark:border-slate-800/50 shadow-sm rounded-full flex items-center justify-between gap-4 px-4 md:px-6 py-1">
+        <div className="pointer-events-auto bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/50 dark:border-slate-800/60 shadow-md rounded-full flex items-center justify-between gap-4 px-4 md:px-6 py-1">
           <div className="flex items-center gap-3 min-w-0">
             <button
               className="p-1 -ml-1 text-slate-500 dark:text-slate-400 md:hidden"
@@ -349,7 +349,7 @@ function TopbarLayout({
         </div>
 
         {/* nav row: grouped pills with hover dropdown */}
-        <div className="pointer-events-auto hidden md:flex items-center justify-center gap-1 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl border border-white/30 dark:border-slate-800/40 shadow-sm rounded-full px-4 md:px-10 py-1">
+        <div className="pointer-events-auto hidden md:flex items-center justify-center gap-1 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/40 dark:border-slate-800/50 shadow-md rounded-full px-4 md:px-10 py-1">
           {MENU_GROUPS.map((group) => (
             <GroupPill
               key={group.label}
@@ -435,8 +435,8 @@ function GroupPill({
       </button>
 
       {open && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 z-40 min-w-[240px]">
-          <div className="glass-card absolute z-50 w-full mt-2 max-h-60 flex flex-col py-1.5 overflow-hidden !rounded-3xl">
+        <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 z-[110] min-w-[240px]">
+          <div className="glass-card absolute z-[120] w-full mt-2 max-h-60 flex flex-col py-1.5 overflow-hidden !rounded-3xl">
             {group.children!.map((item) => {
               const active = pathname === item.href;
               return (
@@ -594,7 +594,7 @@ function RightControls(props: RightControlsProps) {
       <button
         onClick={refreshData}
         disabled={isSyncing}
-        className={`w-9 h-9 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/40 dark:border-slate-700/50 hover:bg-white/60 dark:hover:bg-slate-700/60 transition shadow-sm ${
+        className={`w-9 h-9 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-white/50 dark:border-slate-700/60 hover:bg-white/90 dark:hover:bg-slate-700 transition shadow-sm ${
           isSyncing ? 'animate-spin text-blue-500' : ''
         }`}
         title="Sincronizar"
@@ -604,18 +604,16 @@ function RightControls(props: RightControlsProps) {
 
       <button
         onClick={toggleTheme}
-        className="w-9 h-9 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/40 dark:border-slate-700/50 hover:bg-white/60 dark:hover:bg-slate-700/60 transition shadow-sm"
+        className="w-9 h-9 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-white/50 dark:border-slate-700/60 hover:bg-white/90 dark:hover:bg-slate-700 transition shadow-sm"
         title={isDarkMode ? 'Modo claro' : 'Modo escuro'}
       >
         {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
       </button>
 
-
-
-      <div className="relative isolate z-50 ml-1">
+      <div className="relative isolate z-[110] ml-1">
         <button
           onClick={() => setIsProfileOpen(!isProfileOpen)}
-          className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border border-white/40 dark:border-slate-700/50 hover:bg-white/60 dark:hover:bg-slate-700/60 transition shadow-sm"
+          className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-white/50 dark:border-slate-700/60 hover:bg-white/90 dark:hover:bg-slate-700 transition shadow-sm"
         >
           {user?.user_metadata?.avatar_url ? (
             <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-7 h-7 rounded-full" referrerPolicy="no-referrer" />
@@ -629,9 +627,9 @@ function RightControls(props: RightControlsProps) {
             <p className="text-[10px] text-slate-500 dark:text-slate-400">{userRole}</p>
           </div>
         </button>
-
+ 
         {isProfileOpen && (
-          <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-sm">
+          <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-sm z-[120]">
             <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
               <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{userName}</p>
               <p className="text-slate-500 dark:text-slate-400 text-xs truncate">{user?.email || 'Sem e-mail'}</p>
