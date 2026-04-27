@@ -15,6 +15,8 @@ export default function Arquivados() {
     deleteStudent, deleteOccurrence, deleteAccident, deletePraise, deleteConductTerm, deleteSummons } = useAppContext();
   const [activeTab, setActiveTab] = useState<TabType>('alunos');
   const [selectedItem, setSelectedItem] = useState<{type: string, id: string, data: any} | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteInput, setDeleteInput] = useState('');
 
   const handleRestore = async () => {
     if (!selectedItem) return;
@@ -34,7 +36,11 @@ export default function Arquivados() {
 
   const handleDelete = async () => {
     if (!selectedItem) return;
-    if (!confirm('Tem certeza que deseja excluir DEIFINITIVAMENTE este item? Esta ação NÃO pode ser desfeita.')) return;
+    if (deleteInput.toLowerCase() !== 'excluir') {
+      alert('Por favor, digite "excluir" para confirmar.');
+      return;
+    }
+    
     try {
       if (selectedItem.type === 'aluno') await deleteStudent(selectedItem.id);
       if (selectedItem.type === 'ocorrencia') await deleteOccurrence(selectedItem.id);
@@ -42,6 +48,8 @@ export default function Arquivados() {
       if (selectedItem.type === 'elogio') await deletePraise(selectedItem.id);
       if (selectedItem.type === 'termo') await deleteConductTerm(selectedItem.id);
       if (selectedItem.type === 'convocacao') await deleteSummons(selectedItem.id);
+      setShowDeleteConfirm(false);
+      setDeleteInput('');
       setSelectedItem(null);
     } catch (error) {
       console.error(error);
@@ -328,10 +336,10 @@ export default function Arquivados() {
             
             <div className="pt-6 mt-4 border-t flex justify-between items-center gap-3 border-slate-200">
               <button
-                onClick={handleDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-sm font-medium"
               >
-                <Trash2 className="w-4 h-4" /> Excluir Definitivamente
+                <Trash2 className="w-4 h-4" /> Excluir permanentemente
               </button>
               <div className="flex gap-3">
                 <button
@@ -350,6 +358,59 @@ export default function Arquivados() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal 
+        isOpen={showDeleteConfirm} 
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setDeleteInput('');
+        }} 
+        title="Confirmar Exclusão"
+      >
+        <div className="space-y-4 pt-2">
+          <div className="bg-red-50 border border-red-100 p-4 rounded-lg">
+            <p className="text-red-800 text-sm font-medium flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" /> ATENÇÃO
+            </p>
+            <p className="text-red-700 text-sm mt-1">
+              Esta ação excluirá o registro <strong>DEFINITIVAMENTE</strong> de nossa base de dados. Esta ação não poderá ser desfeita futuramente.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-700 block">
+              Para prosseguir, digite <strong>excluir</strong> abaixo:
+            </label>
+            <input
+              type="text"
+              value={deleteInput}
+              onChange={(e) => setDeleteInput(e.target.value)}
+              placeholder='Digite "excluir" aqui'
+              className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              autoFocus
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setDeleteInput('');
+              }}
+              className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleteInput.toLowerCase() !== 'excluir'}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center gap-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Trash2 className="w-4 h-4" /> Confirmar Exclusão
+            </button>
+          </div>
+        </div>
       </Modal>
     </AppShell>
   );
