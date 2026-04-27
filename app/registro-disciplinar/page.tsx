@@ -202,7 +202,7 @@ function RegistroDisciplinarContent() {
   const openEditModal = (e: React.MouseEvent, o: Occurrence) => {
     e.stopPropagation();
     setEditingOccurrence(o.id);
-    setSelectedStudents([o.studentId]);
+    setSelectedStudents(o.studentIds && o.studentIds.length > 0 ? o.studentIds : [o.studentId]);
     setDate(o.date);
     setHour(o.hour || '');
     setLocation(o.location || 'Pátio');
@@ -539,6 +539,7 @@ function RegistroDisciplinarContent() {
         const ruleCodeInt = parseInt(selectedRules[0], 10);
         updateOccurrence(editingOccurrence, {
           studentId,
+          studentIds: selectedStudents,
           date,
           hour,
           location,
@@ -551,23 +552,22 @@ function RegistroDisciplinarContent() {
           durationDays: rules.find(r => r.code === ruleCodeInt)?.severity === 'Grave' ? durationDays : undefined
         });
       } else {
-        for (const studentId of selectedStudents) {
-           for (const ruleCodeStr of selectedRules) {
-              const ruleCodeInt = parseInt(ruleCodeStr, 10);
-              addOccurrence({
-                studentId,
-                date,
-                hour,
-                location,
-                locatedBy,
-                ruleCode: ruleCodeInt,
-                registeredBy,
-                observations,
-                videoUrls,
-                signedDocUrls,
-                durationDays: rules.find(r => r.code === ruleCodeInt)?.severity === 'Grave' ? durationDays : undefined
-              });
-           }
+        for (const ruleCodeStr of selectedRules) {
+          const ruleCodeInt = parseInt(ruleCodeStr, 10);
+          addOccurrence({
+            studentId: selectedStudents[0],
+            studentIds: selectedStudents,
+            date,
+            hour,
+            location,
+            locatedBy,
+            ruleCode: ruleCodeInt,
+            registeredBy,
+            observations,
+            videoUrls,
+            signedDocUrls,
+            durationDays: rules.find(r => r.code === ruleCodeInt)?.severity === 'Grave' ? durationDays : undefined
+          });
         }
       }
       setIsModalOpen(false);
@@ -956,14 +956,10 @@ function RegistroDisciplinarContent() {
                       value=""
                       onChange={(val) => {
                         if (val && !selectedStudents.includes(val)) {
-                           if (editingOccurrence) {
-                              setSelectedStudents([val]);
-                           } else {
-                              setSelectedStudents(prev => [...prev, val]);
-                           }
+                          setSelectedStudents(prev => [...prev, val]);
                         }
                       }}
-                      placeholder={editingOccurrence ? "Selecionar aluno" : "Adicionar alunos"}
+                      placeholder="Adicionar aluno(s)"
                     />
                     {selectedStudents.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-2">
@@ -972,11 +968,9 @@ function RegistroDisciplinarContent() {
                           return (
                             <div key={id} className="bg-blue-50 text-blue-700 px-3 py-1 rounded-md text-sm flex items-center gap-1 border border-blue-200">
                                {s?.name}
-                               {!editingOccurrence && (
-                                 <button type="button" onClick={() => setSelectedStudents(prev => prev.filter(x => x !== id))} className="text-blue-500 hover:text-blue-800 ml-1 translate-y-px">
-                                    <X className="w-3 h-3 border border-transparent rounded hover:border-blue-400 bg-white bg-opacity-0 hover:bg-opacity-50 transition" />
-                                 </button>
-                               )}
+                               <button type="button" onClick={() => setSelectedStudents(prev => prev.filter(x => x !== id))} className="text-blue-500 hover:text-blue-800 ml-1 translate-y-px">
+                                  <X className="w-3 h-3 border border-transparent rounded hover:border-blue-400 bg-white bg-opacity-0 hover:bg-opacity-50 transition" />
+                               </button>
                             </div>
                           );
                         })}
