@@ -333,7 +333,7 @@ function TopbarLayout({
             <img
               src="/logo_dash.svg"
               alt="EECM"
-              className="w-16 h-16 md:w-[88px] md:h-[88px] object-contain shrink-0 drop-shadow-sm"
+              className="w-auto h-12 md:h-16 object-contain shrink-0 drop-shadow-sm"
             />
             <div className="hidden sm:block min-w-0">
               <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
@@ -435,8 +435,8 @@ function GroupPill({
       </button>
 
       {open && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 z-[200] min-w-[240px]">
-          <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-3xl absolute z-[210] w-full mt-2 max-h-60 flex flex-col py-1.5 overflow-hidden !rounded-3xl shadow-2xl border border-slate-200/60 dark:border-slate-700/60">
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[200] min-w-[240px]">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 flex flex-col py-1.5 overflow-hidden">
             {group.children!.map((item) => {
               const active = pathname === item.href;
               return (

@@ -107,12 +107,9 @@ export default function Relatorios() {
         {/* Report Preview */}
         <div className="bg-[#e2e8f0] rounded-xl p-4 sm:p-8 max-w-4xl mx-auto shadow-2xl print:bg-white print:p-0 print:shadow-none min-h-[800px] text-slate-900 font-serif">
           
-          {/* Header Imitating the image */}
-          <div className="text-center mb-8">
-            <h2 className="font-bold text-lg leading-tight uppercase">Estado de Mato Grosso</h2>
-            <h3 className="font-semibold text-sm leading-tight uppercase">Secretaria de Estado de Educação de Mato Grosso</h3>
-            <h3 className="font-semibold text-sm leading-tight uppercase">Coordenadoria de Escolas Cívico-Militares</h3>
-            <h3 className="font-bold mt-2 text-md leading-tight uppercase">Escola Estadual Cívico-Militar</h3>
+          {/* Header Image */}
+          <div className="mb-8 w-full">
+            <img src="/CABEÇALHO JB.svg" alt="Cabeçalho Oficial" className="w-full h-auto" />
           </div>
 
           <div className="border border-slate-900 rounded p-4 mb-8 text-center bg-slate-50 print:bg-white">

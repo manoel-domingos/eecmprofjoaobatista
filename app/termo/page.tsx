@@ -91,6 +91,9 @@ export default function TermoDeConduta() {
           </style>
         </head>
         <body>
+          <div style="width: 100%; margin-bottom: 20px;">
+            <img src="${window.location.origin}/CABEÇALHO JB.svg" style="width: 100%; height: auto;" alt="Cabeçalho Oficial">
+          </div>
           <div class="header">
             <div class="title">TERMO DE ADEQUAÇÃO DE CONDUTA (TAC)</div>
             <div>Escola Estadual Cívico-Militar</div>

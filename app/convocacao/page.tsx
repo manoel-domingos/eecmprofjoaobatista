@@ -94,6 +94,9 @@ export default function ConvocacaoPais() {
           </style>
         </head>
         <body>
+          <div style="width: 100%; margin-bottom: 20px;">
+            <img src="${window.location.origin}/CABEÇALHO JB.svg" style="width: 100%; height: auto;" alt="Cabeçalho Oficial">
+          </div>
           <div class="header">
             <div class="title">CARTA DE CONVOCAÇÃO Nº ${s.id.slice(-4).toUpperCase()}</div>
             <div>Escola Estadual Cívico-Militar</div>

@@ -613,7 +613,7 @@ function RegistroDisciplinarContent() {
 
     const headerHtml = `
       <div style="width: 100%; margin-bottom: 20px;">
-        <img src="/CABEÇALHO JB.png" style="width: 100%; height: auto;" alt="Cabeçalho Oficial">
+        <img src="${window.location.origin}/CABEÇALHO JB.svg" style="width: 100%; height: auto;" alt="Cabeçalho Oficial">
       </div>
     `;
 
@@ -706,7 +706,7 @@ function RegistroDisciplinarContent() {
 
     const headerHtmlDocx = `
       <div style="width: 100%; margin-bottom: 20px;">
-        <img src="${window.location.origin}/CABEÇALHO JB.png" width="100%" style="width: 100%; height: auto;" alt="Cabeçalho">
+        <img src="${window.location.origin}/CABEÇALHO JB.svg" width="100%" style="width: 100%; height: auto;" alt="Cabeçalho">
       </div>
     `;
 
