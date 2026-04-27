@@ -62,7 +62,7 @@ function AcidentesContent() {
     }
 
     if (!searchTerm) return true;
-    return student?.name.toLowerCase().includes(searchTerm.toLowerCase());
+    return student?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
   });
 
   const openAddModal = () => {

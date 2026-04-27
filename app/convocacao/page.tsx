@@ -23,7 +23,7 @@ export default function ConvocacaoPais() {
   const filteredSummons = summons.filter(s => {
     if (s.archived) return false;
     const student = students.find(st => st.id === s.studentId);
-    return student?.name.toLowerCase().includes(searchTerm.toLowerCase());
+    return student?.name?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
   });
 
   const openAddModal = () => {
