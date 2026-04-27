@@ -599,7 +599,7 @@ function RegistroDisciplinarContent() {
   const handleExport = (o: Occurrence) => {
     const relatedStudents = o.studentIds && o.studentIds.length > 0
       ? students.filter(s => o.studentIds?.includes(s.id))
-      : [students.find(s => s.id === o.studentId)].filter(Boolean) as Student[];
+      : [students.find(s => s.id === o.studentId)].filter((s): s is Student => Boolean(s));
     
     const primaryStudent = relatedStudents[0];
     const studentNames = relatedStudents.map(s => s.name).join(', ');
@@ -702,7 +702,7 @@ function RegistroDisciplinarContent() {
   const handleExportDocx = (o: Occurrence) => {
     const relatedStudents = o.studentIds && o.studentIds.length > 0
       ? students.filter(s => o.studentIds?.includes(s.id))
-      : [students.find(s => s.id === o.studentId)].filter(Boolean) as Student[];
+      : [students.find(s => s.id === o.studentId)].filter((s): s is Student => Boolean(s));
     
     const primaryStudent = relatedStudents[0];
     const studentNames = relatedStudents.map(s => s.name).join(', ');
@@ -785,7 +785,7 @@ function RegistroDisciplinarContent() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${docTitle.replace(/ /g, '_')}_${student?.name?.replace(/ /g, '_')}.doc`;
+    link.download = `${docTitle.replace(/ /g, '_')}_${primaryStudent?.name?.replace(/ /g, '_')}.doc`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -874,7 +874,7 @@ function RegistroDisciplinarContent() {
                       filteredOccurrences.map((o) => {
                         const relatedStudents = o.studentIds && o.studentIds.length > 0
                           ? students.filter(s => o.studentIds?.includes(s.id))
-                          : [students.find(s => s.id === o.studentId)].filter(Boolean) as Student[];
+                          : [students.find(s => s.id === o.studentId)].filter((s): s is Student => Boolean(s));
                         
                         const names = relatedStudents.map(s => s.name).join(', ');
                         const classes_occur = Array.from(new Set(relatedStudents.map(s => s.class))).join(', ');
@@ -1768,7 +1768,7 @@ function RegistroDisciplinarContent() {
                   <div className="space-y-1">
                     {(o.studentIds && o.studentIds.length > 0 
                       ? students.filter(s => o.studentIds?.includes(s.id))
-                      : [students.find(s => s.id === o.studentId)].filter(Boolean) as Student[]
+                      : [students.find(s => s.id === o.studentId)].filter((s): s is Student => Boolean(s))
                     ).map(s => (
                       <div key={s.id}>
                         <p className="text-lg font-medium text-slate-800">{s.name}</p>

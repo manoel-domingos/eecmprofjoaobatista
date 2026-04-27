@@ -140,7 +140,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (isGuest) return 'GUEST';
     if (user && user.email) {
       const matched = appUsers.find(u => u.email.toLowerCase() === user.email.toLowerCase());
-      return matched ? (matched.role as AppUserRole) : 'COORD';
+      return matched ? (matched.role as AppUserRole) : 'GUEST';
     }
     return 'GUEST';
   }, [user, isGuest, appUsers]);

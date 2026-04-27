@@ -38,10 +38,10 @@
   --color-yellow-100: #fef9c3;
   --color-yellow-200: #fef08a;
   --color-yellow-300: #fde047;
-  --color-yellow-400: #facc15;
-  --color-yellow-500: #eab308;
-  --color-yellow-600: #ca8a04;
-  --color-yellow-700: #a16207;
+  --color-yellow-400: #eab308;
+  --color-yellow-500: #ca8a04;
+  --color-yellow-600: #a16207;
+  --color-yellow-700: #854d0e;
 }
 
 @layer utilities {
