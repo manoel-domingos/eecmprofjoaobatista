@@ -270,31 +270,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (rulesData) {
             setRules(rulesData.map(r => ({ ...r, ruleCode: r.code })));
           }
-          if (occurrencesData) setOccurrences(occurrencesData.map((o: any) => {
-            let parsedObs = o.observations || '';
-            let extra: any = {};
-            const marker = '\n---[DATA]---';
-            if (parsedObs.includes(marker)) {
-               const parts = parsedObs.split(marker);
-               parsedObs = parts[0];
-               try { extra = JSON.parse(parts[1]); } catch(e){}
-            }
-            
-            return {
-              id: o.id,
-              date: o.date,
-              hour: extra.hour || o.hour,
-              location: extra.location || o.location,
-              locatedBy: extra.located_by || o.located_by,
-              ruleCode: Number(o.rule_code), 
-              studentId: String(o.student_id), 
-              registeredBy: o.registered_by,
-              observations: parsedObs,
-              videoUrls: extra.video_urls || o.video_urls || (o.video_url ? [o.video_url] : []),
-              signedDocUrls: extra.signed_doc_urls || o.signed_doc_urls || (o.signed_doc_url ? [o.signed_doc_url] : []),
-              archived: o.archived || false
-            };
-          }));
+          if (occurrencesData) setOccurrences(occurrencesData.map((o: any) => ({
+            id: o.id,
+            date: o.date,
+            hour: o.hour,
+            location: o.location,
+            locatedBy: o.located_by,
+            ruleCode: Number(o.rule_code), 
+            studentId: String(o.student_id), 
+            registeredBy: o.registered_by,
+            observations: o.observations,
+            videoUrls: o.video_urls || (o.video_url ? [o.video_url] : []),
+            signedDocUrls: o.signed_doc_urls || (o.signed_doc_url ? [o.signed_doc_url] : []),
+            archived: o.archived || false
+          })));
           if (accidentsData) setAccidents(accidentsData.map(a => ({...a, studentId: a.student_id, registeredBy: a.registered_by, bodyPart: a.body_part, parentsNotified: a.parents_notified, medicForwarded: a.medic_forwarded})));
           if (praisesData) setPraises(praisesData.map(p => ({...p, studentId: p.student_id, registeredBy: p.registered_by})));
           if (summonsData) setSummons(summonsData.map((s: any) => ({...s, studentId: s.student_id, registeredBy: s.registered_by})));
@@ -520,31 +509,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ] = responses;
 
       if (studentsData) setStudents(studentsData.map(s => ({ ...s, points: 8 })));
-      if (occurrencesData) setOccurrences(occurrencesData.map((o: any) => {
-        let parsedObs = o.observations || '';
-        let extra: any = {};
-        const marker = '\n---[DATA]---';
-        if (parsedObs.includes(marker)) {
-           const parts = parsedObs.split(marker);
-           parsedObs = parts[0];
-           try { extra = JSON.parse(parts[1]); } catch(e){}
-        }
-        
-        return {
-          id: o.id,
-          date: o.date,
-          hour: extra.hour || o.hour,
-          location: extra.location || o.location,
-          locatedBy: extra.located_by || o.located_by,
-          ruleCode: Number(o.rule_code), 
-          studentId: String(o.student_id), 
-          registeredBy: o.registered_by,
-          observations: parsedObs,
-          videoUrls: extra.video_urls || o.video_urls || (o.video_url ? [o.video_url] : []),
-          signedDocUrls: extra.signed_doc_urls || o.signed_doc_urls || (o.signed_doc_url ? [o.signed_doc_url] : []),
-          archived: o.archived || false
-        };
-      }));
+      if (occurrencesData) setOccurrences(occurrencesData.map((o: any) => ({
+        id: o.id,
+        date: o.date,
+        hour: o.hour,
+        location: o.location,
+        locatedBy: o.located_by,
+        ruleCode: Number(o.rule_code), 
+        studentId: String(o.student_id), 
+        registeredBy: o.registered_by,
+        observations: o.observations,
+        videoUrls: o.video_urls || (o.video_url ? [o.video_url] : []),
+        signedDocUrls: o.signed_doc_urls || (o.signed_doc_url ? [o.signed_doc_url] : []),
+        archived: o.archived || false
+      })));
       if (accidentsData) setAccidents(accidentsData.map(a => ({...a, studentId: a.student_id, registeredBy: a.registered_by, bodyPart: a.body_part, parentsNotified: a.parents_notified, medicForwarded: a.medic_forwarded})));
       if (praisesData) setPraises(praisesData.map(p => ({...p, studentId: p.student_id, registeredBy: p.registered_by})));
       if (summonsData) setSummons(summonsData.map((s: any) => ({...s, studentId: s.student_id, registeredBy: s.registered_by})));
@@ -589,21 +567,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     checkWriteAccess();
     let newId = `O${occurrences.length + 1}`;
     if (supabase && isSupabaseConnected) {
-      let finalObservations = o.observations || '';
-      try {
-        finalObservations += '\n---[DATA]---' + JSON.stringify({
-          hour: o.hour, location: o.location, located_by: o.locatedBy,
-          video_urls: o.videoUrls, signed_doc_urls: o.signedDocUrls
-        });
-      } catch (e) {}
-
       const dbPayload = {
         student_id: o.studentId,
         date: o.date,
-        // We omit the new columns to avoid schema errors, packed into observations instead
+        hour: o.hour,
+        location: o.location,
+        located_by: o.locatedBy,
         rule_code: o.ruleCode,
         registered_by: o.registeredBy,
-        observations: finalObservations,
+        observations: o.observations,
+        video_urls: o.videoUrls,
+        signed_doc_urls: o.signedDocUrls
       };
       try {
         const { data, error } = await supabase!.from('occurrences').insert([dbPayload]).select().single();
@@ -640,35 +614,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateOccurrence = async (id: string, o: Partial<Occurrence>) => {
     checkWriteAccess();
     if (supabase && isSupabaseConnected) {
-      let finalObservations = o.observations;
-      
-      // se alterarmos um campo novo, temos que recuperar do registro antigo tudo e re-empacotar?
-      // como não temos o db record exato, simplesmente usamos o q está no array occurrences local
-      const existingOcc = occurrences.find(x => x.id === id);
-      if (existingOcc) {
-         let baseObs = finalObservations !== undefined ? finalObservations : (existingOcc.observations || '');
-         const marker = '\n---[DATA]---';
-         if (baseObs.includes(marker)) {
-            baseObs = baseObs.split(marker)[0];
-         }
-         
-         const packed = {
-           hour: o.hour !== undefined ? o.hour : existingOcc.hour,
-           location: o.location !== undefined ? o.location : existingOcc.location,
-           located_by: o.locatedBy !== undefined ? o.locatedBy : existingOcc.locatedBy,
-           video_urls: o.videoUrls !== undefined ? o.videoUrls : existingOcc.videoUrls,
-           signed_doc_urls: o.signedDocUrls !== undefined ? o.signedDocUrls : existingOcc.signedDocUrls
-         };
-         
-         finalObservations = baseObs + marker + JSON.stringify(packed);
-      }
-
       const dbPayload: any = {};
       if (o.studentId) dbPayload.student_id = o.studentId;
       if (o.date) dbPayload.date = o.date;
+      if (o.hour) dbPayload.hour = o.hour;
+      if (o.location) dbPayload.location = o.location;
+      if (o.locatedBy) dbPayload.located_by = o.locatedBy;
       if (o.ruleCode) dbPayload.rule_code = o.ruleCode;
       if (o.registeredBy) dbPayload.registered_by = o.registeredBy;
-      if (finalObservations !== undefined) dbPayload.observations = finalObservations;
+      if (o.observations !== undefined) dbPayload.observations = o.observations;
+      if (o.videoUrls) dbPayload.video_urls = o.videoUrls;
+      if (o.signedDocUrls) dbPayload.signed_doc_urls = o.signedDocUrls;
       
       try {
         const { error } = await supabase!.from('occurrences').update(dbPayload).eq('id', id);
