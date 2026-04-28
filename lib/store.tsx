@@ -582,22 +582,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
         hour: o.hour,
         location: o.location,
         located_by: o.locatedBy,
-        rule_code: [o.ruleCode],
+        rule_code: o.ruleCode,
         registered_by: o.registeredBy,
         observations: o.observations,
         video_urls: o.videoUrls,
         signed_doc_urls: o.signedDocUrls
       };
 
-      // If multiple students, we still use the first one for student_id (column constraint)
-      // but we add student_ids column (assuming it exists or will be ignored)
       if (o.studentIds && o.studentIds.length > 0) {
         dbPayload.student_ids = o.studentIds;
       }
 
       try {
         const { data, error } = await supabase!.from('occurrences').insert([dbPayload]).select().single();
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase insert error (occurrence):", error);
+          alert(`Erro ao salvar ocorrência no servidor: ${error.message}`);
+          throw error;
+        }
         if (data) {
           setOccurrences(prev => [{
             id: data.id,
@@ -635,18 +637,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (o.hour) dbPayload.hour = o.hour;
       if (o.location) dbPayload.location = o.location;
       if (o.locatedBy) dbPayload.located_by = o.locatedBy;
-      if (o.ruleCode) dbPayload.rule_code = [o.ruleCode];
+      if (o.ruleCode) dbPayload.rule_code = o.ruleCode;
       if (o.registeredBy) dbPayload.registered_by = o.registeredBy;
       if (o.observations !== undefined) dbPayload.observations = o.observations;
       if (o.videoUrls) dbPayload.video_urls = o.videoUrls;
       if (o.signedDocUrls) dbPayload.signed_doc_urls = o.signedDocUrls;
+      if (o.studentIds) dbPayload.student_ids = o.studentIds;
       
       try {
         const { error } = await supabase!.from('occurrences').update(dbPayload).eq('id', id);
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase update error (occurrence):", error);
+          alert(`Erro ao atualizar ocorrência no servidor: ${error.message}`);
+          throw error;
+        }
       } catch (err: any) {
         console.error("Occurrence update error:", err);
-        alert(`Erro ao atualizar ocorrência no servidor: ${err.message}`);
         return;
       }
     }
