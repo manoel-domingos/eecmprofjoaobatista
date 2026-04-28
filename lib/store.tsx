@@ -7,6 +7,13 @@ import {
   INITIAL_STUDENTS, INITIAL_OCCURRENCES, INITIAL_ACCIDENTS, INITIAL_PRAISES, INITIAL_RULES
 } from './data';
 
+// User type from Supabase Auth
+interface AuthUser {
+  email: string;
+  role?: string;
+  id?: string;
+}
+
 interface AppState {
   students: Student[];
   occurrences: Occurrence[];
@@ -20,7 +27,7 @@ interface AppState {
   appUsers: AppUser[];
   isSupabaseConnected: boolean;
   isSyncing: boolean;
-  user: any | null;
+  user: AuthUser | null;
   isGuest: boolean;
   currentUserRole: AppUserRole | 'GUEST';
   isAuthRestored: boolean;
@@ -132,7 +139,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return INITIAL_APP_USERS;
   });
   const [isSupabaseConnected, setIsSupabaseConnected] = useState(false);
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [isAuthRestored, setIsAuthRestored] = useState(false);
 
