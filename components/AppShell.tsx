@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppContext } from '@/lib/store';
@@ -10,7 +10,7 @@ import {
   UserPlus, Award, Menu, X, LogOut, ShieldAlert,
   Sun, Moon, RefreshCw, CloudCheck, CloudOff, MessageCircle, Settings,
   PanelsTopLeft, PanelLeft, ChevronDown,
-  GraduationCap, Gavel, Smile, Cog,
+  GraduationCap, Gavel, Smile, Cog, Clock,
 } from 'lucide-react';
 import versionData from '@/lib/version.json';
 import ChatWidget from '@/components/ChatWidget';
@@ -81,6 +81,58 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('topbar');
 
+  // Inactivity session management
+  const [showInactivityModal, setShowInactivityModal] = useState(false);
+  const [inactivityCountdown, setInactivityCountdown] = useState(10);
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+    if (showInactivityModal) return; // Don't reset if modal is already open
+
+    inactivityTimerRef.current = setTimeout(() => {
+      setShowInactivityModal(true);
+      setInactivityCountdown(10);
+    }, 10 * 60 * 1000); // 10 minutes
+  }, [showInactivityModal]);
+
+  useEffect(() => {
+    if (user && !isGuest) {
+      resetInactivityTimer();
+      const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+      events.forEach(event => window.addEventListener(event, resetInactivityTimer));
+      return () => {
+        if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+        events.forEach(event => window.removeEventListener(event, resetInactivityTimer));
+      };
+    }
+  }, [user, isGuest, showInactivityModal, resetInactivityTimer]);
+
+  useEffect(() => {
+    if (showInactivityModal) {
+      countdownTimerRef.current = setInterval(() => {
+        setInactivityCountdown(prev => {
+          if (prev <= 1) {
+            if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+            logout();
+            setShowInactivityModal(false);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => {
+        if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+      };
+    }
+  }, [showInactivityModal, logout]);
+
+  const cancelInactivity = () => {
+    setShowInactivityModal(false);
+    resetInactivityTimer();
+  };
+
   useEffect(() => {
     if (isAuthRestored && !user && !isGuest) {
       router.push('/login');
@@ -88,22 +140,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [user, isGuest, isAuthRestored, router]);
 
   useEffect(() => {
-    setIsMobileMenuOpen(false);
+    if (isMobileMenuOpen) {
+      setIsMobileMenuOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   useEffect(() => {
-    const stored = localStorage.getItem('theme');
+    const storedTheme = localStorage.getItem('theme');
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (stored === 'dark' || (!stored && systemPrefersDark)) {
+    if (storedTheme === 'dark' || (!storedTheme && systemPrefersDark)) {
       setIsDarkMode(true);
       document.documentElement.classList.add('dark');
     }
-  }, []);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('layoutMode');
-    if (stored === 'sidebar' || stored === 'topbar') {
-      setLayoutMode(stored);
+    const storedMode = localStorage.getItem('layoutMode');
+    if (storedMode === 'sidebar' || storedMode === 'topbar') {
+      setLayoutMode(storedMode as LayoutMode);
     }
   }, []);
 
@@ -193,6 +246,39 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {isChatOpen && <ChatWidget forceOpen={true} forceOnClose={() => setIsChatOpen(false)} />}
+      
+      {/* Inactivity Popup */}
+      {showInactivityModal && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-6 transform animate-in zoom-in-95 duration-300">
+            <div className="w-20 h-20 bg-amber-100 dark:bg-amber-500/10 rounded-full flex items-center justify-center mx-auto">
+              <Clock className="w-10 h-10 text-amber-600 dark:text-amber-400 animate-pulse" />
+            </div>
+            
+            <div className="space-y-2">
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white">Sessão Expirando</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm">
+                Você ficou inativo por muito tempo. Sua sessão será encerrada em:
+              </p>
+            </div>
+            
+            <div className="text-6xl font-black text-blue-600 dark:text-blue-400 tabular-nums">
+              {inactivityCountdown}
+            </div>
+            
+            <button
+              onClick={cancelInactivity}
+              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold transition shadow-lg shadow-blue-500/20 active:scale-95"
+            >
+              Continuar Conectado
+            </button>
+            
+            <p className="text-[11px] text-slate-400 uppercase tracking-widest font-bold">
+              Escola Estadual Cívico-Militar
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

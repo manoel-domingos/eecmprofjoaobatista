@@ -14,16 +14,18 @@ function RegistroDisciplinarContent() {
   const { 
     students, occurrences, rules, staffMembers, user, isGuest, currentUserRole,
     addOccurrence, updateOccurrence, archiveOccurrence, checkRecidivism, getEscalationStatus,
-    addStudent, updateStudent, addStaffMember
+    addStudent, updateStudent, addStaffMember, uploadFile
   } = useAppContext();
   const searchParams = useSearchParams();
 
   const paramMonth = searchParams.get('month');
   const paramClass = searchParams.get('class');
+  const paramSeverity = searchParams.get('severity');
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(paramMonth && paramMonth !== 'Selecionar...' ? paramMonth : 'Todos os meses');
   const [selectedClass, setSelectedClass] = useState(paramClass && paramClass !== 'Todas' ? paramClass : 'Todas as turmas');
+  const [selectedSeverity, setSelectedSeverity] = useState(paramSeverity || 'Todas');
 
   const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   const classes = Array.from(new Set(students.map(s => s.class))).sort();
@@ -62,6 +64,7 @@ function RegistroDisciplinarContent() {
   const [aggravatingFactors, setAggravatingFactors] = useState<string[]>([]);
   const [graveMeasureType, setGraveMeasureType] = useState<'Suspensão Escolar' | 'Suspensão de Recreação' | 'Ação Educativa' | 'Transferência Educativa'>('Suspensão Escolar');
   const [isImproving, setIsImproving] = useState(false);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
 
   const handleImproveObservations = async () => {
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -140,6 +143,12 @@ function RegistroDisciplinarContent() {
     if (selectedClass !== 'Todas as turmas' && selectedClass !== '') {
       const anyInClass = relatedStudents.some(s => s.class.toLowerCase() === selectedClass.toLowerCase());
       if (!anyInClass) return false;
+    }
+
+    // Severity filter
+    if (selectedSeverity !== 'Todas') {
+      const rule = rules.find(r => r.code === o.ruleCode);
+      if (rule?.severity !== selectedSeverity) return false;
     }
 
     if (!searchTerm) return true;
@@ -631,7 +640,7 @@ function RegistroDisciplinarContent() {
       : Math.abs(rule?.points || 0);
 
     const headerHtml = `
-      <div style="width: 100%; margin-bottom: 20px;">
+      <div style="width: 180%; margin-left: -40%; margin-bottom: 40px;">
         <img src="${window.location.origin}/CABEÇALHO JB.svg" style="width: 100%; height: auto;" alt="Cabeçalho Oficial">
       </div>
     `;
@@ -731,7 +740,7 @@ function RegistroDisciplinarContent() {
       : Math.abs(rule?.points || 0);
 
     const headerHtmlDocx = `
-      <div style="width: 100%; margin-bottom: 20px;">
+      <div style="width: 160%; margin-left: -30%; margin-bottom: 35px;">
         <img src="${window.location.origin}/CABEÇALHO JB.svg" width="100%" style="width: 100%; height: auto;" alt="Cabeçalho">
       </div>
     `;
@@ -844,6 +853,20 @@ function RegistroDisciplinarContent() {
                   value={selectedMonth}
                   onChange={setSelectedMonth}
                   placeholder="Pesquisar Mês..."
+                  heightClass="py-2 text-sm"
+                />
+              </div>
+              <div className="relative w-full md:w-40">
+                <SearchableSelect
+                  options={[
+                    { value: 'Todas', label: 'Todas Gravidades' },
+                    { value: 'Leve', label: 'Leve' },
+                    { value: 'Media', label: 'Média' },
+                    { value: 'Grave', label: 'Grave' }
+                  ]}
+                  value={selectedSeverity}
+                  onChange={setSelectedSeverity}
+                  placeholder="Gravidade..."
                   heightClass="py-2 text-sm"
                 />
               </div>
@@ -1343,24 +1366,41 @@ function RegistroDisciplinarContent() {
                       ))}
                       <button
                         type="button"
+                        disabled={isUploadingFiles}
                         onClick={() => {
                           const input = document.createElement('input');
                           input.type = 'file';
                           input.accept = 'video/*,image/*';
                           input.capture = 'environment';
-                          input.onchange = (e: any) => {
+                          input.onchange = async (e: any) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                               const url = URL.createObjectURL(file);
-                               setVideoUrls([...videoUrls, url]);
+                               setIsUploadingFiles(true);
+                               try {
+                                 const publicUrl = await uploadFile(file, 'evidence');
+                                 if (publicUrl) {
+                                   setVideoUrls(prev => [...prev, publicUrl]);
+                                 }
+                               } finally {
+                                 setIsUploadingFiles(false);
+                               }
                             }
                           };
                           input.click();
                         }}
-                        className="w-full aspect-video bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-slate-100 hover:border-blue-300 transition-all text-slate-400 hover:text-blue-500"
+                        className={`w-full aspect-video bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-slate-100 hover:border-blue-300 transition-all text-slate-400 hover:text-blue-500 ${isUploadingFiles ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
-                        <Camera className="w-5 h-5" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-center px-1">Adicionar Foto/Vídeo</span>
+                        {isUploadingFiles ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-center">Enviando...</span>
+                          </div>
+                        ) : (
+                          <>
+                            <Camera className="w-5 h-5" />
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-center px-1">Adicionar Foto/Vídeo</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1382,27 +1422,41 @@ function RegistroDisciplinarContent() {
                       ))}
                       <button
                         type="button"
+                        disabled={isUploadingFiles}
                         onClick={() => {
                           const input = document.createElement('input');
                           input.type = 'file';
                           input.accept = 'image/*';
                           input.capture = 'environment';
-                          input.onchange = (e: any) => {
+                          input.onchange = async (e: any) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                               const reader = new FileReader();
-                               reader.onloadend = () => {
-                                 setSignedDocUrls([...signedDocUrls, reader.result as string]);
-                               };
-                               reader.readAsDataURL(file);
+                               setIsUploadingFiles(true);
+                               try {
+                                 const publicUrl = await uploadFile(file, 'signs');
+                                 if (publicUrl) {
+                                   setSignedDocUrls(prev => [...prev, publicUrl]);
+                                 }
+                               } finally {
+                                 setIsUploadingFiles(false);
+                               }
                             }
                           };
                           input.click();
                         }}
-                        className="w-full aspect-video bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-slate-100 hover:border-blue-300 transition-all text-slate-400 hover:text-blue-500"
+                        className={`w-full aspect-video bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-slate-100 hover:border-blue-300 transition-all text-slate-400 hover:text-blue-500 ${isUploadingFiles ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
-                        <FileText className="w-5 h-5" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-center px-1">Anexar documento assinado</span>
+                        {isUploadingFiles ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-center">Enviando...</span>
+                          </div>
+                        ) : (
+                          <>
+                            <FileText className="w-5 h-5" />
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-center px-1">Anexar documento assinado</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1449,7 +1503,7 @@ function RegistroDisciplinarContent() {
                     type="button"
                     disabled={selectedStudents.length === 0}
                     onClick={() => setIsGuardianListOpen(!isGuardianListOpen)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition font-medium disabled:opacity-50"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition text-xs font-semibold disabled:opacity-50"
                   >
                     <svg 
                       viewBox="0 0 24 24" 
@@ -1519,9 +1573,9 @@ function RegistroDisciplinarContent() {
                     <button 
                       type="button" 
                       onClick={(e) => { setIsModalOpen(false); handleArchive(e, editingOccurrence); }}
-                      className="px-4 py-2 rounded-lg text-orange-600 hover:bg-orange-50 transition font-medium flex items-center gap-2"
+                      className="px-3 py-1.5 rounded-lg text-orange-600 hover:bg-orange-50 transition text-xs font-semibold flex items-center gap-1.5"
                     >
-                      <Archive className="w-4 h-4" /> Arquivar
+                      <Archive className="w-3.5 h-3.5" /> Arquivar
                     </button>
                   )}
                   <button 
@@ -1755,9 +1809,6 @@ function RegistroDisciplinarContent() {
               </div>
               
               <div className="p-6 space-y-6 overflow-y-auto">
-                <div className="w-full mb-4 border-b border-slate-100 pb-4">
-                  <img src="/CABEÇALHO JB.svg" className="w-full h-auto" alt="Cabeçalho" />
-                </div>
                 <div>
                   <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">
                     {o.studentIds && o.studentIds.length > 1 ? 'Alunos' : 'Aluno'}
@@ -1823,13 +1874,21 @@ function RegistroDisciplinarContent() {
                 <div className="space-y-4">
                   {((o.videoUrls && o.videoUrls.length > 0) || (o.videoUrls === undefined && (o as any).videoUrl)) && (
                     <div className="space-y-2">
-                       <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">Vídeos/Provas</h3>
+                       <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">Evidências (Fotos/Vídeos)</h3>
                        <div className="grid grid-cols-2 gap-2">
-                          {(o.videoUrls || [(o as any).videoUrl]).filter(Boolean).map((url: string, index: number) => (
-                            <div key={index} className="aspect-video bg-slate-900 rounded-lg overflow-hidden border border-slate-200">
-                               <video src={url} className="w-full h-full object-cover" controls />
-                            </div>
-                          ))}
+                          {(o.videoUrls || [(o as any).videoUrl]).filter(Boolean).map((url: string, index: number) => {
+                            const isImage = /\.(jpg|jpeg|png|webp|gif|avif)($|\?)/i.test(url);
+                            return (
+                              <div key={index} className="aspect-video bg-slate-900 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center">
+                                 {isImage ? (
+                                   // eslint-disable-next-line @next/next/no-img-element
+                                   <img src={url} className="w-full h-full object-contain" alt={`Evidência ${index + 1}`} />
+                                 ) : (
+                                   <video src={url} className="w-full h-full object-contain" controls />
+                                 )}
+                              </div>
+                            );
+                          })}
                        </div>
                     </div>
                   )}
@@ -1839,7 +1898,7 @@ function RegistroDisciplinarContent() {
                        <div className="grid grid-cols-2 gap-2">
                           {(o.signedDocUrls || [(o as any).signedDocUrl]).filter(Boolean).map((url: string, index: number) => (
                             <div key={index} className="aspect-video bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
-                               <img src={url} className="w-full h-full object-cover cursor-zoom-in" onClick={() => window.open(url, '_blank')} alt="Assinada" />
+                               <img src={url} className="w-full h-full object-contain cursor-zoom-in" onClick={() => window.open(url, '_blank')} alt="Assinada" />
                             </div>
                           ))}
                        </div>
@@ -1853,7 +1912,7 @@ function RegistroDisciplinarContent() {
                   <button
                     type="button"
                     onClick={() => setIsGuardianListOpen(!isGuardianListOpen)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition font-medium"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition text-xs font-semibold"
                   >
                     <svg 
                       viewBox="0 0 24 24" 
@@ -1898,9 +1957,9 @@ function RegistroDisciplinarContent() {
                   {currentUserRole !== 'GUEST' && (
                     <button 
                       onClick={(e) => { setViewOccurrence(null); handleArchive(e, o.id); }}
-                      className="px-4 py-2 rounded-lg text-orange-600 hover:bg-orange-50 border border-transparent hover:border-orange-200 transition font-medium flex items-center gap-2"
+                      className="px-3 py-1.5 rounded-lg text-orange-600 hover:bg-orange-50 border border-transparent hover:border-orange-200 transition text-xs font-semibold flex items-center gap-1.5"
                     >
-                      <Archive className="w-4 h-4" /> Arquivar
+                      <Archive className="w-3.5 h-3.5" /> Arquivar
                     </button>
                   )}
                   <button 

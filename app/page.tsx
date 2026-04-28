@@ -147,7 +147,10 @@ export default function Dashboard() {
 
         {/* Row 1: KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-5 flex flex-col justify-between h-36 rounded-2xl border border-blue-200/50 dark:border-blue-500/20 bg-blue-50/60 dark:bg-blue-500/5 hover:bg-blue-100/80 dark:hover:bg-blue-500/15 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md group">
+          <Link 
+            href={`/registro-disciplinar?year=${selectedYear}&month=${selectedMonth === 'Selecionar...' ? '' : selectedMonth}&shift=${selectedShift === 'Todos' ? '' : selectedShift}&class=${selectedClass === 'Todas as turmas' ? '' : selectedClass}`}
+            className="p-5 flex flex-col justify-between h-36 rounded-2xl border border-blue-200/50 dark:border-blue-500/20 bg-blue-50/60 dark:bg-blue-500/5 hover:bg-blue-100/80 dark:hover:bg-blue-500/15 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md group cursor-pointer"
+          >
             <div className="w-9 h-9 bg-white dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center shadow-sm">
               <FileText className="w-4 h-4" />
             </div>
@@ -158,9 +161,12 @@ export default function Dashboard() {
               </div>
               <p className="text-blue-600/50 dark:text-blue-400/50 text-xs mt-1 font-medium">No período selecionado</p>
             </div>
-          </div>
+          </Link>
 
-          <div className="p-5 flex flex-col justify-between h-36 rounded-2xl border border-red-200/50 dark:border-red-500/20 bg-red-50/60 dark:bg-red-500/5 hover:bg-red-100/80 dark:hover:bg-red-500/15 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md group">
+          <Link 
+            href={`/registro-disciplinar?year=${selectedYear}&month=${selectedMonth === 'Selecionar...' ? '' : selectedMonth}&severity=Grave&shift=${selectedShift === 'Todos' ? '' : selectedShift}&class=${selectedClass === 'Todas as turmas' ? '' : selectedClass}`}
+            className="p-5 flex flex-col justify-between h-36 rounded-2xl border border-red-200/50 dark:border-red-500/20 bg-red-50/60 dark:bg-red-500/5 hover:bg-red-100/80 dark:hover:bg-red-500/15 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md group cursor-pointer"
+          >
             <div className="w-9 h-9 bg-white dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg flex items-center justify-center shadow-sm">
               <AlertTriangle className="w-4 h-4" />
             </div>
@@ -169,11 +175,14 @@ export default function Dashboard() {
               <div className="flex items-baseline gap-2">
                 <p className="text-3xl font-bold text-red-700 dark:text-red-300">{graveCount}</p>
               </div>
-              <p className="text-red-600/50 dark:text-red-400/50 text-xs mt-1 font-medium">{gravePercent}% do total</p>
+              <p className="text-red-600/50 dark:text-red-400/50 text-xs mt-1 font-medium">de {totalOccurrences} ocorrências - {gravePercent}%</p>
             </div>
-          </div>
+          </Link>
 
-          <div className="p-5 flex flex-col justify-between h-36 rounded-2xl border border-purple-200/50 dark:border-purple-500/20 bg-purple-50/60 dark:bg-purple-500/5 hover:bg-purple-100/80 dark:hover:bg-purple-500/15 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md group">
+          <Link 
+            href={`/comportamento?year=${selectedYear}&month=${selectedMonth === 'Selecionar...' ? '' : selectedMonth}&class=${selectedClass === 'Todas as turmas' ? '' : selectedClass}`}
+            className="p-5 flex flex-col justify-between h-36 rounded-2xl border border-purple-200/50 dark:border-purple-500/20 bg-purple-50/60 dark:bg-purple-500/5 hover:bg-purple-100/80 dark:hover:bg-purple-500/15 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md group cursor-pointer"
+          >
             <div className="w-9 h-9 bg-white dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-lg flex items-center justify-center shadow-sm">
               <Users className="w-4 h-4" />
             </div>
@@ -184,9 +193,12 @@ export default function Dashboard() {
               </div>
               <p className="text-purple-600/50 dark:text-purple-400/50 text-xs mt-1 font-medium">de {students.length} alunos - {impactedStudentsPercent}%</p>
             </div>
-          </div>
+          </Link>
 
-          <div className="p-5 flex flex-col justify-between h-36 rounded-2xl border border-emerald-200/50 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-500/5 hover:bg-emerald-100/80 dark:hover:bg-emerald-500/15 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md group">
+          <Link 
+            href={`/comportamento?year=${selectedYear}&month=${selectedMonth === 'Selecionar...' ? '' : selectedMonth}&class=${selectedClass === 'Todas as turmas' ? '' : selectedClass}`}
+            className="p-5 flex flex-col justify-between h-36 rounded-2xl border border-emerald-200/50 dark:border-emerald-500/20 bg-emerald-50/60 dark:bg-emerald-500/5 hover:bg-emerald-100/80 dark:hover:bg-emerald-500/15 hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md group cursor-pointer"
+          >
             <div className="w-9 h-9 bg-white dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center shadow-sm">
               <Star className="w-4 h-4" />
             </div>
@@ -197,7 +209,7 @@ export default function Dashboard() {
               </div>
               <p className="text-emerald-600/50 dark:text-emerald-400/50 text-xs mt-1 font-medium">{percentAbove7}% com nota &gt; 7.0</p>
             </div>
-          </div>
+          </Link>
         </div>
 
         {/* Alerts Section */}

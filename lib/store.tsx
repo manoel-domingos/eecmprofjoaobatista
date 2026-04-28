@@ -33,6 +33,7 @@ interface AppState {
   setGuestMode: () => void;
   setMockUser: (username: string) => void;
   logout: () => Promise<void>;
+  uploadFile: (file: File, bucket: string) => Promise<string | null>;
 }
 
 interface AppContextType extends AppState {
@@ -139,8 +140,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const currentUserRole = useMemo(() => {
     if (isGuest) return 'GUEST';
     if (user && user.email) {
-      const matched = appUsers.find(u => u.email.toLowerCase() === user.email.toLowerCase());
-      return matched ? (matched.role as AppUserRole) : 'GUEST';
+      const emailLower = user.email.toLowerCase();
+      const isConvidadoAccount = emailLower.includes('convidado') || emailLower === 'guest' || emailLower === 'convidado@eecm.local';
+      
+      if (isConvidadoAccount) {
+        return 'GUEST';
+      }
+
+      const matched = appUsers.find(u => u.email.toLowerCase() === emailLower);
+      if (matched) return matched.role as AppUserRole;
+      
+      // Permitir todos os outros usuários logados como MONITOR por padrão
+      return 'MONITOR';
     }
     return 'GUEST';
   }, [user, isGuest, appUsers]);
@@ -250,7 +261,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             supabase!.from('praises').select('*').order('date', { ascending: false }),
             supabase!.from('summons').select('*').order('date', { ascending: false }),
             supabase!.from('conduct_terms').select('*').order('date', { ascending: false }),
-            supabase!.from('audit_logs').select('*').order('date', { ascending: false })
+            supabase!.from('audit_logs').select('*').order('date', { ascending: false }),
+            supabase!.from('app_users').select('*')
           ]);
 
           const [
@@ -261,8 +273,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
             { data: praisesData },
             { data: summonsData },
             { data: conductTermsData },
-            { data: auditLogsData }
+            { data: auditLogsData },
+            { data: appUsersData }
           ] = responses;
+
+          if (appUsersData && appUsersData.length > 0) {
+            setAppUsers(appUsersData);
+          }
 
           if (studentsData) {
             setIsSupabaseConnected(true);
@@ -317,6 +334,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
     initAuthAndData();
   }, []);
 
+  const uploadFile = async (file: File, bucket: string): Promise<string | null> => {
+    if (!supabase || !isSupabaseConnected) {
+      console.warn("Supabase not connected. Can't upload file.");
+      return null;
+    }
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
+      const filePath = fileName;
+
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file);
+
+      if (error) {
+        console.error("Storage upload error:", error);
+        // Se o erro for bucket não encontrado, tentamos usar 'general' ou informar
+        if (error.message.includes('bucket not found')) {
+           alert(`O balde de armazenamento '${bucket}' não existe. Por favor, crie-o no Supabase (Storage).`);
+        } else {
+           alert(`Erro no upload: ${error.message}`);
+        }
+        return null;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (err: any) {
+      console.error("Upload exception:", err);
+      return null;
+    }
+  };
+
   const logAction = async (action: AuditLog['action'], entityName: string, entityId: string, details: string) => {
     const userEmail = user?.email || (isGuest ? 'Somente Leitura' : 'Gestor Escolar');
     
@@ -364,17 +418,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
       alert('Acesso Negado: Apenas gestores podem gerenciar usuários.');
       return;
     }
+    
+    if (supabase && isSupabaseConnected) {
+      try {
+        const { data, error } = await supabase.from('app_users').insert([u]).select().single();
+        if (error) throw error;
+        if (data) setAppUsers(prev => [...prev, data]);
+      } catch (err: any) {
+        console.error("Error adding app user:", err);
+        alert(`Erro ao salvar usuário no servidor: ${err.message}`);
+      }
+      return;
+    }
+
     const newId = `U${appUsers.length + 1}`;
     setAppUsers(prev => [...prev, { ...u, id: newId }]);
   };
 
   const updateAppUser = async (id: string, u: Partial<AppUser>) => {
     if (currentUserRole !== 'GESTOR') return;
+    
+    if (supabase && isSupabaseConnected) {
+      try {
+        const { error } = await supabase.from('app_users').update(u).eq('id', id);
+        if (error) throw error;
+      } catch (err: any) {
+        console.error("Error updating app user:", err);
+      }
+    }
+    
     setAppUsers(prev => prev.map(item => item.id === id ? { ...item, ...u } : item));
   };
 
   const deleteAppUser = async (id: string) => {
     if (currentUserRole !== 'GESTOR') return;
+    
+    if (supabase && isSupabaseConnected) {
+      try {
+        const { error } = await supabase.from('app_users').delete().eq('id', id);
+        if (error) throw error;
+      } catch (err: any) {
+        console.error("Error deleting app user:", err);
+      }
+    }
+    
     setAppUsers(prev => prev.filter(item => item.id !== id));
   };
 
@@ -579,19 +666,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const dbPayload: any = {
         student_id: o.studentId,
         date: o.date,
-        hour: o.hour,
-        location: o.location,
-        located_by: o.locatedBy,
+        hour: o.hour || null,
+        location: o.location || null,
+        located_by: o.locatedBy || null,
         rule_code: o.ruleCode,
         registered_by: o.registeredBy,
-        observations: o.observations,
-        video_urls: o.videoUrls,
-        signed_doc_urls: o.signedDocUrls
+        observations: o.observations || null,
+        video_urls: o.videoUrls || [],
+        signed_doc_urls: o.signedDocUrls || [],
+        student_ids: o.studentIds || [o.studentId],
+        attenuating_factors: o.attenuatingFactors || [],
+        aggravating_factors: o.aggravatingFactors || [],
+        measure: o.measure || null,
+        duration_days: o.durationDays || null
       };
-
-      if (o.studentIds && o.studentIds.length > 0) {
-        dbPayload.student_ids = o.studentIds;
-      }
 
       try {
         const { data, error } = await supabase!.from('occurrences').insert([dbPayload]).select().single();
@@ -612,8 +700,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             studentIds: data.student_ids || [],
             registeredBy: data.registered_by,
             observations: data.observations,
-            videoUrls: data.video_urls || (data.video_url ? [data.video_url] : []),
-            signedDocUrls: data.signed_doc_urls || (data.signed_doc_url ? [data.signed_doc_url] : []),
+            videoUrls: data.video_urls || [],
+            signedDocUrls: data.signed_doc_urls || [],
+            attenuatingFactors: data.attenuating_factors || [],
+            aggravatingFactors: data.aggravating_factors || [],
+            measure: data.measure,
+            durationDays: data.duration_days,
             archived: data.archived || false
           }, ...prev]);
           newId = data.id;
@@ -622,10 +714,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       } catch (err: any) {
         console.error("Occurrence insert error:", err);
+        return;
       }
     }
-    setOccurrences(prev => [{ ...o, id: newId }, ...prev]);
-    logAction('CREATE', 'Ocorrência', newId, `Adicionada ocorrência (LOCAL) para ${o.studentIds?.length || 1} alunos (Art. ${o.ruleCode})`);
+    const finalId = `O${occurrences.length + 1}`;
+    setOccurrences(prev => [{ ...o, id: finalId }, ...prev]);
+    logAction('CREATE', 'Ocorrência', finalId, `Adicionada ocorrência (LOCAL) para ${o.studentIds?.length || 1} alunos (Art. ${o.ruleCode})`);
   };
 
   const updateOccurrence = async (id: string, o: Partial<Occurrence>) => {
@@ -643,6 +737,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (o.videoUrls) dbPayload.video_urls = o.videoUrls;
       if (o.signedDocUrls) dbPayload.signed_doc_urls = o.signedDocUrls;
       if (o.studentIds) dbPayload.student_ids = o.studentIds;
+      if (o.attenuatingFactors) dbPayload.attenuating_factors = o.attenuatingFactors;
+      if (o.aggravatingFactors) dbPayload.aggravating_factors = o.aggravatingFactors;
+      if (o.measure) dbPayload.measure = o.measure;
+      if (o.durationDays !== undefined) dbPayload.duration_days = o.durationDays;
       
       try {
         const { error } = await supabase!.from('occurrences').update(dbPayload).eq('id', id);
@@ -1173,7 +1271,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       students, occurrences, accidents, praises, rules, summons, conductTerms, auditLogs, staffMembers, appUsers, isSupabaseConnected, isSyncing,
       user, isGuest, currentUserRole, isAuthRestored, isDebugMode, setIsDebugMode, 
       geminiApiKey, setGeminiApiKey, groqApiKey, setGroqApiKey,
-      setGuestMode, setMockUser, logout,
+      setGuestMode, setMockUser, logout, uploadFile,
       logAction, refreshData,
       addAppUser, updateAppUser, deleteAppUser,
       addStudent, importStudents, updateStudent, archiveStudent, restoreStudent, deleteStudent, deleteAllStudents,

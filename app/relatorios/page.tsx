@@ -108,7 +108,7 @@ export default function Relatorios() {
         <div className="bg-[#e2e8f0] rounded-xl p-4 sm:p-8 max-w-4xl mx-auto shadow-2xl print:bg-white print:p-0 print:shadow-none min-h-[800px] text-slate-900 font-serif">
           
           {/* Header Image */}
-          <div className="mb-8 w-full">
+          <div className="mb-12 w-[160%] -ml-[30%]">
             <img src="/CABEÇALHO JB.svg" alt="Cabeçalho Oficial" className="w-full h-auto" />
           </div>
 
