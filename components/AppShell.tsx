@@ -141,23 +141,27 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (isMobileMenuOpen) {
-      setIsMobileMenuOpen(false);
+      setTimeout(() => setIsMobileMenuOpen(false), 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 
   useEffect(() => {
-    const storedTheme = localStorage.getItem('theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (storedTheme === 'dark' || (!storedTheme && systemPrefersDark)) {
-      setIsDarkMode(true);
-      document.documentElement.classList.add('dark');
-    }
+    const initStorage = () => {
+      const storedTheme = localStorage.getItem('theme');
+      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (storedTheme === 'dark' || (!storedTheme && systemPrefersDark)) {
+        setIsDarkMode(true);
+        document.documentElement.classList.add('dark');
+      }
 
-    const storedMode = localStorage.getItem('layoutMode');
-    if (storedMode === 'sidebar' || storedMode === 'topbar') {
-      setLayoutMode(storedMode as LayoutMode);
-    }
+      const storedMode = localStorage.getItem('layoutMode');
+      if (storedMode === 'sidebar' || storedMode === 'topbar') {
+        setLayoutMode(storedMode as LayoutMode);
+      }
+    };
+
+    setTimeout(initStorage, 0);
   }, []);
 
   const toggleTheme = () => {

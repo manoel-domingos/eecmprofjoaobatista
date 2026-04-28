@@ -42,16 +42,18 @@ export default function ImportWizard({ isOpen, onClose, onImport }: ImportWizard
   // Reset ao fechar
   useEffect(() => {
     if (!isOpen) {
-      setStep("upload");
-      setFile(null);
-      setWorkbook(null);
-      setSheets([]);
-      setActiveSheet("");
-      setRawData([]);
-      setHeaderRowIndex(0);
-      setColumnMapping({});
-      setError(null);
-      setDragOver(false);
+      setTimeout(() => {
+        setStep("upload");
+        setFile(null);
+        setWorkbook(null);
+        setSheets([]);
+        setActiveSheet("");
+        setRawData([]);
+        setHeaderRowIndex(0);
+        setColumnMapping({});
+        setError(null);
+        setDragOver(false);
+      }, 0);
     }
   }, [isOpen]);
 

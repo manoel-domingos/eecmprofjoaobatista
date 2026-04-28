@@ -109,6 +109,7 @@ export default function Relatorios() {
           
           {/* Header Image */}
           <div className="mb-12 w-[160%] -ml-[30%]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/CABEÇALHO JB.svg" alt="Cabeçalho Oficial" className="w-full h-auto" />
           </div>
 
@@ -144,7 +145,7 @@ export default function Relatorios() {
                       <td className="border border-slate-900 p-2 text-center w-32">{occurrences.length > 0 ? 6 : 0}</td>
                     </tr>
                     <tr>
-                      <td className="border border-slate-900 p-2 font-medium">Alunos em Observação (Nota &lt; 5.0)</td>
+                      <td className="border border-slate-900 p-2 font-medium">Alunos em Acompanhamento (Nota &lt; 5.0)</td>
                       <td className="border border-slate-900 p-2 text-center w-32">0</td>
                     </tr>
                   </tbody>

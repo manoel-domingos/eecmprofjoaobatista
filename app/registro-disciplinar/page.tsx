@@ -91,7 +91,7 @@ function RegistroDisciplinarContent() {
       const response = await result.response;
       setObservations(response.text().trim());
     } catch (error) {
-      console.error("Erro ao melhorar observações:", error);
+      console.error("Erro ao melhorar ATA:", error);
       alert("Não foi possível melhorar o texto com IA no momento.");
     } finally {
       setIsImproving(false);
@@ -306,9 +306,9 @@ function RegistroDisciplinarContent() {
           </div>
 
           <div class="section">
-            <div class="label">Observações Complementares</div>
+            <div class="label">ATA</div>
             <div class="value" style="min-height: 80px; border: 1px solid #eee; padding: 10px; border-radius: 4px; font-size: 13px;">
-              ${o.observations || 'Nenhuma observação adicional.'}
+              ${o.observations || 'Nenhum registro de ATA adicional.'}
             </div>
           </div>
 
@@ -689,8 +689,8 @@ function RegistroDisciplinarContent() {
           </div>
           
           <div style="margin-top: 20px;">
-            <span class="label">OBSERVAÇÕES ADICIONAIS:</span>
-            <div class="obs-box">${o.observations || 'Nenhuma observação detalhada foi fornecida no momento do registro.'}</div>
+            <span class="label">ATA:</span>
+            <div class="obs-box">${o.observations || 'Nenhum registro de ATA detalhado foi fornecido no momento do registro.'}</div>
           </div>
 
           <div class="signature">
@@ -765,9 +765,9 @@ function RegistroDisciplinarContent() {
           <p><strong>IMPACTO NA PONTUAÇÃO:</strong> -${pointsToDeduct.toFixed(2)} PONTOS</p>
         </div>
         
-        <p><strong>OBSERVAÇÕES ADICIONAIS:</strong></p>
+        <p><strong>ATA:</strong></p>
         <div style="border: 1px solid #000; min-height: 100pt; padding: 10pt;">
-          ${o.observations || 'Nenhuma observação detalhada.'}
+          ${o.observations || 'Nenhum registro de ATA detalhado.'}
         </div>
 
         <br><br><br>
@@ -1255,7 +1255,7 @@ function RegistroDisciplinarContent() {
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-1 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      Observações adicionais
+                      ATA
                       <button
                         type="button"
                         onClick={handleImproveObservations}
@@ -1269,7 +1269,7 @@ function RegistroDisciplinarContent() {
                     <span className="text-[10px] text-slate-400 font-normal uppercase tracking-wider">Ajuste o tamanho se necessário</span>
                   </label>
                   <textarea 
-                    rows={2}
+                    rows={4}
                     value={observations}
                     onChange={(e) => {
                       setObservations(e.target.value);
@@ -1280,7 +1280,7 @@ function RegistroDisciplinarContent() {
                       e.target.style.height = 'auto';
                       e.target.style.height = e.target.scrollHeight + 'px';
                     }}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[80px] text-sm overflow-hidden"
+                    className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[120px] text-sm overflow-hidden"
                     placeholder="Descreva o que ocorreu..."
                   />
                 </div>
@@ -1353,6 +1353,7 @@ function RegistroDisciplinarContent() {
                               <Video className="w-8 h-8 text-white/50" />
                             </div>
                           ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={url} className="w-full h-full object-cover" alt="Anexo" />
                           )}
                           <button 
@@ -1410,6 +1411,7 @@ function RegistroDisciplinarContent() {
                     <div className="grid grid-cols-2 gap-2">
                       {signedDocUrls.map((url, index) => (
                         <div key={index} className="relative group aspect-video bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={url} className="w-full h-full object-cover" alt="Documento" />
                           <button 
                             type="button"
@@ -1864,7 +1866,7 @@ function RegistroDisciplinarContent() {
 
                 {o.observations && (
                   <div>
-                    <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">Observações</h3>
+                    <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">ATA</h3>
                     <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap">
                       {o.observations}
                     </p>

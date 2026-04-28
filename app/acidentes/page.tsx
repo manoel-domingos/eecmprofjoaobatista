@@ -19,8 +19,8 @@ function AcidentesContent() {
   useEffect(() => {
     const paramMonth = searchParams.get('month');
     const paramClass = searchParams.get('class');
-    if (paramMonth && paramMonth !== 'Selecionar...') setSelectedMonth(paramMonth);
-    if (paramClass && paramClass !== 'Todas') setSelectedClass(paramClass);
+    if (paramMonth && paramMonth !== 'Selecionar...') setTimeout(() => setSelectedMonth(paramMonth), 0);
+    if (paramClass && paramClass !== 'Todas') setTimeout(() => setSelectedClass(paramClass), 0);
   }, [searchParams]);
 
   const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];

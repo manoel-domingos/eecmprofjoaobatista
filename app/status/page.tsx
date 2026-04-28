@@ -109,7 +109,7 @@ export default function StatusPage() {
   }
 
   useEffect(() => {
-    refreshAll();
+    setTimeout(refreshAll, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -85,6 +85,7 @@ export default function Login() {
     <div className="h-[100dvh] w-full flex items-center justify-center bg-gradient-to-br from-slate-900 to-blue-900 relative overflow-hidden">
       
       {/* Background Decor */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/logo_login.svg" alt="" className="absolute -right-32 md:-right-24 top-[40%] md:top-[45%] -translate-y-1/2 w-[102vw] md:w-[60vw] max-w-[780px] opacity-15 pointer-events-none object-contain" />
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 rounded-full blur-[100px] pointer-events-none z-0" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none z-0" />
@@ -92,6 +93,7 @@ export default function Login() {
       <div className="w-full max-w-md p-6 sm:p-7 bg-white/90 backdrop-blur-xl border border-slate-200/60 rounded-3xl shadow-2xl relative z-10 mx-4">
         <div className="flex flex-col items-center mb-5 sm:mb-6">
           <div className="w-20 h-20 sm:w-28 sm:h-28 flex items-center justify-center relative mb-3">
+             {/* eslint-disable-next-line @next/next/no-img-element */}
              <img src="/logo_login.svg" alt="Logo EECM" className="w-full h-full object-contain drop-shadow-xl" />
              
              <div className="fallback-container hidden flex-col items-center">
