@@ -641,12 +641,12 @@ function RegistroDisciplinarContent() {
         <head>
           <title>${docTitle} - ${primaryStudent?.name}</title>
           <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; max-width: 800px; margin: 0 auto; }
-            .header-container { margin-bottom: 30px; }
-            .title-section { text-align: center; margin-bottom: 30px; text-decoration: underline; }
-            .title { font-size: 18px; font-weight: bold; margin: 0; color: #000; text-transform: uppercase; }
-            .row { margin-bottom: 8px; font-size: 14px; display: flex; }
-            .label { font-weight: bold; color: #000; min-width: 150px; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px 40px; color: #1e293b; line-height: 1.5; max-width: 850px; margin: 0 auto; }
+            .header-container { margin-bottom: 35px; }
+            .title-section { text-align: center; margin-bottom: 40px; text-decoration: underline; }
+            .title { font-size: 24px; font-weight: bold; margin: 0; color: #000; text-transform: uppercase; }
+            .row { margin-bottom: 10px; font-size: 15px; display: flex; }
+            .label { font-weight: bold; color: #000; min-width: 170px; }
             .value { color: #000; flex: 1; border-bottom: 1px dotted #ccc; padding-left: 5px; }
             .box { border: 1px solid #000; padding: 15px; margin-top: 20px; }
             .signature { margin-top: 60px; display: flex; justify-content: space-between; gap: 20px; }
@@ -740,14 +740,14 @@ function RegistroDisciplinarContent() {
       <div style="font-family: Arial, sans-serif;">
         ${headerHtmlDocx}
         
-        <h1 style="text-align: center; font-size: 18pt; text-decoration: underline; margin-bottom: 30px;">${docTitle}</h1>
+        <h1 style="text-align: center; font-size: 22pt; text-decoration: underline; margin-bottom: 30px;">${docTitle}</h1>
         
-        <p><strong>DATA DO REGISTRO:</strong> ${formatDate(o.date)} ${o.hour || ''}</p>
-        <p><strong>LOCAL:</strong> ${o.location || 'NÃO INFORMADO'}</p>
-        <p><strong>${relatedStudents.length > 1 ? 'ALUNOS' : 'ALUNO'}:</strong> ${studentNames.toUpperCase()}</p>
-        <p><strong>${relatedStudents.length > 1 ? 'TURMAS' : 'TURMA'}:</strong> ${studentClasses.toUpperCase()}</p>
-        <p><strong>LOCALIZADO POR:</strong> ${o.locatedBy?.toUpperCase() || 'NÃO INFORMADO'}</p>
-        <p><strong>REGISTRADO POR:</strong> ${o.registeredBy?.toUpperCase() || 'SISTEMA'}</p>
+        <p style="font-size: 14pt;"><strong>DATA DO REGISTRO:</strong> ${formatDate(o.date)} ${o.hour || ''}</p>
+        <p style="font-size: 14pt;"><strong>LOCAL:</strong> ${o.location || 'NÃO INFORMADO'}</p>
+        <p style="font-size: 14pt;"><strong>${relatedStudents.length > 1 ? 'ALUNOS' : 'ALUNO'}:</strong> ${studentNames.toUpperCase()}</p>
+        <p style="font-size: 14pt;"><strong>${relatedStudents.length > 1 ? 'TURMAS' : 'TURMA'}:</strong> ${studentClasses.toUpperCase()}</p>
+        <p style="font-size: 14pt;"><strong>LOCALIZADO POR:</strong> ${o.locatedBy?.toUpperCase() || 'NÃO INFORMADO'}</p>
+        <p style="font-size: 14pt;"><strong>REGISTRADO POR:</strong> ${o.registeredBy?.toUpperCase() || 'SISTEMA'}</p>
         
         <div style="border: 1px solid #000; padding: 10pt; margin: 20pt 0;">
           <p><strong>INFRAÇÃO (ART. ${rule?.code}):</strong> ${rule?.description?.toUpperCase()}</p>
@@ -1743,7 +1743,7 @@ function RegistroDisciplinarContent() {
         const rule = rules.find(r => r.code === o.ruleCode);
         return (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col">
+            <div className="bg-white border border-slate-200 rounded-xl max-w-lg w-full max-h-[90vh] shadow-2xl overflow-hidden flex flex-col">
               <div className="flex items-center justify-between p-5 border-b border-slate-200 bg-slate-50">
                 <h2 className="text-xl font-bold text-slate-800">Detalhes da Ocorrência</h2>
                 <button 
@@ -1754,7 +1754,10 @@ function RegistroDisciplinarContent() {
                 </button>
               </div>
               
-              <div className="p-6 space-y-6">
+              <div className="p-6 space-y-6 overflow-y-auto">
+                <div className="w-full mb-4 border-b border-slate-100 pb-4">
+                  <img src="/CABEÇALHO JB.svg" className="w-full h-auto" alt="Cabeçalho" />
+                </div>
                 <div>
                   <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-1">
                     {o.studentIds && o.studentIds.length > 1 ? 'Alunos' : 'Aluno'}
