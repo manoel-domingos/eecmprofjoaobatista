@@ -304,7 +304,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             archived: o.archived || false
           })));
           if (accidentsData) setAccidents(accidentsData.map(a => ({...a, studentId: a.student_id, registeredBy: a.registered_by, bodyPart: a.body_part, parentsNotified: a.parents_notified, medicForwarded: a.medic_forwarded})));
-          if (praisesData) setPraises(praisesData.map(p => ({...p, studentId: p.student_id, registeredBy: p.registered_by})));
+          if (praisesData) setPraises(praisesData.map(p => ({
+            ...p, 
+            studentId: p.student_id, 
+            registeredBy: p.registered_by,
+            type: p.article || p.type 
+          })));
           if (summonsData) setSummons(summonsData.map((s: any) => ({...s, studentId: s.student_id, registeredBy: s.registered_by})));
           if (conductTermsData) setConductTerms(conductTermsData.map((t: any) => ({...t, studentId: t.student_id, registeredBy: t.registered_by, guardianName: t.guardian_name})));
           if (auditLogsData) setAuditLogs(auditLogsData.map((l: any) => ({...l, entityName: l.entity_name, entityId: l.entity_id, userEmail: l.user_email})));
@@ -620,7 +625,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         archived: o.archived || false
       })));
       if (accidentsData) setAccidents(accidentsData.map(a => ({...a, studentId: a.student_id, registeredBy: a.registered_by, bodyPart: a.body_part, parentsNotified: a.parents_notified, medicForwarded: a.medic_forwarded})));
-      if (praisesData) setPraises(praisesData.map(p => ({...p, studentId: p.student_id, registeredBy: p.registered_by})));
+      if (praisesData) setPraises(praisesData.map(p => ({
+        ...p, 
+        studentId: p.student_id, 
+        registeredBy: p.registered_by,
+        type: p.article || p.type
+      })));
       if (summonsData) setSummons(summonsData.map((s: any) => ({...s, studentId: s.student_id, registeredBy: s.registered_by})));
       if (conductTermsData) setConductTerms(conductTermsData.map((t: any) => ({...t, studentId: t.student_id, registeredBy: t.registered_by, guardianName: t.guardian_name})));
       if (auditLogsData) setAuditLogs(auditLogsData.map((l: any) => ({...l, entityName: l.entity_name, entityId: l.entity_id, userEmail: l.user_email})));
@@ -663,6 +673,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     checkWriteAccess();
     let newId = `O${occurrences.length + 1}`;
     if (supabase && isSupabaseConnected) {
+      // Create a base payload with columns we know exist based on our fetch logic
       const dbPayload: any = {
         student_id: o.studentId,
         date: o.date,
@@ -674,12 +685,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
         observations: o.observations || null,
         video_urls: o.videoUrls || [],
         signed_doc_urls: o.signedDocUrls || [],
-        student_ids: o.studentIds || [o.studentId],
-        attenuating_factors: o.attenuatingFactors || [],
-        aggravating_factors: o.aggravatingFactors || [],
-        measure: o.measure || null,
-        duration_days: o.durationDays || null
+        archived: o.archived || false
       };
+
+      // Handle optional fields that might be missing from schema by 
+      // check if they would fail or if we should just omit them.
+      // Based on error report 'aggravating_factors' is missing.
+      // We'll append these details to observations to avoid data loss.
+      let enhancedObservations = o.observations || '';
+      
+      if (o.measure) {
+        enhancedObservations += `\nMedida: ${o.measure}`;
+      }
+      if (o.durationDays) {
+        enhancedObservations += `\nDuração: ${o.durationDays} dias`;
+      }
+      if (o.attenuatingFactors && o.attenuatingFactors.length > 0) {
+        enhancedObservations += `\nAtenuantes: ${o.attenuatingFactors.join(', ')}`;
+      }
+      if (o.aggravatingFactors && o.aggravatingFactors.length > 0) {
+        enhancedObservations += `\nAgravantes: ${o.aggravatingFactors.join(', ')}`;
+      }
+      if (o.studentIds && o.studentIds.length > 1) {
+        const otherStudents = o.studentIds.filter(id => id !== o.studentId);
+        enhancedObservations += `\nOutros alunos envolvidos: ${otherStudents.join(', ')}`;
+      }
+
+      dbPayload.observations = enhancedObservations.trim() || null;
 
       try {
         const { data, error } = await supabase!.from('occurrences').insert([dbPayload]).select().single();
@@ -697,15 +729,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             locatedBy: data.located_by,
             ruleCode: Array.isArray(data.rule_code) ? Number(data.rule_code[0]) : Number(data.rule_code), 
             studentId: String(data.student_id), 
-            studentIds: data.student_ids || [],
+            studentIds: o.studentIds || [String(data.student_id)],
             registeredBy: data.registered_by,
             observations: data.observations,
             videoUrls: data.video_urls || [],
             signedDocUrls: data.signed_doc_urls || [],
-            attenuatingFactors: data.attenuating_factors || [],
-            aggravatingFactors: data.aggravating_factors || [],
-            measure: data.measure,
-            durationDays: data.duration_days,
+            attenuatingFactors: o.attenuatingFactors || [],
+            aggravatingFactors: o.aggravatingFactors || [],
+            measure: o.measure,
+            durationDays: o.durationDays,
             archived: data.archived || false
           }, ...prev]);
           newId = data.id;
@@ -714,7 +746,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       } catch (err: any) {
         console.error("Occurrence insert error:", err);
-        return;
+        throw err; // Re-throw to handle in UI
       }
     }
     const finalId = `O${occurrences.length + 1}`;
@@ -733,14 +765,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (o.locatedBy) dbPayload.located_by = o.locatedBy;
       if (o.ruleCode) dbPayload.rule_code = o.ruleCode;
       if (o.registeredBy) dbPayload.registered_by = o.registeredBy;
-      if (o.observations !== undefined) dbPayload.observations = o.observations;
+      
+      // Handle observations with optional fields
+      if (o.observations !== undefined || o.measure || o.durationDays || o.attenuatingFactors || o.aggravatingFactors) {
+        const existing = occurrences.find(item => item.id === id);
+        let enhancedObservations = o.observations !== undefined ? o.observations : (existing?.observations || '');
+        
+        // Only append if they are being updated or if we're building a new observations string
+        if (o.measure) enhancedObservations += `\nMedida: ${o.measure}`;
+        if (o.durationDays) enhancedObservations += `\nDuração: ${o.durationDays} dias`;
+        if (o.attenuatingFactors && o.attenuatingFactors.length > 0) enhancedObservations += `\nAtenuantes: ${o.attenuatingFactors.join(', ')}`;
+        if (o.aggravatingFactors && o.aggravatingFactors.length > 0) enhancedObservations += `\nAgravantes: ${o.aggravatingFactors.join(', ')}`;
+
+        dbPayload.observations = enhancedObservations.trim();
+      }
+
       if (o.videoUrls) dbPayload.video_urls = o.videoUrls;
       if (o.signedDocUrls) dbPayload.signed_doc_urls = o.signedDocUrls;
-      if (o.studentIds) dbPayload.student_ids = o.studentIds;
-      if (o.attenuatingFactors) dbPayload.attenuating_factors = o.attenuatingFactors;
-      if (o.aggravatingFactors) dbPayload.aggravating_factors = o.aggravatingFactors;
-      if (o.measure) dbPayload.measure = o.measure;
-      if (o.durationDays !== undefined) dbPayload.duration_days = o.durationDays;
+      if (o.archived !== undefined) dbPayload.archived = o.archived;
       
       try {
         const { error } = await supabase!.from('occurrences').update(dbPayload).eq('id', id);
@@ -751,7 +793,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       } catch (err: any) {
         console.error("Occurrence update error:", err);
-        return;
+        throw err; // Re-throw to handle in UI
       }
     }
     setOccurrences(prev => prev.map(item => item.id === id ? { ...item, ...o } : item));
@@ -829,7 +871,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (a.medicForwarded !== undefined) dbPayload.medic_forwarded = a.medicForwarded;
       if (a.observations !== undefined) dbPayload.observations = a.observations;
 
-      await supabase!.from('accidents').update(dbPayload).eq('id', id);
+      try {
+        const { error } = await supabase!.from('accidents').update(dbPayload).eq('id', id);
+        if (error) throw error;
+      } catch (err: any) {
+        console.error("Accident update error:", err);
+        alert(`Erro ao atualizar acidente no servidor: ${err.message}`);
+        throw err;
+      }
     }
     setAccidents(prev => prev.map(item => item.id === id ? { ...item, ...a } : item));
     logAction('UPDATE', 'Acidente', id, `Atualizado acidente ${id}`);
@@ -896,7 +945,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (p.description) dbPayload.description = p.description;
       if (p.registeredBy) dbPayload.registered_by = p.registeredBy;
 
-      await supabase!.from('praises').update(dbPayload).eq('id', id);
+      try {
+        const { error } = await supabase!.from('praises').update(dbPayload).eq('id', id);
+        if (error) throw error;
+      } catch (err: any) {
+        console.error("Praise update error:", err);
+        alert(`Erro ao atualizar elogio no servidor: ${err.message}`);
+        throw err;
+      }
     }
     setPraises(prev => prev.map(item => item.id === id ? { ...item, ...p } : item));
     logAction('UPDATE', 'Elogio', id, `Atualizado elogio ${id}`);
@@ -977,7 +1033,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (s.department) dbPayload.department = s.department;
       if (s.registeredBy) dbPayload.registered_by = s.registeredBy;
       
-      await supabase!.from('summons').update(dbPayload).eq('id', id);
+      try {
+        const { error } = await supabase!.from('summons').update(dbPayload).eq('id', id);
+        if (error) throw error;
+      } catch (err: any) {
+        console.error("Summons update error:", err);
+        alert(`Erro ao atualizar convocação no servidor: ${err.message}`);
+        throw err;
+      }
     }
     setSummons(prev => prev.map(item => item.id === id ? { ...item, ...s } : item));
     logAction('UPDATE', 'Convocação', id, `Atualizada convocação ${id}`);
@@ -1044,7 +1107,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (t.commitments) dbPayload.commitments = t.commitments;
       if (t.registeredBy) dbPayload.registered_by = t.registeredBy;
 
-      await supabase!.from('conduct_terms').update(dbPayload).eq('id', id);
+      try {
+        const { error } = await supabase!.from('conduct_terms').update(dbPayload).eq('id', id);
+        if (error) throw error;
+      } catch (err: any) {
+        console.error("Conduct term update error:", err);
+        alert(`Erro ao atualizar TAC no servidor: ${err.message}`);
+        throw err;
+      }
     }
     setConductTerms(prev => prev.map(item => item.id === id ? { ...item, ...t } : item));
     logAction('UPDATE', 'Termo de Conduta', id, `Atualizado TAC ${id}`);
