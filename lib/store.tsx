@@ -474,11 +474,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     checkWriteAccess();
     let newId = `S${students.length + 1}`;
     if (supabase && isSupabaseConnected) {
+      const dbPayload: any = {
+        name: s.name,
+        class: s.class,
+        shift: s.shift,
+        observation: s.observation,
+        address: s.address,
+        cpf: s.cpf,
+        registration_number: s.registrationNumber,
+        birth_date: s.birthDate,
+        contacts: s.contacts,
+        archived: s.archived || false
+      };
       try {
-        const { data, error } = await supabase!.from('students').insert([s]).select().single();
+        const { data, error } = await supabase!.from('students').insert([dbPayload]).select().single();
         if (error) throw error;
         if (data) {
-          setStudents(prev => [...prev, { ...data, points: 8 }]);
+          setStudents(prev => [...prev, { 
+            ...data, 
+            points: 8,
+            registrationNumber: data.registration_number,
+            birthDate: data.birth_date
+          }]);
           newId = data.id;
           logAction('CREATE', 'Aluno', newId, `Adicionado aluno: ${s.name}`);
           return;
@@ -541,11 +558,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateStudent = async (id: string, s: Partial<Student>) => {
     checkWriteAccess();
     if (supabase && isSupabaseConnected) {
+      const dbPayload: any = {};
+      if (s.name) dbPayload.name = s.name;
+      if (s.class) dbPayload.class = s.class;
+      if (s.shift) dbPayload.shift = s.shift;
+      if (s.observation !== undefined) dbPayload.observation = s.observation;
+      if (s.address !== undefined) dbPayload.address = s.address;
+      if (s.cpf !== undefined) dbPayload.cpf = s.cpf;
+      if (s.contacts) dbPayload.contacts = s.contacts;
+      if (s.registrationNumber !== undefined) dbPayload.registration_number = s.registrationNumber;
+      if (s.birthDate !== undefined) dbPayload.birth_date = s.birthDate;
+      if (s.archived !== undefined) dbPayload.archived = s.archived;
+
       try {
-        const { error } = await supabase!.from('students').update(s).eq('id', id);
+        const { error } = await supabase!.from('students').update(dbPayload).eq('id', id);
         if (error) throw error;
-        // The real-time subscription will handle the local state update eventually, 
-        // but we keep the optimistic update for UI responsiveness.
       } catch (err) {
         console.error("Update error:", err);
       }
@@ -680,7 +707,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         hour: o.hour || null,
         location: o.location || null,
         located_by: o.locatedBy || null,
-        rule_code: o.ruleCode,
+        rule_code: [o.ruleCode],
         registered_by: o.registeredBy,
         observations: o.observations || null,
         video_urls: o.videoUrls || [],
@@ -763,7 +790,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (o.hour) dbPayload.hour = o.hour;
       if (o.location) dbPayload.location = o.location;
       if (o.locatedBy) dbPayload.located_by = o.locatedBy;
-      if (o.ruleCode) dbPayload.rule_code = o.ruleCode;
+      if (o.ruleCode !== undefined) dbPayload.rule_code = [o.ruleCode];
       if (o.registeredBy) dbPayload.registered_by = o.registeredBy;
       
       // Handle observations with optional fields
