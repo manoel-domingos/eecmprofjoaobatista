@@ -332,54 +332,19 @@ function RegistroDisciplinarContent() {
     setTimeout(() => { printWindow.print(); }, 250);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedStudents.length === 0 || selectedRules.length === 0) return;
 
-    if (editingOccurrence) {
-      const studentId = selectedStudents[0];
-      const ruleCodeInt = parseInt(selectedRules[0], 10);
-      const escalation = getEscalationStatus(studentId, ruleCodeInt);
-      const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
-
-      updateOccurrence(editingOccurrence, {
-        studentId,
-        studentIds: selectedStudents,
-        date,
-        hour,
-        location,
-        locatedBy,
-        ruleCode: ruleCodeInt,
-        registeredBy,
-        observations,
-        measure: measureToSave,
-        videoUrls,
-        signedDocUrls,
-        durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
-        attenuatingFactors,
-        aggravatingFactors
-      });
-    } else {
-      // Create only one occurrence with all students included
-      for (const ruleCodeStr of selectedRules) {
-        const ruleCodeInt = parseInt(ruleCodeStr, 10);
-        
-        // We use the first student as the primary studentId for backward compatibility/DB constraints
-        const primaryStudentId = selectedStudents[0];
-        
-        // Check escalation for each student but logically treat as one event
-        // The user wants one record, so we'll just check escalation for the first one for the alert
-        const escalation = getEscalationStatus(primaryStudentId, ruleCodeInt);
-        if (escalation.isEscalated) {
-          const student = students.find(s => s.id === primaryStudentId);
-          const confirmed = window.confirm(`⚠️ ATENÇÃO (${student?.name}): ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
-          if (!confirmed) continue;
-        }
-
+    try {
+      if (editingOccurrence) {
+        const studentId = selectedStudents[0];
+        const ruleCodeInt = parseInt(selectedRules[0], 10);
+        const escalation = getEscalationStatus(studentId, ruleCodeInt);
         const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
 
-        addOccurrence({
-          studentId: primaryStudentId,
+        await updateOccurrence(editingOccurrence, {
+          studentId,
           studentIds: selectedStudents,
           date,
           hour,
@@ -395,18 +360,58 @@ function RegistroDisciplinarContent() {
           attenuatingFactors,
           aggravatingFactors
         });
-      }
-    }
+      } else {
+        // Create only one occurrence with all students included
+        for (const ruleCodeStr of selectedRules) {
+          const ruleCodeInt = parseInt(ruleCodeStr, 10);
+          
+          // We use the first student as the primary studentId for backward compatibility/DB constraints
+          const primaryStudentId = selectedStudents[0];
+          
+          // Check escalation for each student but logically treat as one event
+          // The user wants one record, so we'll just check escalation for the first one for the alert
+          const escalation = getEscalationStatus(primaryStudentId, ruleCodeInt);
+          if (escalation.isEscalated) {
+            const student = students.find(s => s.id === primaryStudentId);
+            const confirmed = window.confirm(`⚠️ ATENÇÃO (${student?.name}): ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
+            if (!confirmed) continue;
+          }
 
-    setIsModalOpen(false);
-    setEditingOccurrence(null);
-    // Reset form
-    setSelectedStudents([]);
-    setSelectedRules([]);
-    setRuleSearch('');
-    setObservations('');
-    setVideoUrls([]);
-    setSignedDocUrls([]);
+          const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
+
+          await addOccurrence({
+            studentId: primaryStudentId,
+            studentIds: selectedStudents,
+            date,
+            hour,
+            location,
+            locatedBy,
+            ruleCode: ruleCodeInt,
+            registeredBy,
+            observations,
+            measure: measureToSave,
+            videoUrls,
+            signedDocUrls,
+            durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
+            attenuatingFactors,
+            aggravatingFactors
+          });
+        }
+      }
+
+      setIsModalOpen(false);
+      setEditingOccurrence(null);
+      // Reset form
+      setSelectedStudents([]);
+      setSelectedRules([]);
+      setRuleSearch('');
+      setObservations('');
+      setVideoUrls([]);
+      setSignedDocUrls([]);
+    } catch (err) {
+      console.error("Erro ao salvar ocorrência:", err);
+      // Do not close the modal if there's an error
+    }
   };
 
   const handleAddContact = () => {
@@ -443,7 +448,7 @@ function RegistroDisciplinarContent() {
     setNewContacts(contacts);
   };
 
-  const handleAddQuickGuardian = (e: React.FormEvent) => {
+  const handleAddQuickGuardian = async (e: React.FormEvent) => {
     e.preventDefault();
     const targetStudentId = selectedStudents[0];
     if (!targetStudentId || !newGuardianName || !newGuardianPhone) return;
@@ -470,11 +475,15 @@ function RegistroDisciplinarContent() {
       { name: newGuardianName, phone: newGuardianPhone }
     ];
 
-    updateStudent(targetStudentId, { contacts: updatedContacts });
-    setNewGuardianName('');
-    setNewGuardianPhone('');
-    setIsAddGuardianModalOpen(false);
-    setIsGuardianListOpen(true);
+    try {
+      await updateStudent(targetStudentId, { contacts: updatedContacts });
+      setNewGuardianName('');
+      setNewGuardianPhone('');
+      setIsAddGuardianModalOpen(false);
+      setIsGuardianListOpen(true);
+    } catch (err) {
+      console.error("Erro ao adicionar responsável:", err);
+    }
   };
 
   const handleQuickGuardianPhoneChange = (value: string) => {
@@ -494,7 +503,7 @@ function RegistroDisciplinarContent() {
     if (guardianPhoneRef.current) guardianPhoneRef.current.setCustomValidity('');
   };
 
-  const handleQuickAddStudent = (e: React.FormEvent) => {
+  const handleQuickAddStudent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName || !newClassName) return;
 
@@ -525,16 +534,20 @@ function RegistroDisciplinarContent() {
 
     setIgnoredWarning(false);
 
-    addStudent({
-      name: newName,
-      class: newClassName,
-      shift: newShift,
-      points: 8.0,
-      contacts: validContacts.length > 0 ? validContacts : undefined
-    });
-    setNewName('');
-    setNewContacts([{ name: '', phone: '' }]);
-    setIsStudentModalOpen(false);
+    try {
+      await addStudent({
+        name: newName,
+        class: newClassName,
+        shift: newShift,
+        points: 8.0,
+        contacts: validContacts.length > 0 ? validContacts : undefined
+      });
+      setNewName('');
+      setNewContacts([{ name: '', phone: '' }]);
+      setIsStudentModalOpen(false);
+    } catch (err) {
+      console.error("Erro ao adicionar aluno:", err);
+    }
   };
 
   const handleWhatsAppRedirect = (phone: string, studentName: string) => {
@@ -593,16 +606,20 @@ function RegistroDisciplinarContent() {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleQuickAddStaff = (e: React.FormEvent) => {
+  const handleQuickAddStaff = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStaffName) return;
-    addStaffMember({
-      name: newStaffName,
-      role: newStaffRole
-    });
-    setLocatedBy(`${newStaffRole} ${newStaffName}`);
-    setNewStaffName('');
-    setIsStaffModalOpen(false);
+    try {
+      await addStaffMember({
+        name: newStaffName,
+        role: newStaffRole
+      });
+      setLocatedBy(`${newStaffRole} ${newStaffName}`);
+      setNewStaffName('');
+      setIsStaffModalOpen(false);
+    } catch (err) {
+      console.error("Erro ao adicionar membro da equipe:", err);
+    }
   };
 
   const handleExport = (o: Occurrence) => {

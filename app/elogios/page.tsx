@@ -83,32 +83,36 @@ function ElogiosContent() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent || !description) return;
 
-    if (editingPraise) {
-      updatePraise(editingPraise, {
-        studentId: selectedStudent,
-        date,
-        type,
-        description,
-        registeredBy
-      });
-    } else {
-      addPraise({
-        studentId: selectedStudent,
-        date,
-        type,
-        description,
-        registeredBy
-      });
-    }
+    try {
+      if (editingPraise) {
+        await updatePraise(editingPraise, {
+          studentId: selectedStudent,
+          date,
+          type,
+          description,
+          registeredBy
+        });
+      } else {
+        await addPraise({
+          studentId: selectedStudent,
+          date,
+          type,
+          description,
+          registeredBy
+        });
+      }
 
-    setIsModalOpen(false);
-    setSelectedStudent('');
-    setDescription('');
-    setEditingPraise(null);
+      setIsModalOpen(false);
+      setSelectedStudent('');
+      setDescription('');
+      setEditingPraise(null);
+    } catch (err) {
+      console.error("Erro ao salvar elogio:", err);
+    }
   };
 
   return (

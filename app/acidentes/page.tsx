@@ -101,40 +101,44 @@ function AcidentesContent() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent || !description || !bodyPart) return;
 
-    if (editingAccident) {
-      updateAccident(editingAccident, {
-        studentId: selectedStudent,
-        date,
-        location,
-        type,
-        description,
-        bodyPart,
-        registeredBy,
-        parentsNotified,
-        medicForwarded,
-        observations
-      });
-    } else {
-      addAccident({
-        studentId: selectedStudent,
-        date,
-        location,
-        type,
-        description,
-        bodyPart,
-        registeredBy,
-        parentsNotified,
-        medicForwarded,
-        observations
-      });
-    }
+    try {
+      if (editingAccident) {
+        await updateAccident(editingAccident, {
+          studentId: selectedStudent,
+          date,
+          location,
+          type,
+          description,
+          bodyPart,
+          registeredBy,
+          parentsNotified,
+          medicForwarded,
+          observations
+        });
+      } else {
+        await addAccident({
+          studentId: selectedStudent,
+          date,
+          location,
+          type,
+          description,
+          bodyPart,
+          registeredBy,
+          parentsNotified,
+          medicForwarded,
+          observations
+        });
+      }
 
-    setIsModalOpen(false);
-    setEditingAccident(null);
+      setIsModalOpen(false);
+      setEditingAccident(null);
+    } catch (err) {
+      console.error("Erro ao salvar acidente:", err);
+    }
   };
 
   return (
