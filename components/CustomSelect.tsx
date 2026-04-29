@@ -56,8 +56,8 @@ export default function CustomSelect({
             initial={{ opacity: 0, y: -10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
-            className="glass-card absolute z-50 w-full mt-1 max-h-60 flex flex-col py-1 overflow-hidden"
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="glass-dropdown absolute z-[9000] w-full mt-1 max-h-60 flex flex-col py-1 overflow-hidden"
           >
             <ul className="overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-600 scrollbar-track-transparent">
               {options.length === 0 ? (

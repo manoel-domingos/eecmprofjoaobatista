@@ -73,15 +73,15 @@ export default function SearchableSelect({
       </div>
 
       {isOpen && (
-        <div className="glass-card absolute z-50 w-full mt-1 max-h-60 flex flex-col">
+        <div className="glass-dropdown absolute z-[9000] w-full mt-1 max-h-60 flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
           <ul className="overflow-y-auto p-1">
             {filteredOptions.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-slate-500 text-center">Nenhum resultado</li>
+              <li className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400 text-center">Nenhum resultado</li>
             ) : (
               filteredOptions.map((opt) => (
                 <li
                   key={opt.value}
-                  className={`px-3 py-2 text-sm rounded-md cursor-pointer hover:bg-slate-100 ${value === opt.value ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'}`}
+                  className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors ${value === opt.value ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     onChange(opt.value);

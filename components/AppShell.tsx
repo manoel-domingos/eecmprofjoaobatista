@@ -525,8 +525,8 @@ function GroupPill({
       </button>
 
       {open && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[200] min-w-[240px]">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 flex flex-col py-1.5 overflow-hidden">
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[200] min-w-[240px] animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="glass-dropdown flex flex-col py-1.5 overflow-hidden">
             {group.children!.map((item) => {
               const active = pathname === item.href;
               return (
@@ -700,7 +700,7 @@ function RightControls(props: RightControlsProps) {
         {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
       </button>
 
-      <div className="relative isolate z-[110] ml-1">
+      <div className="relative isolate z-[9998] ml-1">
         <button
           onClick={() => setIsProfileOpen(!isProfileOpen)}
           className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-white/50 dark:border-slate-700/60 hover:bg-white/90 dark:hover:bg-slate-700 transition shadow-sm"
@@ -719,7 +719,7 @@ function RightControls(props: RightControlsProps) {
         </button>
  
         {isProfileOpen && (
-          <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-sm z-[120]">
+          <div className="absolute right-0 mt-2 w-64 glass-dropdown overflow-hidden text-sm z-[9999] animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
               <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{userName}</p>
               <p className="text-slate-500 dark:text-slate-400 text-xs truncate">{user?.email || 'Sem e-mail'}</p>

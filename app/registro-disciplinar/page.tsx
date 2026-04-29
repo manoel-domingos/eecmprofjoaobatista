@@ -972,8 +972,8 @@ function RegistroDisciplinarContent() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="glass-card max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col !bg-white/90 dark:!bg-slate-900/90 shadow-2xl">
+        <div className="fixed inset-0 glass-overlay z-[9990] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="glass-modal max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between p-5 border-b border-slate-200 sticky top-0 bg-white z-10">
               <h2 className="text-xl font-bold text-slate-800">
                 {editingOccurrence ? 'Editar Ocorrência' : 'Nova Ocorrência'}
@@ -1619,8 +1619,8 @@ function RegistroDisciplinarContent() {
       )}
 
       {isStudentModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-xl max-w-md w-full flex flex-col shadow-2xl">
+        <div className="fixed inset-0 glass-overlay z-[9991] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="glass-modal max-w-md w-full flex flex-col animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between p-5 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
                 Cadastrar Aluno Manualmente
@@ -1764,8 +1764,8 @@ function RegistroDisciplinarContent() {
 
       {/* Modal Quick Add Staff */}
       {isStaffModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-sm w-full p-5 shadow-2xl border border-slate-200">
+        <div className="fixed inset-0 glass-overlay z-[9991] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="glass-modal max-w-sm w-full p-5 animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
              <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-slate-800">Cadastrar Membro da Equipe</h3>
                 <button onClick={() => setIsStaffModalOpen(false)} className="text-slate-400 hover:text-slate-600">
@@ -1815,8 +1815,8 @@ function RegistroDisciplinarContent() {
         const student = students.find(s => s.id === o.studentId);
         const rule = rules.find(r => r.code === o.ruleCode);
         return (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white border border-slate-200 rounded-xl max-w-lg w-full max-h-[90vh] shadow-2xl overflow-hidden flex flex-col">
+          <div className="fixed inset-0 glass-overlay z-[9990] flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="glass-modal max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
               <div className="flex items-center justify-between p-5 border-b border-slate-200 bg-slate-50">
                 <h2 className="text-xl font-bold text-slate-800">Detalhes da Ocorrência</h2>
                 <button 
@@ -2007,8 +2007,8 @@ function RegistroDisciplinarContent() {
       })()}
       {/* Modal Add Quick Guardian */}
       {isAddGuardianModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-xl max-w-sm w-full p-5 shadow-2xl border border-slate-200">
+        <div className="fixed inset-0 glass-overlay z-[9992] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="glass-modal max-w-sm w-full p-5 animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
              <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-slate-800">Adicionar Responsável</h3>
                 <button onClick={() => setIsAddGuardianModalOpen(false)} className="text-slate-400 hover:text-slate-600">
