@@ -172,7 +172,7 @@ function RegistroDisciplinarContent() {
 
   const getLoggedUserName = () => {
     // Checar perfil personalizado primeiro
-    const userKey = user?.email || user?.id || 'guest';
+    const userKey = user?.email || 'guest';
     const savedProfile = typeof window !== 'undefined' ? localStorage.getItem(`eecm_profile_${userKey}`) : null;
     if (savedProfile) {
       const p = JSON.parse(savedProfile);
