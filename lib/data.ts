@@ -45,6 +45,7 @@ export interface Occurrence {
   measure?: string;
   attenuatingFactors?: string[];
   aggravatingFactors?: string[];
+  createdAt?: string;      // Timestamp do servidor (para ordenação real)
 }
 
 export interface StaffMember {

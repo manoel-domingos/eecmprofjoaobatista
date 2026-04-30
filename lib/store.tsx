@@ -305,7 +305,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
               observations: o.observations,
               videoUrls: o.video_urls || (o.video_url ? [o.video_url] : []),
               signedDocUrls: o.signed_doc_urls || (o.signed_doc_url ? [o.signed_doc_url] : []),
-              archived: o.archived || false
+              archived: o.archived || false,
+              createdAt: o.created_at
             };
           }));
           if (accidentsData) setAccidents(accidentsData.map(a => ({...a, studentId: a.student_id, registeredBy: a.registered_by, bodyPart: a.body_part, parentsNotified: a.parents_notified, medicForwarded: a.medic_forwarded})));
@@ -658,7 +659,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           observations: o.observations,
           videoUrls: o.video_urls || (o.video_url ? [o.video_url] : []),
           signedDocUrls: o.signed_doc_urls || (o.signed_doc_url ? [o.signed_doc_url] : []),
-          archived: o.archived || false
+          archived: o.archived || false,
+          createdAt: o.created_at
         };
       }));
       if (accidentsData) setAccidents(accidentsData.map(a => ({...a, studentId: a.student_id, registeredBy: a.registered_by, bodyPart: a.body_part, parentsNotified: a.parents_notified, medicForwarded: a.medic_forwarded})));

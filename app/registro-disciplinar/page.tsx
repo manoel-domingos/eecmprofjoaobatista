@@ -218,11 +218,15 @@ function RegistroDisciplinarContent() {
     
     return anyNameMatch || obsMatch || false;
   }).sort((a, b) => {
-    // Sort by date + hour (newest first)
+    // Ordenar pelo createdAt do servidor (mais recente primeiro) para refletir ordem real de criação
+    if (a.createdAt && b.createdAt) {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+    // Fallback: usar date + hour se createdAt não estiver disponível
     const dateTimeA = new Date(`${a.date}T${a.hour || '00:00'}`).getTime();
     const dateTimeB = new Date(`${b.date}T${b.hour || '00:00'}`).getTime();
     if (dateTimeB !== dateTimeA) return dateTimeB - dateTimeA;
-    // If same date+hour, newest ID first (proxy for creation time)
+    // Se tudo mais for igual, por ID (mais recente ID primeiro)
     return b.id.localeCompare(a.id);
   });
 
