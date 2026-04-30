@@ -1113,7 +1113,7 @@ function RegistroDisciplinarContent() {
                   <th className="px-6 py-3 font-medium">Infração</th>
                   <th className="px-6 py-3 font-medium">Gravidade</th>
                   <th className="px-6 py-3 font-medium">Medida</th>
-                  <th className="px-6 py-3 font-medium w-24 text-center">Ações</th>
+                  <th className="px-6 py-3 font-medium w-24 text-center">Aç��es</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-600">
@@ -2171,7 +2171,7 @@ function RegistroDisciplinarContent() {
 
               {/* Footer compacto com botoes equalizados */}
               <div className="border-t border-slate-200 px-4 py-3 bg-slate-50 flex items-end gap-2 mt-auto">
-              <div className="flex flex-col gap-1.5 flex-1">
+              <div className="flex flex-col gap-1.5">
                 <div className="relative">
                   <button
                     type="button"
@@ -2184,22 +2184,48 @@ function RegistroDisciplinarContent() {
                     WhatsApp
                   </button>
 
-                    {isGuardianListOpen && (
-                      <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-slate-200 rounded-xl shadow-2xl p-4 z-[60]">
-                        <h4 className="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">Responsáveis</h4>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {student?.contacts?.length ? (
-                            student.contacts.map((c, i) => (
-                              <button
-                                key={i}
-                                type="button"
-                                onClick={() => handleWhatsAppRedirect(c.phone, student.name)}
-                                className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-emerald-50 rounded-lg group transition border border-transparent hover:border-emerald-200 text-left"
-                              >
-                                <div>
-                                  <p className="text-sm font-bold text-slate-700 group-hover:text-emerald-700">{c.name || 'Responsável'}</p>
-                                  <p className="text-xs text-slate-500">{c.phone}</p>
-                                </div>
+                  {isGuardianListOpen && (
+                    <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-slate-200 rounded-xl shadow-2xl p-4 z-[60]">
+                      <h4 className="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">Responsáveis</h4>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {student?.contacts?.length ? (
+                          student.contacts.map((c, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => handleWhatsAppRedirect(c.phone, student.name)}
+                              className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-emerald-50 rounded-lg group transition border border-transparent hover:border-emerald-200 text-left"
+                            >
+                              <div>
+                                <p className="text-sm font-bold text-slate-700 group-hover:text-emerald-700">{c.name || 'Responsável'}</p>
+                                <p className="text-xs text-slate-500">{c.phone}</p>
+                              </div>
+                              <Phone className="w-4 h-4 text-emerald-500" />
+                            </button>
+                          ))
+                        ) : <p className="text-xs text-slate-500 text-center py-4">Sem responsáveis cadastrados</p>
+                        }
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <button 
+                  onClick={() => { setViewOccurrence(null); setIsGuardianListOpen(false); }}
+                  className="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-200 border border-slate-200 transition text-xs font-medium flex items-center justify-center"
+                >
+                  Fechar
+                </button>
+
+                {currentUserRole !== 'GUEST' && (
+                  <button 
+                    onClick={(e) => { setViewOccurrence(null); handleArchive(e, o.id); }}
+                    className="px-3 py-1.5 rounded-lg text-orange-600 hover:bg-orange-100 border border-orange-200 transition text-xs font-medium flex items-center justify-center gap-1"
+                  >
+                    <Archive className="w-3.5 h-3.5" /> Arquivar
+                  </button>
+                )}
+              </div>
                                 <Phone className="w-4 h-4 text-emerald-500" />
                               </button>
                             ))
@@ -2243,7 +2269,6 @@ function RegistroDisciplinarContent() {
                 >
                   <FileText className="w-3.5 h-3.5" /> DOCX
                 </button>
-              </div>
               </div>
             </div>
           </div>
