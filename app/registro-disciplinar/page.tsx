@@ -1088,6 +1088,7 @@ function RegistroDisciplinarContent() {
               <thead className="bg-white border-b border-slate-200 text-slate-500 uppercase text-[10px] font-bold">
                 <tr>
                   <th className="px-6 py-3 font-medium">Data</th>
+                  <th className="px-6 py-3 font-medium">Horário</th>
                   <th className="px-6 py-3 font-medium">Aluno</th>
                   <th className="px-6 py-3 font-medium">Turma</th>
                   <th className="px-6 py-3 font-medium">Infração</th>
@@ -1099,7 +1100,7 @@ function RegistroDisciplinarContent() {
               <tbody className="divide-y divide-slate-100 text-slate-600">
                 {filteredOccurrences.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-slate-500">
+                    <td colSpan={8} className="px-6 py-8 text-center text-slate-500">
                       Nenhuma ocorrência encontrada.
                     </td>
                   </tr>
@@ -1123,10 +1124,10 @@ function RegistroDisciplinarContent() {
                             title="Clique para ver os detalhes ou exportar"
                           >
                             <td className="px-6 py-4">
-                              <div className="flex flex-col">
-                                <span>{formatDate(o.date)}</span>
-                                {o.hour && <span className="text-xs text-slate-400">{o.hour}</span>}
-                              </div>
+                              <span>{formatDate(o.date)}</span>
+                            </td>
+                            <td className="px-6 py-4 text-slate-500">
+                              {o.hour || '—'}
                             </td>
                             <td className="px-6 py-4 font-medium text-slate-800 max-w-[200px] truncate">{names || 'Nenhum aluno'}</td>
                             <td className="px-6 py-4 max-w-[120px] truncate">{classes_occur || '-'}</td>
