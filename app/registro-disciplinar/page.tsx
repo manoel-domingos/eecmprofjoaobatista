@@ -2215,7 +2215,7 @@ function RegistroDisciplinarContent() {
 
                 <button 
                   onClick={() => { setViewOccurrence(null); setIsGuardianListOpen(false); }}
-                  className="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-200 border border-slate-200 transition text-xs font-medium"
+                  className="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-200 border border-slate-200 transition text-xs font-medium flex items-center justify-center"
                 >
                   Fechar
                 </button>
@@ -2223,7 +2223,7 @@ function RegistroDisciplinarContent() {
                 {currentUserRole !== 'GUEST' && (
                   <button 
                     onClick={(e) => { setViewOccurrence(null); handleArchive(e, o.id); }}
-                    className="px-3 py-1.5 rounded-lg text-orange-600 hover:bg-orange-100 border border-orange-200 transition text-xs font-medium flex items-center gap-1"
+                    className="px-3 py-1.5 rounded-lg text-orange-600 hover:bg-orange-100 border border-orange-200 transition text-xs font-medium flex items-center justify-center gap-1"
                   >
                     <Archive className="w-3.5 h-3.5" /> Arquivar
                   </button>
