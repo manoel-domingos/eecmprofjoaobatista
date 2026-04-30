@@ -791,6 +791,14 @@ function ProfileMenu({
 
     setPwdLoading(true);
     try {
+      // Verificar se existe sessão ativa
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setPwdError('Sessão expirada. Faça login novamente para alterar a senha.');
+        setPwdLoading(false);
+        return;
+      }
+
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) {
         setPwdError(error.message);
