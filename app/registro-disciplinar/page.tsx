@@ -2244,7 +2244,7 @@ function RegistroDisciplinarContent() {
             </div>
           </div>
         );
-      })()}
+      })()
       {/* Modal Add Quick Guardian */}
       {isAddGuardianModalOpen && (
         <div className="fixed inset-0 glass-overlay z-[9992] flex items-center justify-center p-4 animate-in fade-in duration-200">
