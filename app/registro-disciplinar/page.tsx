@@ -218,11 +218,11 @@ function RegistroDisciplinarContent() {
     
     return anyNameMatch || obsMatch || false;
   }).sort((a, b) => {
-    // Sort by date (newest first)
-    const dateA = new Date(a.date).getTime();
-    const dateB = new Date(b.date).getTime();
-    if (dateB !== dateA) return dateB - dateA;
-    // If same date, newest ID first (proxy for creation time)
+    // Sort by date + hour (newest first)
+    const dateTimeA = new Date(`${a.date}T${a.hour || '00:00'}`).getTime();
+    const dateTimeB = new Date(`${b.date}T${b.hour || '00:00'}`).getTime();
+    if (dateTimeB !== dateTimeA) return dateTimeB - dateTimeA;
+    // If same date+hour, newest ID first (proxy for creation time)
     return b.id.localeCompare(a.id);
   });
 
@@ -1122,7 +1122,12 @@ function RegistroDisciplinarContent() {
                             className="hover:bg-slate-50 transition cursor-pointer"
                             title="Clique para ver os detalhes ou exportar"
                           >
-                            <td className="px-6 py-4">{formatDate(o.date)}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col">
+                                <span>{formatDate(o.date)}</span>
+                                {o.hour && <span className="text-xs text-slate-400">{o.hour}</span>}
+                              </div>
+                            </td>
                             <td className="px-6 py-4 font-medium text-slate-800 max-w-[200px] truncate">{names || 'Nenhum aluno'}</td>
                             <td className="px-6 py-4 max-w-[120px] truncate">{classes_occur || '-'}</td>
                         <td className="px-6 py-4 max-w-[200px]">
