@@ -911,7 +911,7 @@ function RegistroDisciplinarContent() {
           <div class="row"><span class="label">REGISTRADO POR:</span><span class="value">${o.registeredBy?.toUpperCase() || 'SISTEMA'}</span></div>
           
           <div class="box">
-            <div class="row"><span class="label">INFRAÇÃO (ART. ${rule?.code}):</span><span class="value">${rule?.description?.toUpperCase()}</span></div>
+            <div class="row"><span class="label">INFRAÇÃO (ART. ${rule?.code}):</span><span class="value" style="font-size: 12px;">${rule?.description?.toUpperCase()}</span></div>
             <div class="row"><span class="label">GRAVIDADE:</span><span class="value">${rule?.severity?.toUpperCase()}</span></div>
             <div class="row"><span class="label">MEDIDA ADMINISTRATIVA:</span><span class="value">${measure?.toUpperCase()} ${o.durationDays ? `(${o.durationDays} ${o.durationDays === 1 ? 'DIA' : 'DIAS'})` : ''}</span></div>
             <div class="row"><span class="label">IMPACTO NA PONTUAÇÃO:</span><span class="value">-${pointsToDeduct.toFixed(2)} PONTOS</span></div>
@@ -919,7 +919,7 @@ function RegistroDisciplinarContent() {
           
           <div style="margin-top: 20px;">
             <span class="label">ATA:</span>
-            <div class="obs-box">${o.observations || 'Nenhum registro de ATA detalhado foi fornecido no momento do registro.'}</div>
+            <div class="obs-box" style="min-height: 180px; font-size: 15px;">${o.observations || 'Nenhum registro de ATA detalhado foi fornecido no momento do registro.'}</div>
           </div>
 
           <div class="signature">
@@ -987,7 +987,7 @@ function RegistroDisciplinarContent() {
         <p style="font-size: 14pt;"><strong>LOCALIZADO POR:</strong> ${o.locatedBy?.toUpperCase() || 'NÃO INFORMADO'}</p>
         <p style="font-size: 14pt;"><strong>REGISTRADO POR:</strong> ${o.registeredBy?.toUpperCase() || 'SISTEMA'}</p>
         
-        <div style="border: 1px solid #000; padding: 10pt; margin: 20pt 0;">
+        <div style="border: 1px solid #000; padding: 10pt; margin: 20pt 0; font-size: 11pt;">
           <p><strong>INFRAÇÃO (ART. ${rule?.code}):</strong> ${rule?.description?.toUpperCase()}</p>
           <p><strong>GRAVIDADE:</strong> ${rule?.severity?.toUpperCase()}</p>
           <p><strong>MEDIDA ADMINISTRATIVA:</strong> ${measure?.toUpperCase()} ${o.durationDays ? `(${o.durationDays} ${o.durationDays === 1 ? 'DIA' : 'DIAS'})` : ''}</p>
@@ -995,7 +995,7 @@ function RegistroDisciplinarContent() {
         </div>
         
         <p><strong>ATA:</strong></p>
-        <div style="border: 1px solid #000; min-height: 100pt; padding: 10pt;">
+        <div style="border: 1px solid #000; min-height: 180pt; padding: 10pt; font-size: 12pt;">
           ${o.observations || 'Nenhum registro de ATA detalhado.'}
         </div>
 
