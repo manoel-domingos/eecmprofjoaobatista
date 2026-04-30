@@ -2227,18 +2227,20 @@ function RegistroDisciplinarContent() {
                 >
                   Fechar
                 </button>
-                <button 
-                  onClick={() => handleExport(o)}
-                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition text-xs font-medium flex items-center gap-1"
-                >
-                  <FileText className="w-3.5 h-3.5" /> PDF
-                </button>
-                <button 
-                  onClick={() => handleExportDocx(o)}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition text-xs font-medium flex items-center gap-1"
-                >
-                  <FileText className="w-3.5 h-3.5" /> DOCX
-                </button>
+                <div className="flex flex-col gap-1.5">
+                  <button 
+                    onClick={() => handleExport(o)}
+                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition text-xs font-medium flex items-center justify-center gap-1"
+                  >
+                    <FileText className="w-3.5 h-3.5" /> PDF
+                  </button>
+                  <button 
+                    onClick={() => handleExportDocx(o)}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition text-xs font-medium flex items-center justify-center gap-1"
+                  >
+                    <FileText className="w-3.5 h-3.5" /> DOCX
+                  </button>
+                </div>
               </div>
             </div>
           </div>
