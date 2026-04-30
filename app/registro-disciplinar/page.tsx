@@ -66,6 +66,64 @@ function RegistroDisciplinarContent() {
   const [isImproving, setIsImproving] = useState(false);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
 
+  const handleGenerateAta = () => {
+    const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+    // Validate required fields
+    if (!selectedStudents.length || !date || !hour || !location || !selectedRules.length) {
+      alert('Preencha aluno(s), data, hora, local e infração antes de gerar a ata.');
+      return;
+    }
+
+    if (observations.trim()) {
+      const confirmOverwrite = confirm('Já existe texto no campo ATA. Deseja substituir pelo texto gerado?');
+      if (!confirmOverwrite) return;
+    }
+
+    // Date parts
+    const [year, month, day] = date.split('-');
+    const mesExtenso = MESES[parseInt(month, 10) - 1];
+    const diaNum = parseInt(day, 10);
+
+    // Student names
+    const studentNames = selectedStudents.map(id => students.find(s => s.id === id)?.name).filter(Boolean) as string[];
+    const alunoStr = studentNames.length === 1
+      ? `o(a) aluno(a) ${studentNames[0]}`
+      : `os alunos ${studentNames.slice(0, -1).join(', ')} e ${studentNames[studentNames.length - 1]}`;
+    const verboStr = studentNames.length === 1 ? 'foi encontrado(a)' : 'foram encontrados';
+
+    // Rule info (use first selected rule)
+    const rule = rules.find(r => r.code === parseInt(selectedRules[0], 10));
+    const ruleCode = rule?.code ?? selectedRules[0];
+    const ruleDesc = rule?.description ?? '';
+
+    // Located by
+    const locatedByStr = locatedBy.trim() ? ` pelo(a) ${locatedBy.trim()}` : '';
+
+    // Reincidencia
+    const isReincidente = selectedStudents.some(id => {
+      const ruleCodesNum = selectedRules.map(r => parseInt(r, 10));
+      return ruleCodesNum.some(rc => checkRecidivism(id, rc));
+    });
+
+    // Agravantes / atenuantes
+    const agravantesStr = aggravatingFactors.length
+      ? ` Verificaram-se os seguintes fatores agravantes: ${aggravatingFactors.join(', ')}.`
+      : '';
+    const atenuantesStr = attenuatingFactors.length
+      ? ` Foram considerados os seguintes fatores atenuantes: ${attenuatingFactors.join(', ')}.`
+      : '';
+    const reincidenteStr = isReincidente
+      ? ' O(A) aluno(a) já possui registro anterior da mesma infração, caracterizando reincidência.'
+      : '';
+
+    const registradoPor = registeredBy.trim() || getLoggedUserName();
+
+    const ata = `Aos ${diaNum} dias do mês de ${mesExtenso} do ano de ${year}, às ${hour}, ${alunoStr} ${verboStr} no(a) ${location}${locatedByStr}, incorrendo em infração ao Art. ${ruleCode} do Regimento Interno (${ruleDesc}).${agravantesStr}${atenuantesStr}${reincidenteStr} O presente registro foi lavrado por ${registradoPor}.`;
+
+    setObservations(ata.trim());
+  };
+
   const handleImproveObservations = async () => {
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
     if (!apiKey || (!observations.trim() && selectedRules.length === 0)) return;
@@ -216,9 +274,10 @@ function RegistroDisciplinarContent() {
     setHour(o.hour || '');
     setLocation(o.location || 'Pátio');
     setLocatedBy(o.locatedBy || '');
-    setSelectedRules([o.ruleCode.toString()]);
-    const rule = rules.find(r => r.code === o.ruleCode);
-    setRuleSearch(rule ? rule.description : '');
+    const allCodes = o.ruleCodes && o.ruleCodes.length > 0 ? o.ruleCodes : [o.ruleCode];
+    setSelectedRules(allCodes.map(String));
+    const firstRule = rules.find(r => r.code === allCodes[0]);
+    setRuleSearch(firstRule ? firstRule.description : '');
     setRegisteredBy(o.registeredBy || getLoggedUserName());
     setObservations(o.observations || '');
     setVideoUrls(o.videoUrls || []);
@@ -237,99 +296,240 @@ function RegistroDisciplinarContent() {
   };
 
   const handlePrint = (o: any) => {
-    const student = students.find(s => s.id === o.studentId);
+    const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
     const rule = rules.find(r => r.code === o.ruleCode);
-    
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
+
+    // Resolve all students for this occurrence
+    const relatedStudents = o.studentIds && o.studentIds.length > 0
+      ? students.filter(s => o.studentIds.includes(s.id))
+      : [students.find(s => s.id === o.studentId)].filter((s): s is Student => Boolean(s));
+
+    const studentNamesHtml = relatedStudents.map(s => `<div>${s.name}</div>`).join('');
+    const firstStudent = relatedStudents[0];
+    const turmaStr = firstStudent ? `${firstStudent.class || '---'} — ${firstStudent.shift || '---'}` : '---';
+
+    // Reincidence check
+    const reincidenteCount = occurrences.filter(oc =>
+      oc.ruleCode === o.ruleCode &&
+      (oc.studentId === o.studentId || (oc.studentIds && oc.studentIds.includes(o.studentId))) &&
+      new Date(oc.date) <= new Date(o.date)
+    ).length;
+    const isReincidente = reincidenteCount > 1;
+
+    // Auto-generate ATA text if empty
+    const [year, month, day] = (o.date || '').split('-');
+    const mesExtenso = MESES[parseInt(month, 10) - 1] ?? '';
+    const diaNum = parseInt(day, 10);
+    const alunoStr = relatedStudents.length === 1
+      ? `o(a) aluno(a) ${relatedStudents[0].name}`
+      : `os alunos ${relatedStudents.slice(0,-1).map(s=>s.name).join(', ')} e ${relatedStudents[relatedStudents.length-1].name}`;
+    const autoAta = `Aos ${diaNum} dias do mês de ${mesExtenso} do ano de ${year}, às ${o.hour || '---'}, ${alunoStr} foi identificado(a) no(a) ${o.location || '---'}${o.locatedBy ? ` pelo(a) ${o.locatedBy}` : ''}, incorrendo em infração ao Art. ${o.ruleCode} do Regimento Interno (${rule?.description || 'Ocorrência personalizada'}). O presente registro foi lavrado por ${o.registeredBy || '---'}.`;
+    const ataText = (o.observations || '').trim() || autoAta;
+
+    // Factors
+    const atenuantes = Array.isArray(o.attenuatingFactors) && o.attenuatingFactors.length ? o.attenuatingFactors.join(', ') : 'Nenhum';
+    const agravantes = Array.isArray(o.aggravatingFactors) && o.aggravatingFactors.length ? o.aggravatingFactors.join(', ') : 'Nenhum';
+    const hasFactors = atenuantes !== 'Nenhum' || agravantes !== 'Nenhum' || isReincidente;
+
+    const factorsBlock = hasFactors ? `
+      <div class="bloco">
+        <div class="bloco-titulo">BLOCO 4 — FATORES</div>
+        <table class="info-table">
+          <tr><td class="label-cell">Fatores Atenuantes</td><td>${atenuantes}</td></tr>
+          <tr><td class="label-cell">Fatores Agravantes</td><td>${agravantes}</td></tr>
+        </table>
+        ${isReincidente ? `<div class="reincidencia-box">⚠ REINCIDÊNCIA — ${reincidenteCount}ª ocorrência nesta infração</div>` : ''}
+      </div>
+      <div class="page-break"></div>
+    ` : '<div class="page-break"></div>';
+
+    const printWindow = window.open('', '_blank', 'width=850,height=700');
     if (!printWindow) return;
 
-    printWindow.document.write(`
-      <h${""}tml lang="pt-BR">
-        <head>
-          <title>Registro Disciplinar - ${student?.name}</title>
-          <style>
-            body { font-family: sans-serif; padding: 40px; line-height: 1.5; color: #333; }
-            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-            .title { font-size: 24px; font-bold: true; margin-bottom: 5px; }
-            .subtitle { font-size: 16px; color: #666; }
-            .section { margin-bottom: 25px; }
-            .label { font-weight: bold; color: #555; font-size: 11px; text-transform: uppercase; margin-bottom: 4px; }
-            .value { font-size: 14px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-            .footer { margin-top: 60px; text-align: center; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 20px; }
-            .signature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 50px; }
-            .signature-line { border-top: 1px solid #000; padding-top: 8px; text-align: center; font-size: 11px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="title">REGISTRO DE OCORRÊNCIA DISCIPLINAR</div>
-            <div class="subtitle">Escola Estadual Cívico-Militar</div>
-          </div>
-          
-          <div class="grid">
-            <div class="section">
-              <div class="label">Aluno</div>
-              <div class="value">${student?.name || '---'}</div>
-            </div>
-            <div class="section">
-              <div class="label">Turma</div>
-              <div class="value">${student?.class || '---'} - ${student?.shift || '---'}</div>
-            </div>
-          </div>
+    printWindow.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <title>ATA de Ocorrência Disciplinar — ${o.id?.slice(0,8).toUpperCase()}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 12pt;
+      color: #111;
+      background: #fff;
+      padding: 20mm 20mm 15mm 20mm;
+      line-height: 1.6;
+    }
+    .cabecalho {
+      text-align: center;
+      border-top: 3px double #000;
+      border-bottom: 3px double #000;
+      padding: 12px 0;
+      margin-bottom: 24px;
+    }
+    .cabecalho .escola { font-size: 13pt; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+    .cabecalho .tipo { font-size: 11pt; margin-top: 4px; }
+    .cabecalho .numero { font-size: 10pt; color: #444; margin-top: 6px; letter-spacing: 0.5px; }
+    .bloco { margin-bottom: 20px; }
+    .bloco-titulo {
+      font-size: 9pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #555;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 3px;
+      margin-bottom: 10px;
+    }
+    .info-table { width: 100%; border-collapse: collapse; font-size: 11pt; }
+    .info-table td { padding: 5px 8px; vertical-align: top; }
+    .info-table tr:nth-child(even) td { background: #f8f8f8; }
+    .label-cell { font-weight: bold; width: 38%; color: #333; white-space: nowrap; }
+    .ata-texto {
+      font-size: 13pt;
+      line-height: 1.8;
+      text-align: justify;
+      padding: 14px 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fafafa;
+      min-height: 80px;
+    }
+    .reincidencia-box {
+      margin-top: 10px;
+      padding: 8px 14px;
+      border: 2px solid #c00;
+      color: #c00;
+      font-weight: bold;
+      font-size: 11pt;
+      border-radius: 4px;
+      background: #fff5f5;
+    }
+    .page-break { page-break-before: always; }
+    .assinaturas { margin-top: 50px; }
+    .sig-row { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-bottom: 40px; }
+    .sig-row-single { display: grid; grid-template-columns: 1fr; max-width: 320px; }
+    .sig-box { text-align: center; }
+    .sig-linha { border-top: 1px solid #000; padding-top: 6px; font-size: 10pt; }
+    .sig-nome { font-size: 9.5pt; color: #444; margin-top: 4px; }
+    .sig-data { font-size: 9.5pt; color: #444; margin-top: 2px; }
+    .rodape {
+      margin-top: 40px;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+      text-align: center;
+      font-size: 8.5pt;
+      color: #777;
+    }
+    @media print {
+      body { padding: 20mm; }
+      .no-print { display: none !important; }
+      button { display: none !important; }
+    }
+  </style>
+</head>
+<body>
 
-          <div class="grid">
-            <div class="section">
-              <div class="label">Data / Hora</div>
-              <div class="value">${formatDate(o.date)} - ${o.hour || '---'}</div>
-            </div>
-            <div class="section">
-              <div class="label">Local</div>
-              <div class="value">${o.location}</div>
-            </div>
-          </div>
+  <div class="cabecalho">
+    <div class="escola">Escola Estadual Cívico-Militar</div>
+    <div class="tipo">ATA DE OCORRÊNCIA DISCIPLINAR</div>
+    <div class="numero">Nº ${(o.id || '').slice(0,8).toUpperCase()} — ${formatDate(o.date)}</div>
+  </div>
 
-          <div class="section">
-            <div class="label">Falta Disciplinar (Artigo)</div>
-            <div class="value">Art. ${o.ruleCode}: ${rule?.description || 'Ocorrência personalizada'}</div>
-          </div>
+  <div class="bloco">
+    <div class="bloco-titulo">BLOCO 1 — IDENTIFICAÇÃO</div>
+    <table class="info-table">
+      <tr>
+        <td class="label-cell">Aluno(s)</td>
+        <td>${studentNamesHtml}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Turma / Turno</td>
+        <td>${turmaStr}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Data e Hora do Fato</td>
+        <td>${formatDate(o.date)} às ${o.hour || '---'}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Local</td>
+        <td>${o.location || '---'}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Identificado por</td>
+        <td>${o.locatedBy || '—'}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Registrado por</td>
+        <td>${o.registeredBy || '---'}</td>
+      </tr>
+    </table>
+  </div>
 
-          <div class="grid">
-            <div class="section">
-              <div class="label">Gravidade</div>
-              <div class="value">${o.severity}</div>
-            </div>
-            <div class="section">
-              <div class="label">Medida Administrativa</div>
-              <div class="value">${o.measure || 'A definir'}</div>
-            </div>
-          </div>
+  <div class="bloco">
+    <div class="bloco-titulo">BLOCO 2 — TEXTO DA ATA</div>
+    <div class="ata-texto">${ataText}</div>
+  </div>
 
-          <div class="section">
-            <div class="label">ATA</div>
-            <div class="value" style="min-height: 80px; border: 1px solid #eee; padding: 10px; border-radius: 4px; font-size: 13px;">
-              ${o.observations || 'Nenhum registro de ATA adicional.'}
-            </div>
-          </div>
+  <div class="bloco">
+    <div class="bloco-titulo">BLOCO 3 — CLASSIFICAÇÃO DA INFRAÇÃO</div>
+    <table class="info-table">
+      <tr>
+        <td class="label-cell">Artigo</td>
+        <td>${o.ruleCode}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Descrição</td>
+        <td>${rule?.description || 'Ocorrência personalizada'}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Gravidade</td>
+        <td>${o.severity || '---'}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Medida Administrativa</td>
+        <td>${o.measure || 'A definir'}</td>
+      </tr>
+      ${o.durationDays > 0 ? `<tr><td class="label-cell">Duração</td><td>${o.durationDays} dia(s)</td></tr>` : ''}
+    </table>
+  </div>
 
-          <div class="signature-grid">
-            <div class="signature-line">Assinatura do Aluno</div>
-            <div class="signature-line">Assinatura do Responsável</div>
-          </div>
-          
-          <div class="signature-grid" style="grid-template-columns: 1fr; width: 300px; margin: 40px auto 0;">
-            <div class="signature-line">Gestão Escolar/Militar</div>
-          </div>
+  ${factorsBlock}
 
-          <div class="footer">
-            Documento gerado em ${new Date().toLocaleString('pt-BR')} via Sistema de Gestão Disciplinar
-          </div>
-        </body>
-      </h${""}tml>
-    `);
+  <div class="assinaturas">
+    <div class="sig-row">
+      <div class="sig-box">
+        <div class="sig-linha">Assinatura do Aluno</div>
+        <div class="sig-nome">Nome: _______________________</div>
+        <div class="sig-data">Data: ___/___/______</div>
+      </div>
+      <div class="sig-box">
+        <div class="sig-linha">Assinatura do Responsável</div>
+        <div class="sig-nome">Nome: _______________________</div>
+        <div class="sig-data">Data: ___/___/______</div>
+      </div>
+    </div>
+    <div class="sig-row-single">
+      <div class="sig-box">
+        <div class="sig-linha">Gestão Escolar / Militar</div>
+        <div class="sig-nome">${o.registeredBy || ''}</div>
+        <div class="sig-data">Data: ___/___/______</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rodape">
+    Documento gerado em ${new Date().toLocaleString('pt-BR')} via Sistema Kallyteros de Gestão Disciplinar<br/>
+    ID do Registro: ${o.id || '---'}
+  </div>
+
+</body>
+</html>`);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => { printWindow.print(); }, 250);
+    setTimeout(() => { printWindow.print(); }, 300);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -337,20 +537,24 @@ function RegistroDisciplinarContent() {
     if (selectedStudents.length === 0 || selectedRules.length === 0) return;
 
     try {
-      if (editingOccurrence) {
-        const studentId = selectedStudents[0];
-        const ruleCodeInt = parseInt(selectedRules[0], 10);
-        const escalation = getEscalationStatus(studentId, ruleCodeInt);
-        const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
+      const primaryStudentId = selectedStudents[0];
+      const ruleCodesInt = selectedRules.map(r => parseInt(r, 10));
+      const primaryRuleCode = ruleCodesInt[0];
+      const escalation = getEscalationStatus(primaryStudentId, primaryRuleCode);
+      const measureToSave = escalation.severity === 'Grave'
+        ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType)
+        : escalation.measure;
 
+      if (editingOccurrence) {
         await updateOccurrence(editingOccurrence, {
-          studentId,
+          studentId: primaryStudentId,
           studentIds: selectedStudents,
           date,
           hour,
           location,
           locatedBy,
-          ruleCode: ruleCodeInt,
+          ruleCode: primaryRuleCode,
+          ruleCodes: ruleCodesInt,
           registeredBy,
           observations,
           measure: measureToSave,
@@ -361,42 +565,31 @@ function RegistroDisciplinarContent() {
           aggravatingFactors
         });
       } else {
-        // Create only one occurrence with all students included
-        for (const ruleCodeStr of selectedRules) {
-          const ruleCodeInt = parseInt(ruleCodeStr, 10);
-          
-          // We use the first student as the primary studentId for backward compatibility/DB constraints
-          const primaryStudentId = selectedStudents[0];
-          
-          // Check escalation for each student but logically treat as one event
-          // The user wants one record, so we'll just check escalation for the first one for the alert
-          const escalation = getEscalationStatus(primaryStudentId, ruleCodeInt);
-          if (escalation.isEscalated) {
-            const student = students.find(s => s.id === primaryStudentId);
-            const confirmed = window.confirm(`⚠️ ATENÇÃO (${student?.name}): ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
-            if (!confirmed) continue;
-          }
-
-          const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
-
-          await addOccurrence({
-            studentId: primaryStudentId,
-            studentIds: selectedStudents,
-            date,
-            hour,
-            location,
-            locatedBy,
-            ruleCode: ruleCodeInt,
-            registeredBy,
-            observations,
-            measure: measureToSave,
-            videoUrls,
-            signedDocUrls,
-            durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
-            attenuatingFactors,
-            aggravatingFactors
-          });
+        // Escalation alert for new occurrences
+        if (escalation.isEscalated) {
+          const student = students.find(s => s.id === primaryStudentId);
+          const confirmed = window.confirm(`ATENCAO (${student?.name}): ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
+          if (!confirmed) return;
         }
+
+        await addOccurrence({
+          studentId: primaryStudentId,
+          studentIds: selectedStudents,
+          date,
+          hour,
+          location,
+          locatedBy,
+          ruleCode: primaryRuleCode,
+          ruleCodes: ruleCodesInt,
+          registeredBy,
+          observations,
+          measure: measureToSave,
+          videoUrls,
+          signedDocUrls,
+          durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
+          attenuatingFactors,
+          aggravatingFactors
+        });
       }
 
       setIsModalOpen(false);
@@ -918,7 +1111,9 @@ function RegistroDisciplinarContent() {
                         
                         const names = relatedStudents.map(s => s.name).join(', ');
                         const classes_occur = Array.from(new Set(relatedStudents.map(s => s.class))).join(', ');
-                        const rule = rules.find(r => r.code === o.ruleCode);
+                        const allOccRuleCodes = o.ruleCodes && o.ruleCodes.length > 0 ? o.ruleCodes : [o.ruleCode];
+                        const allOccRules = allOccRuleCodes.map(rc => rules.find(r => r.code === rc)).filter(Boolean);
+                        const rule = allOccRules[0];
                         
                         return (
                           <tr 
@@ -930,17 +1125,27 @@ function RegistroDisciplinarContent() {
                             <td className="px-6 py-4">{formatDate(o.date)}</td>
                             <td className="px-6 py-4 font-medium text-slate-800 max-w-[200px] truncate">{names || 'Nenhum aluno'}</td>
                             <td className="px-6 py-4 max-w-[120px] truncate">{classes_occur || '-'}</td>
-                        <td className="px-6 py-4 truncate max-w-[200px]">{rule?.code} - {rule?.description}</td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            rule?.severity === 'Leve' ? 'bg-blue-500/10 text-blue-400' :
-                            rule?.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
-                            'bg-red-500/10 text-red-400'
-                          }`}>
-                            {rule?.severity}
-                          </span>
+                        <td className="px-6 py-4 max-w-[200px]">
+                          {allOccRules.map((r: any) => (
+                            <div key={r.code} className="truncate text-xs">{r.code} - {r.description}</div>
+                          ))}
                         </td>
-                        <td className="px-6 py-4">{rule?.measure}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-0.5">
+                            {allOccRules.map((r: any) => (
+                              <span key={r.code} className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                r.severity === 'Leve' ? 'bg-blue-500/10 text-blue-400' :
+                                r.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
+                                'bg-red-500/10 text-red-400'
+                              }`}>
+                                {r.severity}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {allOccRules.map((r: any) => <div key={r.code} className="text-xs">{r.measure}</div>)}
+                        </td>
                         <td className="px-6 py-4">
                            <div className="flex items-center justify-center gap-2">
                              {currentUserRole !== 'GUEST' && (
@@ -1273,6 +1478,15 @@ function RegistroDisciplinarContent() {
                   <label className="block text-sm font-medium text-slate-600 mb-1 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       ATA
+                      <button
+                        type="button"
+                        onClick={handleGenerateAta}
+                        disabled={!selectedStudents.length || !date || !hour || !location || !selectedRules.length}
+                        className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full hover:bg-emerald-100 transition-all disabled:opacity-50"
+                      >
+                        <FileText size={10} />
+                        Gerar Ata Automática
+                      </button>
                       <button
                         type="button"
                         onClick={handleImproveObservations}
@@ -1813,7 +2027,9 @@ function RegistroDisciplinarContent() {
       {viewOccurrence && (() => {
         const o = viewOccurrence;
         const student = students.find(s => s.id === o.studentId);
-        const rule = rules.find(r => r.code === o.ruleCode);
+        const allRuleCodes = o.ruleCodes && o.ruleCodes.length > 0 ? o.ruleCodes : [o.ruleCode];
+        const rule = rules.find(r => r.code === allRuleCodes[0]);
+        const allRules = allRuleCodes.map(rc => rules.find(r => r.code === rc)).filter(Boolean);
         return (
           <div className="fixed inset-0 glass-overlay z-[9990] flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="glass-modal max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
@@ -1856,29 +2072,32 @@ function RegistroDisciplinarContent() {
                   </div>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-slate-800">Art. {rule?.code}</h3>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                      rule?.severity === 'Leve' ? 'bg-blue-500/10 text-blue-600' :
-                      rule?.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
-                      'bg-red-500/10 text-red-600'
-                    }`}>
-                      {rule?.severity}
-                    </span>
-                  </div>
-                  <p className="text-slate-600 text-sm mb-3">{rule?.description}</p>
-                  
-                  <div className="text-xs space-y-1">
-                    <div className="flex text-slate-500">
-                      <span className="w-20 font-medium">Medida:</span>
-                      <span className="text-slate-800">{rule?.measure}</span>
+                <div className="space-y-2">
+                  {(allRules.length > 0 ? allRules : [rule]).map((r: any) => r && (
+                    <div key={r.code} className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="text-sm font-semibold text-slate-800">Art. {r.code}</h3>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          r.severity === 'Leve' ? 'bg-blue-500/10 text-blue-600' :
+                          r.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
+                          'bg-red-500/10 text-red-600'
+                        }`}>
+                          {r.severity}
+                        </span>
+                      </div>
+                      <p className="text-slate-600 text-sm mb-3">{r.description}</p>
+                      <div className="text-xs space-y-1">
+                        <div className="flex text-slate-500">
+                          <span className="w-20 font-medium">Medida:</span>
+                          <span className="text-slate-800">{r.measure}</span>
+                        </div>
+                        <div className="flex text-slate-500">
+                          <span className="w-20 font-medium">Impacto:</span>
+                          <span className="text-red-500 font-medium">-{Math.abs(r.points || 0)} pontos</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex text-slate-500">
-                      <span className="w-20 font-medium">Impacto:</span>
-                      <span className="text-red-500 font-medium">-{Math.abs(rule?.points || 0)} pontos</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
                 {o.observations && (

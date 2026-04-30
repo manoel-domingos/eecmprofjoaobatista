@@ -11,8 +11,9 @@ import {
   UserPlus, Award, Menu, X, LogOut, ShieldAlert,
   Sun, Moon, RefreshCw, CloudCheck, CloudOff, MessageCircle, Settings,
   PanelsTopLeft, PanelLeft, ChevronDown,
-  GraduationCap, Gavel, Smile, Cog, Clock,
+  GraduationCap, Gavel, Smile, Cog, Clock, KeyRound, Eye, EyeOff, Loader2,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import versionData from '@/lib/version.json';
 import ChatWidget from '@/components/ChatWidget';
 
@@ -743,6 +744,65 @@ function ProfileMenu({
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const [mounted, setMounted] = useState(false);
 
+  // Change password state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPwd, setShowCurrentPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+  const [pwdLoading, setPwdLoading] = useState(false);
+  const [pwdError, setPwdError] = useState('');
+  const [pwdSuccess, setPwdSuccess] = useState('');
+
+  const resetPasswordForm = () => {
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPwdError('');
+    setPwdSuccess('');
+    setShowCurrentPwd(false);
+    setShowNewPwd(false);
+    setShowConfirmPwd(false);
+  };
+
+  const handleChangePassword = async () => {
+    setPwdError('');
+    setPwdSuccess('');
+
+    if (!newPassword || !confirmPassword) {
+      setPwdError('Preencha todos os campos.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPwdError('A nova senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwdError('As senhas não coincidem.');
+      return;
+    }
+
+    setPwdLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        setPwdError(error.message);
+      } else {
+        setPwdSuccess('Senha alterada com sucesso!');
+        setTimeout(() => {
+          setShowPasswordModal(false);
+          resetPasswordForm();
+        }, 1500);
+      }
+    } catch (err: any) {
+      setPwdError(err.message || 'Erro ao alterar senha.');
+    } finally {
+      setPwdLoading(false);
+    }
+  };
+
   useEffect(() => { setMounted(true); }, []);
 
   // Position the portal relative to the trigger button
@@ -863,6 +923,12 @@ function ProfileMenu({
               <MessageCircle className="w-4 h-4 text-blue-500" /> Suporte
             </button>
             <button
+              onClick={() => { setShowPasswordModal(true); setIsOpen(false); }}
+              className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-3"
+            >
+              <KeyRound className="w-4 h-4 text-amber-500" /> Alterar Senha
+            </button>
+            <button
               onClick={() => { logout(); setIsOpen(false); }}
               className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-rose-600 dark:text-rose-400 flex items-center gap-3"
             >
@@ -873,6 +939,106 @@ function ProfileMenu({
             <p className="text-[11px] text-slate-400 dark:text-slate-500 italic text-center">
               Versão: {versionData.version}
             </p>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal de Alteracao de Senha */}
+      {mounted && showPasswordModal && ReactDOM.createPortal(
+        <div className="fixed inset-0 glass-overlay flex items-center justify-center p-4 animate-in fade-in duration-200" style={{ zIndex: 100000 }}>
+          <div 
+            className="glass-modal w-full max-w-sm p-6 animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <KeyRound className="w-5 h-5 text-amber-500" />
+                Alterar Senha
+              </h2>
+              <button
+                onClick={() => { setShowPasswordModal(false); resetPasswordForm(); }}
+                className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Nova Senha */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  Nova Senha
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPwd ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="glass-input w-full pr-10"
+                    placeholder="Minimo 6 caracteres"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPwd(!showNewPwd)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showNewPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirmar Nova Senha */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  Confirmar Nova Senha
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPwd ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="glass-input w-full pr-10"
+                    placeholder="Repita a nova senha"
+                    autoComplete="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPwd(!showConfirmPwd)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showConfirmPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Error/Success */}
+              {pwdError && (
+                <p className="text-sm text-red-500 bg-red-50 dark:bg-red-500/10 px-3 py-2 rounded-lg">{pwdError}</p>
+              )}
+              {pwdSuccess && (
+                <p className="text-sm text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 rounded-lg">{pwdSuccess}</p>
+              )}
+
+              {/* Botoes */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => { setShowPasswordModal(false); resetPasswordForm(); }}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleChangePassword}
+                  disabled={pwdLoading || !newPassword || !confirmPassword}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  {pwdLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {pwdLoading ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>,
         document.body

@@ -34,7 +34,8 @@ export interface Occurrence {
   hour?: string;
   location?: string;
   locatedBy?: string;
-  ruleCode: number;
+  ruleCode: number;        // Primary rule (kept for backward compat)
+  ruleCodes?: number[];    // All rules in this occurrence (multi-infraction)
   registeredBy: string;
   observations?: string;
   archived?: boolean;

@@ -289,20 +289,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (rulesData) {
             setRules(rulesData.map(r => ({ ...r, ruleCode: r.code })));
           }
-          if (occurrencesData) setOccurrences(occurrencesData.map((o: any) => ({
-            id: o.id,
-            date: o.date,
-            hour: o.hour,
-            location: o.location,
-            locatedBy: o.located_by,
-            ruleCode: Array.isArray(o.rule_code) ? Number(o.rule_code[0]) : Number(o.rule_code), 
-            studentId: String(o.student_id), 
-            registeredBy: o.registered_by,
-            observations: o.observations,
-            videoUrls: o.video_urls || (o.video_url ? [o.video_url] : []),
-            signedDocUrls: o.signed_doc_urls || (o.signed_doc_url ? [o.signed_doc_url] : []),
-            archived: o.archived || false
-          })));
+          if (occurrencesData) setOccurrences(occurrencesData.map((o: any) => {
+            const allCodes = Array.isArray(o.rule_code) ? o.rule_code.map(Number) : [Number(o.rule_code)];
+            return {
+              id: o.id,
+              date: o.date,
+              hour: o.hour,
+              location: o.location,
+              locatedBy: o.located_by,
+              ruleCode: allCodes[0],
+              ruleCodes: allCodes,
+              studentId: String(o.student_id),
+              studentIds: o.student_ids || [String(o.student_id)],
+              registeredBy: o.registered_by,
+              observations: o.observations,
+              videoUrls: o.video_urls || (o.video_url ? [o.video_url] : []),
+              signedDocUrls: o.signed_doc_urls || (o.signed_doc_url ? [o.signed_doc_url] : []),
+              archived: o.archived || false
+            };
+          }));
           if (accidentsData) setAccidents(accidentsData.map(a => ({...a, studentId: a.student_id, registeredBy: a.registered_by, bodyPart: a.body_part, parentsNotified: a.parents_notified, medicForwarded: a.medic_forwarded})));
           if (praisesData) setPraises(praisesData.map(p => ({
             ...p, 
@@ -637,20 +642,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ] = responses;
 
       if (studentsData) setStudents(studentsData.map(s => ({ ...s, points: 8 })));
-      if (occurrencesData) setOccurrences(occurrencesData.map((o: any) => ({
-        id: o.id,
-        date: o.date,
-        hour: o.hour,
-        location: o.location,
-        locatedBy: o.located_by,
-        ruleCode: Array.isArray(o.rule_code) ? Number(o.rule_code[0]) : Number(o.rule_code), 
-        studentId: String(o.student_id), 
-        registeredBy: o.registered_by,
-        observations: o.observations,
-        videoUrls: o.video_urls || (o.video_url ? [o.video_url] : []),
-        signedDocUrls: o.signed_doc_urls || (o.signed_doc_url ? [o.signed_doc_url] : []),
-        archived: o.archived || false
-      })));
+      if (occurrencesData) setOccurrences(occurrencesData.map((o: any) => {
+        const allCodes = Array.isArray(o.rule_code) ? o.rule_code.map(Number) : [Number(o.rule_code)];
+        return {
+          id: o.id,
+          date: o.date,
+          hour: o.hour,
+          location: o.location,
+          locatedBy: o.located_by,
+          ruleCode: allCodes[0],
+          ruleCodes: allCodes,
+          studentId: String(o.student_id),
+          studentIds: o.student_ids || [String(o.student_id)],
+          registeredBy: o.registered_by,
+          observations: o.observations,
+          videoUrls: o.video_urls || (o.video_url ? [o.video_url] : []),
+          signedDocUrls: o.signed_doc_urls || (o.signed_doc_url ? [o.signed_doc_url] : []),
+          archived: o.archived || false
+        };
+      }));
       if (accidentsData) setAccidents(accidentsData.map(a => ({...a, studentId: a.student_id, registeredBy: a.registered_by, bodyPart: a.body_part, parentsNotified: a.parents_notified, medicForwarded: a.medic_forwarded})));
       if (praisesData) setPraises(praisesData.map(p => ({
         ...p, 
@@ -707,7 +717,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         hour: o.hour || null,
         location: o.location || null,
         located_by: o.locatedBy || null,
-        rule_code: [o.ruleCode],
+        rule_code: o.ruleCodes && o.ruleCodes.length > 0 ? o.ruleCodes : [o.ruleCode],
         registered_by: o.registeredBy,
         observations: o.observations || null,
         video_urls: o.videoUrls || [],
@@ -754,8 +764,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             hour: data.hour,
             location: data.location,
             locatedBy: data.located_by,
-            ruleCode: Array.isArray(data.rule_code) ? Number(data.rule_code[0]) : Number(data.rule_code), 
-            studentId: String(data.student_id), 
+            ruleCode: Array.isArray(data.rule_code) ? Number(data.rule_code[0]) : Number(data.rule_code),
+            ruleCodes: Array.isArray(data.rule_code) ? data.rule_code.map(Number) : [Number(data.rule_code)],
+            studentId: String(data.student_id),
             studentIds: o.studentIds || [String(data.student_id)],
             registeredBy: data.registered_by,
             observations: data.observations,
@@ -790,7 +801,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (o.hour) dbPayload.hour = o.hour;
       if (o.location) dbPayload.location = o.location;
       if (o.locatedBy) dbPayload.located_by = o.locatedBy;
-      if (o.ruleCode !== undefined) dbPayload.rule_code = [o.ruleCode];
+      if (o.ruleCodes && o.ruleCodes.length > 0) {
+        dbPayload.rule_code = o.ruleCodes;
+      } else if (o.ruleCode !== undefined) {
+        dbPayload.rule_code = [o.ruleCode];
+      }
       if (o.registeredBy) dbPayload.registered_by = o.registeredBy;
       
       // Handle observations with optional fields
