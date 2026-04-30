@@ -8,10 +8,9 @@ import { useAppContext } from '@/lib/store';
 import {
   LayoutDashboard, Users, FileText, Activity,
   BarChart, AlertTriangle, Star, CheckSquare, FileBadge,
-  UserPlus, Award, Menu, X, LogOut, ShieldAlert,
+  UserPlus, Award, LogOut, ShieldAlert,
   Sun, Moon, RefreshCw, CloudCheck, CloudOff, MessageCircle, Settings,
-  PanelsTopLeft, PanelLeft, ChevronDown,
-  GraduationCap, Gavel, Smile, Cog, Clock,
+  ChevronDown, GraduationCap, Gavel, Smile, Cog, Clock, X,
 } from 'lucide-react';
 import versionData from '@/lib/version.json';
 import ChatWidget from '@/components/ChatWidget';
@@ -58,6 +57,15 @@ const MENU_GROUPS: MenuGroup[] = [
   },
 ];
 
+// Bottom navigation tabs (4 main + "Mais")
+const BOTTOM_TABS = [
+  { label: 'Início', icon: LayoutDashboard, href: '/', group: null },
+  { label: 'Alunos', icon: GraduationCap, href: null, group: 'Alunos' },
+  { label: 'Disciplina', icon: Gavel, href: null, group: 'Disciplina' },
+  { label: 'Comportamento', icon: Smile, href: null, group: 'Comportamento' },
+  { label: 'Mais', icon: Cog, href: null, group: 'Sistema' },
+];
+
 function findGroupForPath(pathname: string): { groupLabel: string; itemLabel: string } | null {
   for (const g of MENU_GROUPS) {
     if (g.href && g.href === pathname) return { groupLabel: g.label, itemLabel: g.label };
@@ -69,18 +77,15 @@ function findGroupForPath(pathname: string): { groupLabel: string; itemLabel: st
   return null;
 }
 
-type LayoutMode = 'sidebar' | 'topbar';
-
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isGuest, currentUserRole, isAuthRestored, logout, isSyncing, isSupabaseConnected, refreshData } = useAppContext();
 
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>('topbar');
+  const [activeSheet, setActiveSheet] = useState<string | null>(null); // group label for SubMenuSheet
 
   // Inactivity session management
   const [showInactivityModal, setShowInactivityModal] = useState(false);
@@ -90,22 +95,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const resetInactivityTimer = useCallback(() => {
     if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-    if (showInactivityModal) return; // Don't reset if modal is already open
-
+    if (showInactivityModal) return;
     inactivityTimerRef.current = setTimeout(() => {
       setShowInactivityModal(true);
       setInactivityCountdown(10);
-    }, 10 * 60 * 1000); // 10 minutes
+    }, 10 * 60 * 1000);
   }, [showInactivityModal]);
 
   useEffect(() => {
     if (user && !isGuest) {
       resetInactivityTimer();
-      const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-      events.forEach(event => window.addEventListener(event, resetInactivityTimer));
+      const events = ['touchstart', 'touchmove', 'mousedown', 'keypress', 'scroll'];
+      events.forEach(e => window.addEventListener(e, resetInactivityTimer));
       return () => {
         if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
-        events.forEach(event => window.removeEventListener(event, resetInactivityTimer));
+        events.forEach(e => window.removeEventListener(e, resetInactivityTimer));
       };
     }
   }, [user, isGuest, showInactivityModal, resetInactivityTimer]);
@@ -123,29 +127,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           return prev - 1;
         });
       }, 1000);
-      return () => {
-        if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
-      };
+      return () => { if (countdownTimerRef.current) clearInterval(countdownTimerRef.current); };
     }
   }, [showInactivityModal, logout]);
 
-  const cancelInactivity = () => {
-    setShowInactivityModal(false);
-    resetInactivityTimer();
-  };
-
-  useEffect(() => {
-    if (isAuthRestored && !user && !isGuest) {
-      router.push('/login');
-    }
-  }, [user, isGuest, isAuthRestored, router]);
-
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      setTimeout(() => setIsMobileMenuOpen(false), 0);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
+  // Close sheet on navigation
+  useEffect(() => { setActiveSheet(null); }, [pathname]);
 
   useEffect(() => {
     const initStorage = () => {
@@ -155,15 +142,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         setIsDarkMode(true);
         document.documentElement.classList.add('dark');
       }
-
-      const storedMode = localStorage.getItem('layoutMode');
-      if (storedMode === 'sidebar' || storedMode === 'topbar') {
-        setLayoutMode(storedMode as LayoutMode);
-      }
     };
-
     setTimeout(initStorage, 0);
   }, []);
+
+  useEffect(() => {
+    if (isAuthRestored && !user && !isGuest) {
+      router.push('/login');
+    }
+  }, [user, isGuest, isAuthRestored, router]);
 
   const toggleTheme = () => {
     if (isDarkMode) {
@@ -177,110 +164,111 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const toggleLayout = () => {
-    const next: LayoutMode = layoutMode === 'sidebar' ? 'topbar' : 'sidebar';
-    setLayoutMode(next);
-    localStorage.setItem('layoutMode', next);
-    setIsProfileOpen(false);
-  };
-
   if (!user && !isGuest) return null;
 
   const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Gestor Escolar';
   const userInitials = userName.split(' ').slice(0, 2).map((n: string) => n[0]?.toUpperCase()).join('') || 'US';
   const userRole = isGuest ? 'Somente Leitura' : 'Admin';
 
-  const rightControls = (
-    <RightControls
-      isSupabaseConnected={isSupabaseConnected}
-      isSyncing={isSyncing}
-      refreshData={refreshData}
-      isDarkMode={isDarkMode}
-      toggleTheme={toggleTheme}
-      isProfileOpen={isProfileOpen}
-      setIsProfileOpen={setIsProfileOpen}
-      user={user}
-      userName={userName}
-      userInitials={userInitials}
-      userRole={userRole}
-      currentUserRole={currentUserRole}
-      logout={logout}
-      setIsChatOpen={setIsChatOpen}
-      layoutMode={layoutMode}
-      toggleLayout={toggleLayout}
-    />
-  );
+  const currentInfo = findGroupForPath(pathname);
+  const activeGroup = currentInfo?.groupLabel;
+
+  const sheetGroup = activeSheet
+    ? MENU_GROUPS.find(g => g.label === activeSheet)
+    : null;
 
   return (
-    <div className={`min-h-screen bg-[#eef3f9] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-200 ${layoutMode === 'sidebar' ? 'flex' : 'flex flex-col'}`}>
-      {/* Background decoration for liquid glass effect */}
+    <div className="min-h-screen bg-[#eef3f9] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans transition-colors duration-200 flex flex-col">
+      {/* Ambient background blobs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-400/10 blur-[120px] rounded-full" />
+        <div className="absolute top-[-10%] left-[-10%] w-[60%] h-[40%] bg-blue-400/10 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[10%] right-[-10%] w-[50%] h-[40%] bg-indigo-400/10 blur-[120px] rounded-full" />
       </div>
 
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
+      {/* Mobile Header */}
+      <MobileHeader
+        isSupabaseConnected={isSupabaseConnected}
+        isSyncing={isSyncing}
+        refreshData={refreshData}
+        isDarkMode={isDarkMode}
+        toggleTheme={toggleTheme}
+        isProfileOpen={isProfileOpen}
+        setIsProfileOpen={setIsProfileOpen}
+        user={user}
+        userName={userName}
+        userInitials={userInitials}
+        userRole={userRole}
+        currentUserRole={currentUserRole}
+        logout={logout}
+        setIsChatOpen={setIsChatOpen}
+      />
+
+      {/* Page title bar */}
+      {currentInfo?.itemLabel && currentInfo.itemLabel !== 'Dashboard' && (
+        <div className="relative z-10 px-4 pt-3 pb-1">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+            {currentInfo.groupLabel}
+          </p>
+          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100 leading-tight">
+            {currentInfo.itemLabel}
+          </h1>
+        </div>
+      )}
+
+      {/* Main content */}
+      <main className="relative z-10 flex-1 px-4 pt-3 pb-24 overflow-y-auto">
+        {children}
+      </main>
+
+      {/* Bottom Navigation */}
+      <BottomNav
+        pathname={pathname}
+        activeGroup={activeGroup}
+        activeSheet={activeSheet}
+        setActiveSheet={setActiveSheet}
+      />
+
+      {/* SubMenu Sheet (slide-up) */}
+      {sheetGroup && sheetGroup.children && (
+        <SubMenuSheet
+          group={sheetGroup}
+          pathname={pathname}
+          onClose={() => setActiveSheet(null)}
         />
       )}
 
-      <MobileDrawer
-        open={isMobileMenuOpen}
-        onClose={() => setIsMobileMenuOpen(false)}
-        pathname={pathname}
-      />
-
-      {layoutMode === 'sidebar' ? (
-        <SidebarLayout
-          pathname={pathname}
-          rightControls={rightControls}
-          openMobileMenu={() => setIsMobileMenuOpen(true)}
-        >
-          {children}
-        </SidebarLayout>
-      ) : (
-        <TopbarLayout
-          pathname={pathname}
-          rightControls={rightControls}
-          openMobileMenu={() => setIsMobileMenuOpen(true)}
-        >
-          {children}
-        </TopbarLayout>
+      {/* Sheet backdrop */}
+      {activeSheet && (
+        <div
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[900] animate-in fade-in duration-200"
+          onClick={() => setActiveSheet(null)}
+        />
       )}
 
       {isChatOpen && <ChatWidget forceOpen={true} forceOnClose={() => setIsChatOpen(false)} />}
-      
-      {/* Inactivity Popup */}
+
+      {/* Inactivity Modal */}
       {showInactivityModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 max-w-sm w-full shadow-2xl text-center space-y-6 transform animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 glass-overlay z-[9999] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="glass-modal w-full max-w-sm p-8 text-center space-y-6 animate-in zoom-in-95 duration-300">
             <div className="w-20 h-20 bg-amber-100 dark:bg-amber-500/10 rounded-full flex items-center justify-center mx-auto">
               <Clock className="w-10 h-10 text-amber-600 dark:text-amber-400 animate-pulse" />
             </div>
-            
             <div className="space-y-2">
               <h3 className="text-xl font-bold text-slate-800 dark:text-white">Sessão Expirando</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
+              <p className="text-slate-500 dark:text-slate-400 text-base leading-relaxed">
                 Você ficou inativo por muito tempo. Sua sessão será encerrada em:
               </p>
             </div>
-            
             <div className="text-6xl font-black text-blue-600 dark:text-blue-400 tabular-nums">
               {inactivityCountdown}
             </div>
-            
             <button
-              onClick={cancelInactivity}
-              className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold transition shadow-lg shadow-blue-500/20 active:scale-95"
+              onClick={() => { setShowInactivityModal(false); resetInactivityTimer(); }}
+              className="w-full py-4 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white rounded-2xl font-bold transition text-lg min-h-[56px]"
             >
               Continuar Conectado
             </button>
-            
-            <p className="text-[11px] text-slate-400 uppercase tracking-widest font-bold">
-              Escola Estadual Cívico-Militar
-            </p>
           </div>
         </div>
       )}
@@ -288,362 +276,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ---------- LAYOUT: SIDEBAR ---------- */
+/* ---------- MOBILE HEADER ---------- */
 
-function SidebarLayout({
-  pathname,
-  rightControls,
-  openMobileMenu,
-  children,
-}: {
-  pathname: string;
-  rightControls: React.ReactNode;
-  openMobileMenu: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <>
-      <aside className="hidden md:flex w-64 bg-[#1E293B] flex-col shrink-0 shadow-xl">
-        <div className="p-6 flex flex-col items-center border-b border-slate-800">
-          <div className="w-28 h-28 flex items-center justify-center">
-            <img src="/nova_logo.png" alt="Logo EECM" className="w-full h-full object-contain drop-shadow-md" />
-          </div>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto py-4">
-          <ul className="space-y-4 px-3">
-            {MENU_GROUPS.map((group) => {
-              if (group.href) {
-                const active = pathname === group.href;
-                return (
-                  <li key={group.label}>
-                    <Link
-                      href={group.href}
-                      className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium ${
-                        active
-                          ? 'bg-blue-500/10 text-blue-400 border-l-4 border-blue-500'
-                          : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-                      }`}
-                    >
-                      <group.icon className={`w-5 h-5 ${active ? 'text-blue-400' : 'text-slate-500'}`} />
-                      {group.label}
-                    </Link>
-                  </li>
-                );
-              }
-              return (
-                <li key={group.label}>
-                  <p className="px-4 mb-1 text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-2">
-                    <group.icon className="w-3.5 h-3.5" />
-                    {group.label}
-                  </p>
-                  <ul className="space-y-0.5">
-                    {group.children!.map((item) => {
-                      const active = pathname === item.href;
-                      return (
-                        <li key={item.href}>
-                          <Link
-                            href={item.href}
-                            className={`flex items-center gap-3 pl-8 pr-4 py-2 rounded-lg text-sm transition-colors ${
-                              active
-                                ? 'bg-blue-500/10 text-blue-400 border-l-4 border-blue-500'
-                                : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-                            }`}
-                          >
-                            <item.icon className={`w-4 h-4 ${active ? 'text-blue-400' : 'text-slate-500'}`} />
-                            {item.label}
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        <div className="p-4 border-t border-slate-800">
-          <p className="text-[11px] text-slate-500 italic text-center">
-            Versão: {versionData.version}
-          </p>
-        </div>
-      </aside>
-
-      <main className="flex-1 flex flex-col h-screen overflow-hidden min-w-0">
-        <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 sm:px-8 shrink-0">
-          <div className="flex items-center gap-3">
-            <button
-              className="p-2 -ml-2 text-slate-500 dark:text-slate-400 md:hidden"
-              onClick={openMobileMenu}
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">
-              {findGroupForPath(pathname)?.itemLabel || 'Gestão'}
-            </h2>
-          </div>
-          {rightControls}
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          {children}
-        </div>
-      </main>
-    </>
-  );
-}
-
-/* ---------- LAYOUT: TOPBAR ---------- */
-
-function TopbarLayout({
-  pathname,
-  rightControls,
-  openMobileMenu,
-  children,
-}: {
-  pathname: string;
-  rightControls: React.ReactNode;
-  openMobileMenu: () => void;
-  children: React.ReactNode;
-}) {
-  const currentInfo = findGroupForPath(pathname);
-
-  return (
-    <>
-      <header className="z-30 px-4 pt-2 pb-1 space-y-2 pointer-events-none">
-        {/* top row: logo + right controls */}
-        <div className="pointer-events-auto bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/40 dark:border-slate-800/50 shadow-sm rounded-full flex items-center justify-between gap-4 px-4 md:px-6 py-1">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              className="p-1 -ml-1 text-slate-500 dark:text-slate-400 md:hidden"
-              onClick={openMobileMenu}
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-            <img
-              src="/logo_dash.svg"
-              alt="EECM"
-              className="w-auto h-12 md:h-16 object-contain shrink-0 drop-shadow-sm"
-            />
-            <div className="hidden sm:block min-w-0">
-              <h1 className="text-lg md:text-xl font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
-                <span className="font-extrabold">EECM</span>{' '}
-                <span className="text-slate-500 dark:text-slate-400 font-normal">PROF. JOÃO BATISTA</span>
-              </h1>
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">
-                Disciplina e Monitoramento Escolar
-              </p>
-            </div>
-          </div>
-          {rightControls}
-        </div>
-
-        {/* nav row: grouped pills with hover dropdown */}
-        <div className="pointer-events-auto hidden md:flex items-center justify-center gap-1 bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/40 dark:border-slate-800/50 shadow-md rounded-full px-4 md:px-10 py-1">
-          {MENU_GROUPS.map((group) => (
-            <GroupPill
-              key={group.label}
-              group={group}
-              pathname={pathname}
-              activeGroup={currentInfo?.groupLabel}
-            />
-          ))}
-        </div>
-      </header>
-
-      <div className="md:hidden px-4 pt-3 pb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">
-        {currentInfo?.itemLabel || 'Gestão'}
-      </div>
-
-      <main className="flex-1 p-4 md:p-8">
-        {children}
-      </main>
-    </>
-  );
-}
-
-function GroupPill({
-  group,
-  pathname,
-  activeGroup,
-}: {
-  group: MenuGroup;
-  pathname: string;
-  activeGroup: string | undefined;
-}) {
-  const [open, setOpen] = useState(false);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleEnter = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    setOpen(true);
-  };
-  const handleLeave = () => {
-    if (closeTimer.current) clearTimeout(closeTimer.current);
-    closeTimer.current = setTimeout(() => setOpen(false), 120);
-  };
-
-  const isActive = activeGroup === group.label;
-
-  // Direct link group (no children)
-  if (group.href) {
-    const active = pathname === group.href;
-    return (
-      <Link
-        href={group.href}
-        className={`shrink-0 group/item flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
-          active
-            ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-            : 'text-slate-600 dark:text-slate-300 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500'
-        }`}
-      >
-        <group.icon className={`w-4 h-4 ${active ? 'text-white' : 'text-slate-400 group-hover/item:text-white'}`} />
-        <span className="whitespace-nowrap">{group.label}</span>
-      </Link>
-    );
-  }
-
-  // Group with children (dropdown on hover)
-  return (
-    <div
-      className="relative"
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
-    >
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
-          isActive || open
-            ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'
-            : 'text-slate-600 dark:text-slate-300 hover:bg-blue-600 hover:text-white dark:hover:bg-blue-500'
-        }`}
-      >
-        <group.icon className={`w-4 h-4 transition-colors ${isActive || open ? 'text-white' : 'text-slate-400 group-hover:text-white'}`} />
-        <span className="whitespace-nowrap">{group.label}</span>
-        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-
-      {open && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[200] min-w-[240px] animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="glass-dropdown flex flex-col py-1.5 overflow-hidden">
-            {group.children!.map((item) => {
-              const active = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                    active
-                      ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 font-medium'
-                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <item.icon className={`w-4 h-4 shrink-0 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`} />
-                  <span className="whitespace-nowrap">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ---------- MOBILE DRAWER (used by both layouts) ---------- */
-
-function MobileDrawer({
-  open,
-  onClose,
-  pathname,
-}: {
-  open: boolean;
-  onClose: () => void;
-  pathname: string;
-}) {
-  return (
-    <aside
-      className={`fixed inset-y-0 left-0 z-50 w-64 bg-[#1E293B] flex flex-col shrink-0 transform transition-transform duration-300 ease-in-out shadow-2xl md:hidden ${
-        open ? 'translate-x-0' : '-translate-x-full'
-      }`}
-    >
-      <div className="p-6 flex flex-col items-center border-b border-slate-800 relative">
-        <button className="absolute top-4 right-4 text-slate-400" onClick={onClose}>
-          <X className="w-5 h-5" />
-        </button>
-        <div className="w-24 h-24 flex items-center justify-center">
-          <img src="/nova_logo.png" alt="Logo EECM" className="w-full h-full object-contain drop-shadow-md" />
-        </div>
-      </div>
-      <nav className="flex-1 overflow-y-auto py-4">
-        <ul className="space-y-4 px-3">
-          {MENU_GROUPS.map((group) => {
-            if (group.href) {
-              const active = pathname === group.href;
-              return (
-                <li key={group.label}>
-                  <Link
-                    href={group.href}
-                    onClick={onClose}
-                    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium ${
-                      active
-                        ? 'bg-blue-500/10 text-blue-400 border-l-4 border-blue-500'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <group.icon className="w-5 h-5" />
-                    {group.label}
-                  </Link>
-                </li>
-              );
-            }
-            return (
-              <li key={group.label}>
-                <p className="px-4 mb-1 text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-2">
-                  <group.icon className="w-3.5 h-3.5" />
-                  {group.label}
-                </p>
-                <ul className="space-y-0.5">
-                  {group.children!.map((item) => {
-                    const active = pathname === item.href;
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          onClick={onClose}
-                          className={`flex items-center gap-3 pl-8 pr-4 py-2 rounded-lg text-sm ${
-                            active
-                              ? 'bg-blue-500/10 text-blue-400 border-l-4 border-blue-500'
-                              : 'text-slate-400 hover:text-white hover:bg-slate-800/40'
-                          }`}
-                        >
-                          <item.icon className="w-4 h-4" />
-                          {item.label}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-      <div className="p-4 border-t border-slate-800">
-        <p className="text-[11px] text-slate-500 italic text-center">
-          Versão: {versionData.version}
-        </p>
-      </div>
-    </aside>
-  );
-}
-
-/* ---------- RIGHT CONTROLS (used by both layouts) ---------- */
-
-type RightControlsProps = {
+type MobileHeaderProps = {
   isSupabaseConnected: boolean;
   isSyncing: boolean;
   refreshData: () => void;
@@ -658,62 +293,202 @@ type RightControlsProps = {
   currentUserRole: string | null;
   logout: () => void;
   setIsChatOpen: (v: boolean) => void;
-  layoutMode: LayoutMode;
-  toggleLayout: () => void;
 };
 
-function RightControls(props: RightControlsProps) {
-  const {
-    isSupabaseConnected, isSyncing, refreshData, isDarkMode, toggleTheme,
-    isProfileOpen, setIsProfileOpen, user, userName, userInitials, userRole,
-    currentUserRole, logout, setIsChatOpen, layoutMode, toggleLayout,
-  } = props;
-
+function MobileHeader({
+  isSupabaseConnected, isSyncing, refreshData, isDarkMode, toggleTheme,
+  isProfileOpen, setIsProfileOpen, user, userName, userInitials, userRole,
+  currentUserRole, logout, setIsChatOpen,
+}: MobileHeaderProps) {
   return (
-    <div className="flex items-center gap-2">
-      <div
-        className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-          isSupabaseConnected
-            ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/30'
-            : 'bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/30'
-        }`}
-      >
-        {isSupabaseConnected ? <CloudCheck className="w-3.5 h-3.5" /> : <CloudOff className="w-3.5 h-3.5" />}
-        <span>{isSupabaseConnected ? 'Online' : 'Offline'}</span>
+    <header className="relative z-30 px-4 pt-safe pt-3 pb-2">
+      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/50 dark:border-slate-800/50 shadow-sm rounded-2xl flex items-center justify-between gap-2 px-3 py-2">
+        {/* Logo */}
+        <img
+          src="/logo_dash.svg"
+          alt="EECM"
+          className="h-10 w-auto object-contain shrink-0 drop-shadow-sm"
+        />
+
+        {/* Right controls */}
+        <div className="flex items-center gap-2">
+          {/* Online/Offline badge */}
+          <span
+            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider shrink-0 ${
+              isSupabaseConnected
+                ? 'bg-emerald-50 text-emerald-600 border border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/30'
+                : 'bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-500/10 dark:text-rose-400 dark:border-rose-500/30'
+            }`}
+          >
+            {isSupabaseConnected ? <CloudCheck className="w-3 h-3" /> : <CloudOff className="w-3 h-3" />}
+            {isSupabaseConnected ? 'Online' : 'Offline'}
+          </span>
+
+          {/* Sync */}
+          <button
+            onClick={refreshData}
+            disabled={isSyncing}
+            aria-label="Sincronizar"
+            className={`w-11 h-11 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-800/70 border border-white/50 dark:border-slate-700/60 active:scale-95 transition ${isSyncing ? 'animate-spin text-blue-500' : ''}`}
+          >
+            <RefreshCw className="w-5 h-5" />
+          </button>
+
+          {/* Theme */}
+          <button
+            onClick={toggleTheme}
+            aria-label={isDarkMode ? 'Modo claro' : 'Modo escuro'}
+            className="w-11 h-11 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-800/70 border border-white/50 dark:border-slate-700/60 active:scale-95 transition"
+          >
+            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+
+          {/* Profile */}
+          <ProfileMenu
+            isOpen={isProfileOpen}
+            setIsOpen={setIsProfileOpen}
+            user={user}
+            userName={userName}
+            userInitials={userInitials}
+            userRole={userRole}
+            currentUserRole={currentUserRole}
+            logout={logout}
+            setIsChatOpen={setIsChatOpen}
+          />
+        </div>
       </div>
+    </header>
+  );
+}
 
-      <button
-        onClick={refreshData}
-        disabled={isSyncing}
-        className={`w-9 h-9 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-white/50 dark:border-slate-700/60 hover:bg-white/90 dark:hover:bg-slate-700 transition shadow-sm ${
-          isSyncing ? 'animate-spin text-blue-500' : ''
-        }`}
-        title="Sincronizar"
+/* ---------- BOTTOM NAVIGATION ---------- */
+
+function BottomNav({
+  pathname,
+  activeGroup,
+  activeSheet,
+  setActiveSheet,
+}: {
+  pathname: string;
+  activeGroup: string | undefined;
+  activeSheet: string | null;
+  setActiveSheet: (g: string | null) => void;
+}) {
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-[950] bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl border-t border-slate-200/80 dark:border-slate-800/80 pb-safe"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
+      <div className="flex items-stretch justify-around">
+        {BOTTOM_TABS.map((tab) => {
+          const isDirectLink = !!tab.href;
+          const isActive = isDirectLink
+            ? pathname === tab.href
+            : (activeGroup === tab.group || activeSheet === tab.group);
+
+          if (isDirectLink) {
+            return (
+              <Link
+                key={tab.label}
+                href={tab.href!}
+                className={`flex flex-col items-center justify-center gap-1 flex-1 py-3 min-h-[60px] transition-colors active:scale-95 ${
+                  isActive
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-slate-500 dark:text-slate-400'
+                }`}
+              >
+                <tab.icon className={`w-6 h-6 transition-transform ${isActive ? 'scale-110' : ''}`} />
+                <span className="text-[11px] font-semibold leading-none">{tab.label}</span>
+                {isActive && <span className="absolute bottom-0 w-6 h-0.5 rounded-full bg-blue-600 dark:bg-blue-400" />}
+              </Link>
+            );
+          }
+
+          return (
+            <button
+              key={tab.label}
+              type="button"
+              onClick={() => setActiveSheet(activeSheet === tab.group ? null : tab.group!)}
+              className={`relative flex flex-col items-center justify-center gap-1 flex-1 py-3 min-h-[60px] transition-colors active:scale-95 ${
+                isActive
+                  ? 'text-blue-600 dark:text-blue-400'
+                  : 'text-slate-500 dark:text-slate-400'
+              }`}
+            >
+              <tab.icon className={`w-6 h-6 transition-transform ${isActive ? 'scale-110' : ''}`} />
+              <span className="text-[11px] font-semibold leading-none">{tab.label}</span>
+              {isActive && <span className="absolute bottom-0 w-6 h-0.5 rounded-full bg-blue-600 dark:bg-blue-400" />}
+            </button>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+/* ---------- SUBMENU SHEET (slide-up from bottom) ---------- */
+
+function SubMenuSheet({
+  group,
+  pathname,
+  onClose,
+}: {
+  group: MenuGroup;
+  pathname: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-[960] animate-in slide-in-from-bottom duration-300">
+      <div
+        className="glass-modal rounded-b-none rounded-t-3xl overflow-hidden"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 4rem)' }}
       >
-        <RefreshCw className="w-4 h-4" />
-      </button>
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+        </div>
 
-      <button
-        onClick={toggleTheme}
-        className="w-9 h-9 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-white/50 dark:border-slate-700/60 hover:bg-white/90 dark:hover:bg-slate-700 transition shadow-sm"
-        title={isDarkMode ? 'Modo claro' : 'Modo escuro'}
-      >
-        {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-      </button>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2">
+            <group.icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <span className="text-base font-bold text-slate-800 dark:text-slate-100">{group.label}</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 active:scale-95"
+            aria-label="Fechar"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-      <ProfileMenu
-        isOpen={isProfileOpen}
-        setIsOpen={setIsProfileOpen}
-        user={user}
-        userName={userName}
-        userInitials={userInitials}
-        userRole={userRole}
-        currentUserRole={currentUserRole}
-        logout={logout}
-        setIsChatOpen={setIsChatOpen}
-        layoutMode={layoutMode}
-        toggleLayout={toggleLayout}
-      />
+        {/* Items */}
+        <ul className="py-2 px-3">
+          {group.children!.map((item) => {
+            const active = pathname === item.href;
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={onClose}
+                  className={`flex items-center gap-4 px-4 py-4 rounded-2xl mb-1 min-h-[56px] transition-colors active:scale-[0.98] ${
+                    active
+                      ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <item.icon className={`w-5 h-5 shrink-0 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`} />
+                  <span className="text-base font-medium">{item.label}</span>
+                  {active && (
+                    <span className="ml-auto w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400" />
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -723,20 +498,18 @@ function RightControls(props: RightControlsProps) {
 type ProfileMenuProps = {
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
-  user: RightControlsProps['user'];
+  user: { email?: string; user_metadata?: { full_name?: string; name?: string; avatar_url?: string } } | null;
   userName: string;
   userInitials: string;
   userRole: string;
   currentUserRole: string | null;
   logout: () => void;
   setIsChatOpen: (v: boolean) => void;
-  layoutMode: LayoutMode;
-  toggleLayout: () => void;
 };
 
 function ProfileMenu({
   isOpen, setIsOpen, user, userName, userInitials, userRole,
-  currentUserRole, logout, setIsChatOpen, layoutMode, toggleLayout,
+  currentUserRole, logout, setIsChatOpen,
 }: ProfileMenuProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -745,54 +518,46 @@ function ProfileMenu({
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Position the portal relative to the trigger button
   useEffect(() => {
     if (isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      setPos({
-        top: rect.bottom + 8,
-        right: window.innerWidth - rect.right,
-      });
+      setPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
     }
   }, [isOpen]);
 
-  // Close on outside click or Escape
   useEffect(() => {
     if (!isOpen) return;
-    function handleClickOutside(e: MouseEvent) {
+    function handleOutside(e: MouseEvent) {
       if (
         triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
         menuRef.current && !menuRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
+      ) setIsOpen(false);
     }
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') setIsOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleKeyDown);
+    function handleKey(e: KeyboardEvent) { if (e.key === 'Escape') setIsOpen(false); }
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('keydown', handleKey);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('keydown', handleKey);
     };
   }, [isOpen, setIsOpen]);
 
   return (
-    <div className="ml-1">
+    <div>
       <button
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-white/50 dark:border-slate-700/60 hover:bg-white/90 dark:hover:bg-slate-700 transition shadow-sm"
+        aria-label="Menu do perfil"
+        className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-white/50 dark:border-slate-700/60 active:scale-95 transition min-h-[44px]"
       >
         {user?.user_metadata?.avatar_url ? (
-          <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-7 h-7 rounded-full" referrerPolicy="no-referrer" />
+          <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
         ) : (
-          <span className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-xs font-bold flex items-center justify-center">
+          <span className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-xs font-bold flex items-center justify-center">
             {userInitials}
           </span>
         )}
-        <div className="text-left hidden sm:block leading-tight pr-1">
+        <div className="text-left leading-tight pr-1">
           <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">{userName}</p>
           <p className="text-[10px] text-slate-500 dark:text-slate-400">{userRole}</p>
         </div>
@@ -801,76 +566,49 @@ function ProfileMenu({
       {mounted && isOpen && pos && ReactDOM.createPortal(
         <div
           ref={menuRef}
-          className="fixed w-64 glass-dropdown overflow-hidden text-sm animate-in fade-in slide-in-from-top-2 duration-200"
+          className="fixed w-72 glass-dropdown overflow-hidden text-sm animate-in fade-in slide-in-from-top-2 duration-200"
           style={{ top: pos.top, right: pos.right, zIndex: 99999 }}
         >
+          {/* User info */}
           <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50">
-            <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{userName}</p>
-            <p className="text-slate-500 dark:text-slate-400 text-xs truncate">{user?.email || 'Sem e-mail'}</p>
+            <p className="font-semibold text-slate-800 dark:text-slate-100 truncate text-base">{userName}</p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm truncate">{user?.email || 'Sem e-mail'}</p>
           </div>
 
-          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-            <p className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-semibold mb-2">
-              Aparência do menu
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={layoutMode !== 'topbar' ? toggleLayout : undefined}
-                className={`flex flex-col items-center gap-1 py-2 rounded-lg border transition ${
-                  layoutMode === 'topbar'
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                }`}
-              >
-                <PanelsTopLeft className="w-4 h-4" />
-                <span className="text-[11px] font-medium">Horizontal</span>
-              </button>
-              <button
-                onClick={layoutMode !== 'sidebar' ? toggleLayout : undefined}
-                className={`flex flex-col items-center gap-1 py-2 rounded-lg border transition ${
-                  layoutMode === 'sidebar'
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                }`}
-              >
-                <PanelLeft className="w-4 h-4" />
-                <span className="text-[11px] font-medium">Lateral</span>
-              </button>
-            </div>
-          </div>
-
+          {/* Actions */}
           <div className="py-2">
             {currentUserRole === 'GESTOR' && (
               <Link
                 href="/configuracoes"
-                className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-purple-600 dark:text-purple-400 flex items-center gap-3"
+                className="w-full text-left px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-purple-600 dark:text-purple-400 flex items-center gap-3 min-h-[52px] text-base"
                 onClick={() => setIsOpen(false)}
               >
-                <Settings className="w-4 h-4" /> Configuração do Sistema
+                <Settings className="w-5 h-5 shrink-0" /> Configuração do Sistema
               </Link>
             )}
             <Link
               href="/status"
-              className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-3"
+              className="w-full text-left px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-3 min-h-[52px] text-base"
               onClick={() => setIsOpen(false)}
             >
-              <ShieldAlert className="w-4 h-4 text-amber-500" /> Status das Integrações
+              <ShieldAlert className="w-5 h-5 shrink-0 text-amber-500" /> Status das Integrações
             </Link>
             <button
               onClick={() => { setIsChatOpen(true); setIsOpen(false); }}
-              className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-3"
+              className="w-full text-left px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-3 min-h-[52px] text-base"
             >
-              <MessageCircle className="w-4 h-4 text-blue-500" /> Suporte
+              <MessageCircle className="w-5 h-5 shrink-0 text-blue-500" /> Suporte
             </button>
             <button
               onClick={() => { logout(); setIsOpen(false); }}
-              className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-rose-600 dark:text-rose-400 flex items-center gap-3"
+              className="w-full text-left px-4 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-rose-600 dark:text-rose-400 flex items-center gap-3 min-h-[52px] text-base"
             >
-              <LogOut className="w-4 h-4" /> Sair
+              <LogOut className="w-5 h-5 shrink-0" /> Sair
             </button>
           </div>
-          <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50">
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 italic text-center">
+
+          <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50">
+            <p className="text-xs text-slate-400 dark:text-slate-500 italic text-center">
               Versão: {versionData.version}
             </p>
           </div>
