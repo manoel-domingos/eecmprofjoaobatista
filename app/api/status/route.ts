@@ -4,11 +4,36 @@ import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const geminiKey = process.env.GEMINI_API_KEY || '';
+  const v0ApiKey = process.env.V0_API_KEY || '';
   const databaseUrl = process.env.DATABASE_URL || '';
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+
+  // v0 API validation
+  const v0ApiConfigured = !!v0ApiKey && v0ApiKey !== 'MY_V0_API_KEY';
+  let v0ApiOk = false;
+  let v0ApiError: string | null = null;
+
+  if (v0ApiConfigured) {
+    try {
+      const res = await fetch('https://api.v0.dev/user', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${v0ApiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (res.ok) {
+        v0ApiOk = true;
+      } else {
+        const text = await res.text();
+        v0ApiError = `HTTP ${res.status}: ${text.slice(0, 160)}`;
+      }
+    } catch (err: unknown) {
+      v0ApiError = err instanceof Error ? err.message : String(err);
+    }
+  }
 
   // Supabase validation
   const supabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
@@ -50,40 +75,18 @@ export async function GET() {
     }
   }
 
-  // Gemini validation
-  const geminiConfigured = !!geminiKey && geminiKey !== 'MY_GEMINI_API_KEY';
-  let geminiOk = false;
-  let geminiError: string | null = null;
-
-  if (geminiConfigured) {
-    try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(geminiKey)}`,
-        { method: 'GET' }
-      );
-      if (res.ok) {
-        geminiOk = true;
-      } else {
-        const text = await res.text();
-        geminiError = `HTTP ${res.status}: ${text.slice(0, 160)}`;
-      }
-    } catch (err: unknown) {
-      geminiError = err instanceof Error ? err.message : String(err);
-    }
-  }
-
   return NextResponse.json({
+    v0Api: {
+      configured: v0ApiConfigured,
+      reachable: v0ApiOk,
+      error: v0ApiError,
+    },
     supabase: {
       configured: supabaseConfigured,
       hasServiceKey: !!supabaseServiceKey,
       reachable: supabaseReachable,
       queryTest: supabaseQueryTest,
       error: supabaseError,
-    },
-    gemini: {
-      configured: geminiConfigured,
-      reachable: geminiOk,
-      error: geminiError,
     },
     database: {
       configured: !!databaseUrl,
