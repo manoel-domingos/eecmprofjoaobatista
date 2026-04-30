@@ -308,14 +308,16 @@ export default function TermoDeConduta() {
                   <button 
                     type="button" 
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-lg text-slate-600 hover:bg-white transition font-medium"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-slate-600 hover:bg-white transition font-medium"
                   >
+                    <X className="w-4 h-4" />
                     Cancelar
                   </button>
                   <button 
                     type="submit" 
-                    className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition font-medium"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition font-medium"
                   >
+                    <Edit2 className="w-4 h-4" />
                     {editingTerm ? 'Salvar Alterações' : 'Salvar e Gerar TAC'}
                   </button>
                 </div>
