@@ -2244,7 +2244,7 @@ function RegistroDisciplinarContent() {
             </div>
           </div>
         );
-      })()
+      })()}
 
       {/* Modal Add Quick Guardian */}
       {isAddGuardianModalOpen && (
