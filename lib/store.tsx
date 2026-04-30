@@ -487,10 +487,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         observation: s.observation,
         address: s.address,
         cpf: s.cpf,
-        registration_number: s.registrationNumber,
         contacts: s.contacts,
         archived: s.archived || false
-        // birth_date comentado ate a coluna ser criada no banco
+        // registration_number e birth_date comentados ate as colunas serem criadas no banco
       };
       try {
         const { data, error } = await supabase!.from('students').insert([dbPayload]).select().single();
@@ -572,7 +571,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (s.address !== undefined) dbPayload.address = s.address;
       if (s.cpf !== undefined) dbPayload.cpf = s.cpf;
       if (s.contacts) dbPayload.contacts = s.contacts;
-      if (s.registrationNumber !== undefined) dbPayload.registration_number = s.registrationNumber;
+      // registration_number comentado ate a coluna ser criada no banco
+      // if (s.registrationNumber !== undefined) dbPayload.registration_number = s.registrationNumber;
       // birth_date comentado ate a coluna ser criada no banco
       // if (s.birthDate !== undefined) dbPayload.birth_date = s.birthDate;
       if (s.archived !== undefined) dbPayload.archived = s.archived;
