@@ -28,9 +28,48 @@ export default function Login() {
     setLoading(true);
     setError('');
 
-    // Hardcoded demo users
-    const validUsers = ['gestor', 'maykon', 'manoel', 'djeovani', 'joana', 'edma', 'murillo', 'george', 'proença'];
-    if (validUsers.includes(username.toLowerCase()) && password.toLowerCase() === username.toLowerCase()) {
+    // 1. Tentar autenticacao real via Supabase PRIMEIRO
+    if (supabase) {
+      try {
+        const emailToUse = username.includes('@') ? username : `${username.toLowerCase()}@eecm.local`;
+        
+        const { data, error: authError } = await supabase.auth.signInWithPassword({
+          email: emailToUse,
+          password,
+        });
+
+        if (!authError && data.user) {
+          // Login real via Supabase - salvar sessao como 'real'
+          localStorage.setItem('eecm_session', JSON.stringify({
+            type: 'real',
+            user: {
+              id: data.user.id,
+              email: data.user.email,
+              user_metadata: data.user.user_metadata
+            }
+          }));
+          router.push('/');
+          return;
+        }
+      } catch (err) {
+        // Continua para fallback mock
+      }
+    }
+
+    // 2. Fallback para mock users (caso Supabase falhe ou nao esteja configurado)
+    const validUsers = ['gestor', 'maykon', 'manoel', 'djeovani', 'joana', 'edma', 'murillo', 'george', 'proença', 'proenca'];
+    if (validUsers.includes(username.toLowerCase()) && password.toLowerCase() === username.toLowerCase().replace('ç', 'c')) {
+      localStorage.setItem('eecm_session', JSON.stringify({
+        type: 'mock',
+        user: {
+          id: `mock-${username.toLowerCase()}`,
+          email: `${username.toLowerCase()}@eecm.local`,
+          user_metadata: {
+            name: username.charAt(0).toUpperCase() + username.slice(1).toLowerCase(),
+            role: ['gestor', 'maykon', 'manoel'].includes(username.toLowerCase()) ? 'GESTOR' : 'MONITOR'
+          }
+        }
+      }));
       setMockUser(username.toLowerCase());
       router.push('/');
       return;
@@ -43,35 +82,8 @@ export default function Login() {
       return;
     }
 
-    if (!supabase) {
-      console.error("Supabase client is null. URL value:", process.env.NEXT_PUBLIC_SUPABASE_URL);
-      setError('A conexão com o banco de dados não está configurada corretamente.');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const emailToUse = username.includes('@') ? username : `${username}@eecm.local`;
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: emailToUse,
-        password,
-      });
-
-      if (error) {
-        console.error("Login Supabase falhou:", error.message, error);
-        setError(`Erro: ${error.message}`);
-        setLoading(false);
-        return;
-      }
-
-      if (data.user) {
-        router.push('/');
-      }
-    } catch (err) {
-      setError('Ocorreu um erro no servidor. Tente novamente.');
-      setLoading(false);
-    }
+    setError('Usuário ou senha inválidos');
+    setLoading(false);
   };
 
   const handleGuestLogin = () => {
