@@ -923,8 +923,8 @@ function RegistroDisciplinarContent() {
           </div>
 
           <div class="signature">
-            <div class="sig-line">GESTÃO ESCOLAR/MILITAR<br>(ASSINATURA E CARIMBO)</div>
-            <div class="sig-line">ALUNO(A)<br>(ASSINATURA)</div>
+            <div class="sig-line">DIRETORA / COORD. PEDAGÓGICO<br>(ASSINATURA E CARIMBO)</div>
+            <div class="sig-line">GESTOR CÍVICO MILITAR/EDUCACIONAL<br>(ASSINATURA E CARIMBO)</div>
             <div class="sig-line">RESPONSÁVEL LEGAL<br>(ASSINATURA)</div>
           </div>
         </body>
@@ -1002,9 +1002,9 @@ function RegistroDisciplinarContent() {
         <br><br><br>
         <table style="width: 100%; border-collapse: collapse;">
           <tr>
-            <td style="border-top: 1px solid #000; text-align: center; width: 30%;">GESTÃO ESCOLAR/MILITAR</td>
+            <td style="border-top: 1px solid #000; text-align: center; width: 30%;">DIRETORA / COORD. PEDAGÓGICO</td>
             <td style="width: 5%;"></td>
-            <td style="border-top: 1px solid #000; text-align: center; width: 30%;">ALUNO(A)</td>
+            <td style="border-top: 1px solid #000; text-align: center; width: 30%;">GESTOR CÍVICO MILITAR/EDUCACIONAL</td>
             <td style="width: 5%;"></td>
             <td style="border-top: 1px solid #000; text-align: center; width: 30%;">RESPONSÁVEL LEGAL</td>
           </tr>
