@@ -744,6 +744,56 @@ function ProfileMenu({
   const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
   const [mounted, setMounted] = useState(false);
 
+  // Profile edit state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showFirstAccessModal, setShowFirstAccessModal] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profileRole, setProfileRole] = useState('');
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState('');
+  const [profileSuccess, setProfileSuccess] = useState('');
+
+  // Carregar perfil salvo e verificar primeiro acesso
+  useEffect(() => {
+    if (!mounted) return;
+    const userKey = user?.email || user?.id || 'guest';
+    const saved = localStorage.getItem(`eecm_profile_${userKey}`);
+    if (saved) {
+      const p = JSON.parse(saved);
+      setProfileName(p.name || '');
+      setProfileRole(p.role || '');
+    } else if (user && userKey !== 'guest') {
+      // Primeiro acesso: mostrar popup
+      setShowFirstAccessModal(true);
+    }
+  }, [mounted, user]);
+
+  const getProfileKey = () => user?.email || user?.id || 'guest';
+
+  const saveProfile = (name: string, role: string) => {
+    const key = getProfileKey();
+    localStorage.setItem(`eecm_profile_${key}`, JSON.stringify({ name, role }));
+    // Atualizar o campo "registrado por" via evento customizado
+    window.dispatchEvent(new CustomEvent('eecm_profile_updated', { detail: { name, role } }));
+  };
+
+  const handleSaveProfile = () => {
+    setProfileError('');
+    if (!profileName.trim()) {
+      setProfileError('O nome é obrigatório.');
+      return;
+    }
+    setProfileLoading(true);
+    saveProfile(profileName.trim(), profileRole.trim());
+    setProfileSuccess('Perfil atualizado com sucesso!');
+    setProfileLoading(false);
+    setTimeout(() => {
+      setShowProfileModal(false);
+      setShowFirstAccessModal(false);
+      setProfileSuccess('');
+    }, 1200);
+  };
+
   // Change password state
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -947,6 +997,12 @@ function ProfileMenu({
               <MessageCircle className="w-4 h-4 text-blue-500" /> Suporte
             </button>
             <button
+              onClick={() => { setShowProfileModal(true); setIsOpen(false); }}
+              className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-3"
+            >
+              <UserPlus className="w-4 h-4 text-emerald-500" /> Meu Perfil
+            </button>
+            <button
               onClick={() => { setShowPasswordModal(true); setIsOpen(false); }}
               className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-3"
             >
@@ -1060,6 +1116,98 @@ function ProfileMenu({
                 >
                   {pwdLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                   {pwdLoading ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal Meu Perfil / Primeiro Acesso */}
+      {mounted && (showProfileModal || showFirstAccessModal) && ReactDOM.createPortal(
+        <div className="fixed inset-0 glass-overlay flex items-center justify-center p-4 animate-in fade-in duration-200" style={{ zIndex: 100000 }}>
+          <div className="glass-modal w-full max-w-sm p-6 animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <UserPlus className="w-5 h-5 text-emerald-500" />
+                  {showFirstAccessModal ? 'Bem-vindo! Configure seu perfil' : 'Meu Perfil'}
+                </h2>
+                {showFirstAccessModal && (
+                  <p className="text-xs text-slate-500 mt-0.5">Estas informações aparecem nos registros de ocorrências.</p>
+                )}
+              </div>
+              {!showFirstAccessModal && (
+                <button
+                  onClick={() => { setShowProfileModal(false); setProfileError(''); setProfileSuccess(''); }}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition"
+                >
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  Nome completo <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  className="glass-input w-full"
+                  placeholder="Ex: João Batista Silva"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                  Cargo / Função
+                </label>
+                <input
+                  type="text"
+                  value={profileRole}
+                  onChange={(e) => setProfileRole(e.target.value)}
+                  className="glass-input w-full"
+                  placeholder="Ex: Coordenador Pedagógico, Monitor..."
+                />
+                <p className="text-xs text-slate-400 mt-1">Aparece junto ao nome nos registros: <span className="italic">&quot;{profileRole || 'Cargo'} {profileName || 'Nome'}&quot;</span></p>
+              </div>
+
+              {profileError && (
+                <p className="text-sm text-red-500 bg-red-50 dark:bg-red-500/10 px-3 py-2 rounded-lg">{profileError}</p>
+              )}
+              {profileSuccess && (
+                <p className="text-sm text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-2 rounded-lg">{profileSuccess}</p>
+              )}
+
+              <div className="flex gap-3 pt-1">
+                {!showFirstAccessModal && (
+                  <button
+                    onClick={() => { setShowProfileModal(false); setProfileError(''); setProfileSuccess(''); }}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-lg transition"
+                  >
+                    Cancelar
+                  </button>
+                )}
+                {showFirstAccessModal && (
+                  <button
+                    onClick={() => { setShowFirstAccessModal(false); }}
+                    className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-500 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 rounded-lg transition"
+                  >
+                    Pular
+                  </button>
+                )}
+                <button
+                  onClick={handleSaveProfile}
+                  disabled={profileLoading || !profileName.trim()}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  {profileLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Salvar
                 </button>
               </div>
             </div>

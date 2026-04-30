@@ -171,14 +171,29 @@ function RegistroDisciplinarContent() {
   const locations = ['Pátio', 'Quadra', 'Refeitório', 'Sala'].sort();
 
   const getLoggedUserName = () => {
+    // Checar perfil personalizado primeiro
+    const userKey = user?.email || user?.id || 'guest';
+    const savedProfile = typeof window !== 'undefined' ? localStorage.getItem(`eecm_profile_${userKey}`) : null;
+    if (savedProfile) {
+      const p = JSON.parse(savedProfile);
+      const parts = [p.role, p.name].filter(Boolean);
+      if (parts.length) return parts.join(' ');
+    }
     if (user?.email) {
-      // Try to find in staff members first
       const staff = staffMembers.find(s => s.name.toLowerCase() === user.email.split('@')[0].toLowerCase());
       if (staff) return `${staff.role} ${staff.name}`;
       return user.email.split('@')[0];
     }
     return isGuest ? 'Somente Leitura' : 'Gestor Escolar';
   };
+
+  // Atualizar registeredBy quando o perfil mudar
+  useEffect(() => {
+    const handler = () => setRegisteredBy(getLoggedUserName());
+    window.addEventListener('eecm_profile_updated', handler);
+    return () => window.removeEventListener('eecm_profile_updated', handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const filteredOccurrences = occurrences.filter(o => {
     if (o.archived) return false;
