@@ -475,6 +475,7 @@ function GroupPill({
 }) {
   const [open, setOpen] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const router = useRouter();
 
   const handleEnter = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
@@ -483,6 +484,15 @@ function GroupPill({
   const handleLeave = () => {
     if (closeTimer.current) clearTimeout(closeTimer.current);
     closeTimer.current = setTimeout(() => setOpen(false), 120);
+  };
+
+  const handleButtonClick = () => {
+    if (group.children && group.children.length > 0) {
+      router.push(group.children[0].href);
+      setOpen(false);
+    } else {
+      setOpen((v) => !v);
+    }
   };
 
   const isActive = activeGroup === group.label;
@@ -514,7 +524,7 @@ function GroupPill({
     >
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleButtonClick}
         className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-150 ${
           isActive || open
             ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-sm'

@@ -829,14 +829,7 @@ export default function Alunos() {
               >
                 <Download className="w-4 h-4" /> Exportar Dados
               </button>
-              <button
-                onClick={handleDeleteAll}
-                disabled={currentUserRole === 'GUEST'}
-                title={currentUserRole === 'GUEST' ? 'Apenas leitura' : undefined}
-                className="bg-rose-50/40 dark:bg-rose-900/10 backdrop-blur-md border border-rose-200/50 dark:border-rose-500/20 text-rose-600 dark:text-rose-400 px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Trash2 className="w-4 h-4" /> Apagar Todos
-              </button>
+
             </div>
           </div>
           
