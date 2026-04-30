@@ -772,8 +772,10 @@ function ProfileMenu({
       const p = JSON.parse(saved);
       setProfileName(p.name || '');
       setProfileRole(p.role || '');
+      // Se nome e cargo já foram preenchidos, não mostra o modal novamente
+      setShowFirstAccessModal(false);
     } else if (user && userKey !== 'guest') {
-      // Primeiro acesso: mostrar popup
+      // Primeiro acesso: mostrar popup (só aparece se não houver perfil salvo)
       setShowFirstAccessModal(true);
     }
   }, [mounted, user]);
@@ -1205,7 +1207,12 @@ function ProfileMenu({
                 )}
                 {showFirstAccessModal && (
                   <button
-                    onClick={() => { setShowFirstAccessModal(false); }}
+                    onClick={() => {
+                      // Salvar um marcador para não mostrar novamente mesmo se pulado
+                      const key = getProfileKey();
+                      localStorage.setItem(`eecm_profile_${key}`, JSON.stringify({ name: profileName || '', role: profileRole || '' }));
+                      setShowFirstAccessModal(false);
+                    }}
                     className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-500 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 rounded-lg transition"
                   >
                     Pular
