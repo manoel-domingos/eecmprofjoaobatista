@@ -88,7 +88,7 @@ interface AppContextType extends AppState {
   getStudentPoints: (studentId: string) => number;
   getStudentBehavior: (points: number) => string;
   getStudentOccurrences: (studentId: string) => Occurrence[];
-  checkRecidivism: (studentId: string, ruleCode: number) => boolean;
+  checkRecidivism: (studentId: string, ruleCode: number, excludeId?: string) => boolean;
   getEscalationStatus: (studentId: string, ruleCode: number) => { isEscalated: boolean, reason: string, measure: string, severity: string };
 }
 
@@ -1191,9 +1191,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return matchesId && !o.archived;
   });
 
-  const checkRecidivism = (studentId: string, ruleCode: number) => {
+  const checkRecidivism = (studentId: string, ruleCode: number, excludeId?: string) => {
     const studentOccurrences = getStudentOccurrences(studentId);
-    return studentOccurrences.filter(o => o.ruleCode === ruleCode).length > 0;
+    return studentOccurrences.filter(o => o.ruleCode === ruleCode && o.id !== excludeId).length > 0;
   };
 
   const getEscalationStatus = (studentId: string, ruleCode: number) => {
