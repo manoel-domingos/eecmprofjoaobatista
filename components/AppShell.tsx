@@ -784,6 +784,11 @@ function ProfileMenu({
       return;
     }
 
+    if (!supabase) {
+      setPwdError('Conexão com o servidor indisponível. Verifique as configurações.');
+      return;
+    }
+
     setPwdLoading(true);
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
