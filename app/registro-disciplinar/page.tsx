@@ -869,7 +869,7 @@ function RegistroDisciplinarContent() {
       : Math.abs(rule?.points || 0);
 
     const headerHtml = `
-      <div style="width: 180%; margin-left: -40%; margin-bottom: 40px;">
+      <div style="width: 180%; margin-left: -40%; margin-bottom: 10px;">
         <img src="${window.location.origin}/CABEÇALHO JB.svg" style="width: 100%; height: auto;" alt="Cabeçalho Oficial">
       </div>
     `;
@@ -879,9 +879,9 @@ function RegistroDisciplinarContent() {
         <head>
           <title>${docTitle} - ${primaryStudent?.name}</title>
           <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px 40px; color: #1e293b; line-height: 1.5; max-width: 850px; margin: 0 auto; }
-            .header-container { margin-bottom: 35px; }
-            .title-section { text-align: center; margin-bottom: 40px; text-decoration: underline; }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 0 40px 25px 40px; color: #1e293b; line-height: 1.5; max-width: 850px; margin: 0 auto; }
+            .header-container { margin-bottom: 15px; }
+            .title-section { text-align: center; margin-bottom: 20px; text-decoration: underline; }
             .title { font-size: 24px; font-weight: bold; margin: 0; color: #000; text-transform: uppercase; }
             .row { margin-bottom: 10px; font-size: 15px; display: flex; }
             .label { font-weight: bold; color: #000; min-width: 170px; }
@@ -969,7 +969,7 @@ function RegistroDisciplinarContent() {
       : Math.abs(rule?.points || 0);
 
     const headerHtmlDocx = `
-      <div style="width: 160%; margin-left: -30%; margin-bottom: 35px;">
+      <div style="width: 160%; margin-left: -30%; margin-bottom: 10px;">
         <img src="${window.location.origin}/CABEÇALHO JB.svg" width="100%" style="width: 100%; height: auto;" alt="Cabeçalho">
       </div>
     `;
@@ -978,7 +978,7 @@ function RegistroDisciplinarContent() {
       <div style="font-family: Arial, sans-serif;">
         ${headerHtmlDocx}
         
-        <h1 style="text-align: center; font-size: 22pt; text-decoration: underline; margin-bottom: 30px;">${docTitle}</h1>
+        <h1 style="text-align: center; font-size: 22pt; text-decoration: underline; margin-bottom: 15px;">${docTitle}</h1>
         
         <p style="font-size: 14pt;"><strong>DATA DO REGISTRO:</strong> ${formatDate(o.date)} ${o.hour || ''}</p>
         <p style="font-size: 14pt;"><strong>LOCAL:</strong> ${o.location || 'NÃO INFORMADO'}</p>
@@ -1113,7 +1113,7 @@ function RegistroDisciplinarContent() {
                   <th className="px-6 py-3 font-medium">Infração</th>
                   <th className="px-6 py-3 font-medium">Gravidade</th>
                   <th className="px-6 py-3 font-medium">Medida</th>
-                  <th className="px-6 py-3 font-medium w-24 text-center">Aç��es</th>
+                  <th className="px-6 py-3 font-medium w-24 text-center">Aç����es</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-600">
