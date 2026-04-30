@@ -166,7 +166,7 @@ export default function TermoDeConduta() {
                   <th className="px-6 py-3 font-medium">Aluno</th>
                   <th className="px-6 py-3 font-medium">Responsável</th>
                   <th className="px-6 py-3 font-medium">Situação</th>
-                  <th className="px-6 py-3 font-medium w-24 text-center">Ações</th>
+                  <th className="px-6 py-3 font-medium w-24 text-center"><Printer className="w-4 h-4 mx-auto text-slate-400" /></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-600">
