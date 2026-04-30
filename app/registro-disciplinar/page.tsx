@@ -274,9 +274,10 @@ function RegistroDisciplinarContent() {
     setHour(o.hour || '');
     setLocation(o.location || 'Pátio');
     setLocatedBy(o.locatedBy || '');
-    setSelectedRules([o.ruleCode.toString()]);
-    const rule = rules.find(r => r.code === o.ruleCode);
-    setRuleSearch(rule ? rule.description : '');
+    const allCodes = o.ruleCodes && o.ruleCodes.length > 0 ? o.ruleCodes : [o.ruleCode];
+    setSelectedRules(allCodes.map(String));
+    const firstRule = rules.find(r => r.code === allCodes[0]);
+    setRuleSearch(firstRule ? firstRule.description : '');
     setRegisteredBy(o.registeredBy || getLoggedUserName());
     setObservations(o.observations || '');
     setVideoUrls(o.videoUrls || []);
@@ -536,20 +537,24 @@ function RegistroDisciplinarContent() {
     if (selectedStudents.length === 0 || selectedRules.length === 0) return;
 
     try {
-      if (editingOccurrence) {
-        const studentId = selectedStudents[0];
-        const ruleCodeInt = parseInt(selectedRules[0], 10);
-        const escalation = getEscalationStatus(studentId, ruleCodeInt);
-        const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
+      const primaryStudentId = selectedStudents[0];
+      const ruleCodesInt = selectedRules.map(r => parseInt(r, 10));
+      const primaryRuleCode = ruleCodesInt[0];
+      const escalation = getEscalationStatus(primaryStudentId, primaryRuleCode);
+      const measureToSave = escalation.severity === 'Grave'
+        ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType)
+        : escalation.measure;
 
+      if (editingOccurrence) {
         await updateOccurrence(editingOccurrence, {
-          studentId,
+          studentId: primaryStudentId,
           studentIds: selectedStudents,
           date,
           hour,
           location,
           locatedBy,
-          ruleCode: ruleCodeInt,
+          ruleCode: primaryRuleCode,
+          ruleCodes: ruleCodesInt,
           registeredBy,
           observations,
           measure: measureToSave,
@@ -560,42 +565,31 @@ function RegistroDisciplinarContent() {
           aggravatingFactors
         });
       } else {
-        // Create only one occurrence with all students included
-        for (const ruleCodeStr of selectedRules) {
-          const ruleCodeInt = parseInt(ruleCodeStr, 10);
-          
-          // We use the first student as the primary studentId for backward compatibility/DB constraints
-          const primaryStudentId = selectedStudents[0];
-          
-          // Check escalation for each student but logically treat as one event
-          // The user wants one record, so we'll just check escalation for the first one for the alert
-          const escalation = getEscalationStatus(primaryStudentId, ruleCodeInt);
-          if (escalation.isEscalated) {
-            const student = students.find(s => s.id === primaryStudentId);
-            const confirmed = window.confirm(`⚠️ ATENÇÃO (${student?.name}): ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
-            if (!confirmed) continue;
-          }
-
-          const measureToSave = escalation.severity === 'Grave' ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType) : escalation.measure;
-
-          await addOccurrence({
-            studentId: primaryStudentId,
-            studentIds: selectedStudents,
-            date,
-            hour,
-            location,
-            locatedBy,
-            ruleCode: ruleCodeInt,
-            registeredBy,
-            observations,
-            measure: measureToSave,
-            videoUrls,
-            signedDocUrls,
-            durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
-            attenuatingFactors,
-            aggravatingFactors
-          });
+        // Escalation alert for new occurrences
+        if (escalation.isEscalated) {
+          const student = students.find(s => s.id === primaryStudentId);
+          const confirmed = window.confirm(`ATENCAO (${student?.name}): ${escalation.reason}!\n\nA medida sugerida subiu para: ${escalation.measure}.\n\nDeseja confirmar este registro com a medida agravada?`);
+          if (!confirmed) return;
         }
+
+        await addOccurrence({
+          studentId: primaryStudentId,
+          studentIds: selectedStudents,
+          date,
+          hour,
+          location,
+          locatedBy,
+          ruleCode: primaryRuleCode,
+          ruleCodes: ruleCodesInt,
+          registeredBy,
+          observations,
+          measure: measureToSave,
+          videoUrls,
+          signedDocUrls,
+          durationDays: escalation.severity === 'Grave' ? durationDays : undefined,
+          attenuatingFactors,
+          aggravatingFactors
+        });
       }
 
       setIsModalOpen(false);
@@ -1117,7 +1111,9 @@ function RegistroDisciplinarContent() {
                         
                         const names = relatedStudents.map(s => s.name).join(', ');
                         const classes_occur = Array.from(new Set(relatedStudents.map(s => s.class))).join(', ');
-                        const rule = rules.find(r => r.code === o.ruleCode);
+                        const allOccRuleCodes = o.ruleCodes && o.ruleCodes.length > 0 ? o.ruleCodes : [o.ruleCode];
+                        const allOccRules = allOccRuleCodes.map(rc => rules.find(r => r.code === rc)).filter(Boolean);
+                        const rule = allOccRules[0];
                         
                         return (
                           <tr 
@@ -1129,17 +1125,27 @@ function RegistroDisciplinarContent() {
                             <td className="px-6 py-4">{formatDate(o.date)}</td>
                             <td className="px-6 py-4 font-medium text-slate-800 max-w-[200px] truncate">{names || 'Nenhum aluno'}</td>
                             <td className="px-6 py-4 max-w-[120px] truncate">{classes_occur || '-'}</td>
-                        <td className="px-6 py-4 truncate max-w-[200px]">{rule?.code} - {rule?.description}</td>
-                        <td className="px-6 py-4">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            rule?.severity === 'Leve' ? 'bg-blue-500/10 text-blue-400' :
-                            rule?.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
-                            'bg-red-500/10 text-red-400'
-                          }`}>
-                            {rule?.severity}
-                          </span>
+                        <td className="px-6 py-4 max-w-[200px]">
+                          {allOccRules.map((r: any) => (
+                            <div key={r.code} className="truncate text-xs">{r.code} - {r.description}</div>
+                          ))}
                         </td>
-                        <td className="px-6 py-4">{rule?.measure}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-col gap-0.5">
+                            {allOccRules.map((r: any) => (
+                              <span key={r.code} className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                r.severity === 'Leve' ? 'bg-blue-500/10 text-blue-400' :
+                                r.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
+                                'bg-red-500/10 text-red-400'
+                              }`}>
+                                {r.severity}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {allOccRules.map((r: any) => <div key={r.code} className="text-xs">{r.measure}</div>)}
+                        </td>
                         <td className="px-6 py-4">
                            <div className="flex items-center justify-center gap-2">
                              {currentUserRole !== 'GUEST' && (
@@ -2021,7 +2027,9 @@ function RegistroDisciplinarContent() {
       {viewOccurrence && (() => {
         const o = viewOccurrence;
         const student = students.find(s => s.id === o.studentId);
-        const rule = rules.find(r => r.code === o.ruleCode);
+        const allRuleCodes = o.ruleCodes && o.ruleCodes.length > 0 ? o.ruleCodes : [o.ruleCode];
+        const rule = rules.find(r => r.code === allRuleCodes[0]);
+        const allRules = allRuleCodes.map(rc => rules.find(r => r.code === rc)).filter(Boolean);
         return (
           <div className="fixed inset-0 glass-overlay z-[9990] flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="glass-modal max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
@@ -2064,29 +2072,32 @@ function RegistroDisciplinarContent() {
                   </div>
                 </div>
 
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-slate-800">Art. {rule?.code}</h3>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                      rule?.severity === 'Leve' ? 'bg-blue-500/10 text-blue-600' :
-                      rule?.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
-                      'bg-red-500/10 text-red-600'
-                    }`}>
-                      {rule?.severity}
-                    </span>
-                  </div>
-                  <p className="text-slate-600 text-sm mb-3">{rule?.description}</p>
-                  
-                  <div className="text-xs space-y-1">
-                    <div className="flex text-slate-500">
-                      <span className="w-20 font-medium">Medida:</span>
-                      <span className="text-slate-800">{rule?.measure}</span>
+                <div className="space-y-2">
+                  {(allRules.length > 0 ? allRules : [rule]).map((r: any) => r && (
+                    <div key={r.code} className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="text-sm font-semibold text-slate-800">Art. {r.code}</h3>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          r.severity === 'Leve' ? 'bg-blue-500/10 text-blue-600' :
+                          r.severity === 'Media' ? 'bg-yellow-500/10 text-yellow-600' :
+                          'bg-red-500/10 text-red-600'
+                        }`}>
+                          {r.severity}
+                        </span>
+                      </div>
+                      <p className="text-slate-600 text-sm mb-3">{r.description}</p>
+                      <div className="text-xs space-y-1">
+                        <div className="flex text-slate-500">
+                          <span className="w-20 font-medium">Medida:</span>
+                          <span className="text-slate-800">{r.measure}</span>
+                        </div>
+                        <div className="flex text-slate-500">
+                          <span className="w-20 font-medium">Impacto:</span>
+                          <span className="text-red-500 font-medium">-{Math.abs(r.points || 0)} pontos</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex text-slate-500">
-                      <span className="w-20 font-medium">Impacto:</span>
-                      <span className="text-red-500 font-medium">-{Math.abs(rule?.points || 0)} pontos</span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
 
                 {o.observations && (
