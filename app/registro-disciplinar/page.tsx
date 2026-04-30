@@ -100,10 +100,10 @@ function RegistroDisciplinarContent() {
     // Located by
     const locatedByStr = locatedBy.trim() ? ` pelo(a) ${locatedBy.trim()}` : '';
 
-    // Reincidencia
+    // Reincidencia (exclui a propria ocorrencia ao editar)
     const isReincidente = selectedStudents.some(id => {
       const ruleCodesNum = selectedRules.map(r => parseInt(r, 10));
-      return ruleCodesNum.some(rc => checkRecidivism(id, rc));
+      return ruleCodesNum.some(rc => checkRecidivism(id, rc, editingOccurrence ?? undefined));
     });
 
     // Agravantes / atenuantes
