@@ -72,11 +72,6 @@ export default function SearchableSelect({
       <div className="relative">
         <input
           type="text"
-          inputMode="search"
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="none"
-          spellCheck={false}
           className={`glass-input w-full pl-4 pr-10 text-slate-800 dark:text-slate-200 ${heightClass}`}
           placeholder={selectedOption ? selectedOption.label : placeholder}
           value={displayValue}
@@ -108,7 +103,7 @@ export default function SearchableSelect({
                 filteredOptions.map((opt) => (
                   <li
                     key={opt.value}
-                    className={`px-4 py-3.5 text-base rounded-lg cursor-pointer transition-colors min-h-[48px] flex items-center ${value === opt.value ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
+                    className={`px-3 py-2 text-sm rounded-lg cursor-pointer transition-colors ${value === opt.value ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 font-medium' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'}`}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       onChange(opt.value);

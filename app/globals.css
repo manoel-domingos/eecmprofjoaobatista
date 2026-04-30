@@ -1,32 +1,6 @@
 @import "tailwindcss";
 @custom-variant dark (&:is(.dark *));
 
-/* Mobile-first base: prevent iOS font-size auto-adjust */
-html {
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
-  touch-action: manipulation;
-}
-
-/* Smooth momentum scroll on iOS */
-body {
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
-}
-
-/* Safe area inset utility */
-.pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
-}
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-/* Tap highlight removed */
-* {
-  -webkit-tap-highlight-color: transparent;
-}
-
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
@@ -68,30 +42,6 @@ body {
   --color-yellow-500: #ca8a04;
   --color-yellow-600: #a16207;
   --color-yellow-700: #854d0e;
-}
-
-/* ---- Mobile input & button optimizations (global) ---- */
-
-/* Minimum font-size 16px on all inputs to prevent iOS zoom */
-input,
-textarea,
-select {
-  font-size: 16px;
-  line-height: 1.5;
-}
-
-/* Generous touch targets on all interactive elements */
-button,
-a,
-[role="button"],
-label[for] {
-  min-height: 44px;
-  cursor: pointer;
-}
-
-/* Smooth scroll */
-html {
-  scroll-behavior: smooth;
 }
 
 @layer utilities {
