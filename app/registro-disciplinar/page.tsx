@@ -172,7 +172,7 @@ function RegistroDisciplinarContent() {
 
   const getLoggedUserName = () => {
     // Checar perfil personalizado primeiro
-    const userKey = user?.email || user?.id || 'guest';
+    const userKey = user?.email || 'guest';
     const savedProfile = typeof window !== 'undefined' ? localStorage.getItem(`eecm_profile_${userKey}`) : null;
     if (savedProfile) {
       const p = JSON.parse(savedProfile);
@@ -2226,35 +2226,6 @@ function RegistroDisciplinarContent() {
                   </button>
                 )}
               </div>
-                                <Phone className="w-4 h-4 text-emerald-500" />
-                              </button>
-                            ))
-                        ) : (
-                          <p className="text-xs text-slate-500 text-center py-4 italic">
-                            Aluno não tem responsáveis cadastrados.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <button 
-                  onClick={() => { setViewOccurrence(null); setIsGuardianListOpen(false); }}
-                  className="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-200 border border-slate-200 transition text-xs font-medium flex items-center justify-center"
-                >
-                  Fechar
-                </button>
-
-                {currentUserRole !== 'GUEST' && (
-                  <button 
-                    onClick={(e) => { setViewOccurrence(null); handleArchive(e, o.id); }}
-                    className="px-3 py-1.5 rounded-lg text-orange-600 hover:bg-orange-100 border border-orange-200 transition text-xs font-medium flex items-center justify-center gap-1"
-                  >
-                    <Archive className="w-3.5 h-3.5" /> Arquivar
-                  </button>
-                )}
-              </div>
 
               <div className="flex flex-col gap-1.5">
                 <button 
@@ -2274,6 +2245,7 @@ function RegistroDisciplinarContent() {
           </div>
         );
       })()}
+
       {/* Modal Add Quick Guardian */}
       {isAddGuardianModalOpen && (
         <div className="fixed inset-0 glass-overlay z-[9992] flex items-center justify-center p-4 animate-in fade-in duration-200">
