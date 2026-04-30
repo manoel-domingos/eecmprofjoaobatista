@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppContext } from '@/lib/store';
@@ -525,8 +526,8 @@ function GroupPill({
       </button>
 
       {open && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[200] min-w-[240px]">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 flex flex-col py-1.5 overflow-hidden">
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[200] min-w-[240px] animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="glass-dropdown flex flex-col py-1.5 overflow-hidden">
             {group.children!.map((item) => {
               const active = pathname === item.href;
               return (
@@ -700,99 +701,182 @@ function RightControls(props: RightControlsProps) {
         {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
       </button>
 
-      <div className="relative isolate z-[110] ml-1">
-        <button
-          onClick={() => setIsProfileOpen(!isProfileOpen)}
-          className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-white/50 dark:border-slate-700/60 hover:bg-white/90 dark:hover:bg-slate-700 transition shadow-sm"
-        >
-          {user?.user_metadata?.avatar_url ? (
-            <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-7 h-7 rounded-full" referrerPolicy="no-referrer" />
-          ) : (
-            <span className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-xs font-bold flex items-center justify-center">
-              {userInitials}
-            </span>
-          )}
-          <div className="text-left hidden sm:block leading-tight pr-1">
-            <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">{userName}</p>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400">{userRole}</p>
-          </div>
-        </button>
- 
-        {isProfileOpen && (
-          <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-sm z-[120]">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-              <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{userName}</p>
-              <p className="text-slate-500 dark:text-slate-400 text-xs truncate">{user?.email || 'Sem e-mail'}</p>
-            </div>
+      <ProfileMenu
+        isOpen={isProfileOpen}
+        setIsOpen={setIsProfileOpen}
+        user={user}
+        userName={userName}
+        userInitials={userInitials}
+        userRole={userRole}
+        currentUserRole={currentUserRole}
+        logout={logout}
+        setIsChatOpen={setIsChatOpen}
+        layoutMode={layoutMode}
+        toggleLayout={toggleLayout}
+      />
+    </div>
+  );
+}
 
-            <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
-              <p className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-semibold mb-2">
-                Aparência do menu
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={layoutMode !== 'topbar' ? toggleLayout : undefined}
-                  className={`flex flex-col items-center gap-1 py-2 rounded-lg border transition ${
-                    layoutMode === 'topbar'
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <PanelsTopLeft className="w-4 h-4" />
-                  <span className="text-[11px] font-medium">Horizontal</span>
-                </button>
-                <button
-                  onClick={layoutMode !== 'sidebar' ? toggleLayout : undefined}
-                  className={`flex flex-col items-center gap-1 py-2 rounded-lg border transition ${
-                    layoutMode === 'sidebar'
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
-                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  <PanelLeft className="w-4 h-4" />
-                  <span className="text-[11px] font-medium">Lateral</span>
-                </button>
-              </div>
-            </div>
+/* ---------- PROFILE MENU (Portal) ---------- */
 
-            <div className="py-2">
-              {currentUserRole === 'GESTOR' && (
-                <Link
-                  href="/configuracoes"
-                  className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-purple-600 dark:text-purple-400 flex items-center gap-3"
-                  onClick={() => setIsProfileOpen(false)}
-                >
-                  <Settings className="w-4 h-4" /> Configuração do Sistema
-                </Link>
-              )}
-              <Link
-                href="/status"
-                className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-3"
-                onClick={() => setIsProfileOpen(false)}
-              >
-                <ShieldAlert className="w-4 h-4 text-amber-500" /> Status das Integrações
-              </Link>
-              <button
-                onClick={() => { setIsChatOpen(true); setIsProfileOpen(false); }}
-                className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-3"
-              >
-                <MessageCircle className="w-4 h-4 text-blue-500" /> Suporte
-              </button>
-              <button
-                onClick={() => { logout(); setIsProfileOpen(false); }}
-                className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-rose-600 dark:text-rose-400 flex items-center gap-3"
-              >
-                <LogOut className="w-4 h-4" /> Sair
-              </button>
-            </div>
-            <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-              <p className="text-[11px] text-slate-400 dark:text-slate-500 italic text-center">
-                Versão: {versionData.version}
-              </p>
-            </div>
-          </div>
+type ProfileMenuProps = {
+  isOpen: boolean;
+  setIsOpen: (v: boolean) => void;
+  user: RightControlsProps['user'];
+  userName: string;
+  userInitials: string;
+  userRole: string;
+  currentUserRole: string | null;
+  logout: () => void;
+  setIsChatOpen: (v: boolean) => void;
+  layoutMode: LayoutMode;
+  toggleLayout: () => void;
+};
+
+function ProfileMenu({
+  isOpen, setIsOpen, user, userName, userInitials, userRole,
+  currentUserRole, logout, setIsChatOpen, layoutMode, toggleLayout,
+}: ProfileMenuProps) {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  // Position the portal relative to the trigger button
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setPos({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [isOpen]);
+
+  // Close on outside click or Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        triggerRef.current && !triggerRef.current.contains(e.target as Node) &&
+        menuRef.current && !menuRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setIsOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, setIsOpen]);
+
+  return (
+    <div className="ml-1">
+      <button
+        ref={triggerRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-white/50 dark:border-slate-700/60 hover:bg-white/90 dark:hover:bg-slate-700 transition shadow-sm"
+      >
+        {user?.user_metadata?.avatar_url ? (
+          <img src={user.user_metadata.avatar_url} alt="Avatar" className="w-7 h-7 rounded-full" referrerPolicy="no-referrer" />
+        ) : (
+          <span className="w-7 h-7 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white text-xs font-bold flex items-center justify-center">
+            {userInitials}
+          </span>
         )}
-      </div>
+        <div className="text-left hidden sm:block leading-tight pr-1">
+          <p className="text-xs font-semibold text-slate-800 dark:text-slate-100">{userName}</p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400">{userRole}</p>
+        </div>
+      </button>
+
+      {mounted && isOpen && pos && ReactDOM.createPortal(
+        <div
+          ref={menuRef}
+          className="fixed w-64 glass-dropdown overflow-hidden text-sm animate-in fade-in slide-in-from-top-2 duration-200"
+          style={{ top: pos.top, right: pos.right, zIndex: 99999 }}
+        >
+          <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50">
+            <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{userName}</p>
+            <p className="text-slate-500 dark:text-slate-400 text-xs truncate">{user?.email || 'Sem e-mail'}</p>
+          </div>
+
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+            <p className="text-[11px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-semibold mb-2">
+              Aparência do menu
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={layoutMode !== 'topbar' ? toggleLayout : undefined}
+                className={`flex flex-col items-center gap-1 py-2 rounded-lg border transition ${
+                  layoutMode === 'topbar'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                }`}
+              >
+                <PanelsTopLeft className="w-4 h-4" />
+                <span className="text-[11px] font-medium">Horizontal</span>
+              </button>
+              <button
+                onClick={layoutMode !== 'sidebar' ? toggleLayout : undefined}
+                className={`flex flex-col items-center gap-1 py-2 rounded-lg border transition ${
+                  layoutMode === 'sidebar'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                }`}
+              >
+                <PanelLeft className="w-4 h-4" />
+                <span className="text-[11px] font-medium">Lateral</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="py-2">
+            {currentUserRole === 'GESTOR' && (
+              <Link
+                href="/configuracoes"
+                className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-purple-600 dark:text-purple-400 flex items-center gap-3"
+                onClick={() => setIsOpen(false)}
+              >
+                <Settings className="w-4 h-4" /> Configuração do Sistema
+              </Link>
+            )}
+            <Link
+              href="/status"
+              className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center gap-3"
+              onClick={() => setIsOpen(false)}
+            >
+              <ShieldAlert className="w-4 h-4 text-amber-500" /> Status das Integrações
+            </Link>
+            <button
+              onClick={() => { setIsChatOpen(true); setIsOpen(false); }}
+              className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-3"
+            >
+              <MessageCircle className="w-4 h-4 text-blue-500" /> Suporte
+            </button>
+            <button
+              onClick={() => { logout(); setIsOpen(false); }}
+              className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-rose-600 dark:text-rose-400 flex items-center gap-3"
+            >
+              <LogOut className="w-4 h-4" /> Sair
+            </button>
+          </div>
+          <div className="px-4 py-2.5 border-t border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/50">
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 italic text-center">
+              Versão: {versionData.version}
+            </p>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

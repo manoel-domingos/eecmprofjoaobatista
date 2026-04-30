@@ -181,11 +181,12 @@ export default function ImportWizard({ isOpen, onClose, onImport }: ImportWizard
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[9990] flex items-center justify-center glass-overlay p-4">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col border border-slate-200 dark:border-slate-800"
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="glass-modal w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Cabeçalho */}
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/30">

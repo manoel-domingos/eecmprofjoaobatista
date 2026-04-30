@@ -935,8 +935,8 @@ export default function Alunos() {
 
       {/* Modal Novo/Editar Aluno */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-xl max-w-md w-full flex flex-col shadow-2xl max-h-[90vh]">
+        <div className="fixed inset-0 glass-overlay z-[9990] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="glass-modal max-w-md w-full flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between p-5 border-b border-slate-200">
               <h2 className="text-xl font-bold text-slate-800">
                 {editingStudent ? 'Editar Aluno' : 'Cadastrar Aluno Manualmente'}
@@ -1160,8 +1160,8 @@ export default function Alunos() {
 
       {/* Modal Confirmação de Arquivamento */}
       {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl border border-orange-100">
+        <div className="fixed inset-0 glass-overlay z-[9991] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="glass-modal max-w-sm w-full p-6 animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-orange-500 mb-4">
               <Archive className="w-6 h-6" />
             </div>
@@ -1201,8 +1201,8 @@ export default function Alunos() {
 
       {/* Modal Confirmação Apagar Todos */}
       {isDeleteAllConfirmOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl max-w-sm w-full p-6 shadow-2xl border border-red-100">
+        <div className="fixed inset-0 glass-overlay z-[9991] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="glass-modal max-w-sm w-full p-6 animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center text-red-500 mb-4">
               <Trash2 className="w-6 h-6" />
             </div>
@@ -1242,8 +1242,8 @@ export default function Alunos() {
 
       {/* Import Review Modal */}
       {isReviewOpen && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-6xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 glass-overlay z-[9992] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="glass-modal w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <div>
                 <h2 className="text-xl font-bold text-slate-800">Revisão de Importação</h2>
@@ -1411,8 +1411,8 @@ export default function Alunos() {
         </div>
       )}
       {reviewEditContactsIndex !== null && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl p-6">
+        <div className="fixed inset-0 glass-overlay z-[9993] flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="glass-modal w-full max-w-lg p-6 animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-slate-800">
                 Editar Contatos: {pendingImports[reviewEditContactsIndex]?.name || 'Aluno'}
