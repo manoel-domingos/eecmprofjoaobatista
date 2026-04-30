@@ -66,6 +66,64 @@ function RegistroDisciplinarContent() {
   const [isImproving, setIsImproving] = useState(false);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
 
+  const handleGenerateAta = () => {
+    const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+    // Validate required fields
+    if (!selectedStudents.length || !date || !hour || !location || !selectedRules.length) {
+      alert('Preencha aluno(s), data, hora, local e infração antes de gerar a ata.');
+      return;
+    }
+
+    if (observations.trim()) {
+      const confirmOverwrite = confirm('Já existe texto no campo ATA. Deseja substituir pelo texto gerado?');
+      if (!confirmOverwrite) return;
+    }
+
+    // Date parts
+    const [year, month, day] = date.split('-');
+    const mesExtenso = MESES[parseInt(month, 10) - 1];
+    const diaNum = parseInt(day, 10);
+
+    // Student names
+    const studentNames = selectedStudents.map(id => students.find(s => s.id === id)?.name).filter(Boolean) as string[];
+    const alunoStr = studentNames.length === 1
+      ? `o(a) aluno(a) ${studentNames[0]}`
+      : `os alunos ${studentNames.slice(0, -1).join(', ')} e ${studentNames[studentNames.length - 1]}`;
+    const verboStr = studentNames.length === 1 ? 'foi encontrado(a)' : 'foram encontrados';
+
+    // Rule info (use first selected rule)
+    const rule = rules.find(r => r.code === parseInt(selectedRules[0], 10));
+    const ruleCode = rule?.code ?? selectedRules[0];
+    const ruleDesc = rule?.description ?? '';
+
+    // Located by
+    const locatedByStr = locatedBy.trim() ? ` pelo(a) ${locatedBy.trim()}` : '';
+
+    // Reincidencia
+    const isReincidente = selectedStudents.some(id => {
+      const ruleCodesNum = selectedRules.map(r => parseInt(r, 10));
+      return ruleCodesNum.some(rc => checkRecidivism(id, rc));
+    });
+
+    // Agravantes / atenuantes
+    const agravantesStr = aggravatingFactors.length
+      ? ` Verificaram-se os seguintes fatores agravantes: ${aggravatingFactors.join(', ')}.`
+      : '';
+    const atenuantesStr = attenuatingFactors.length
+      ? ` Foram considerados os seguintes fatores atenuantes: ${attenuatingFactors.join(', ')}.`
+      : '';
+    const reincidenteStr = isReincidente
+      ? ' O(A) aluno(a) já possui registro anterior da mesma infração, caracterizando reincidência.'
+      : '';
+
+    const registradoPor = registeredBy.trim() || getLoggedUserName();
+
+    const ata = `Aos ${diaNum} dias do mês de ${mesExtenso} do ano de ${year}, às ${hour}, ${alunoStr} ${verboStr} no(a) ${location}${locatedByStr}, incorrendo em infração ao Art. ${ruleCode} do Regimento Interno (${ruleDesc}).${agravantesStr}${atenuantesStr}${reincidenteStr} O presente registro foi lavrado por ${registradoPor}.`;
+
+    setObservations(ata.trim());
+  };
+
   const handleImproveObservations = async () => {
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
     if (!apiKey || (!observations.trim() && selectedRules.length === 0)) return;
@@ -1273,6 +1331,15 @@ function RegistroDisciplinarContent() {
                   <label className="block text-sm font-medium text-slate-600 mb-1 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       ATA
+                      <button
+                        type="button"
+                        onClick={handleGenerateAta}
+                        disabled={!selectedStudents.length || !date || !hour || !location || !selectedRules.length}
+                        className="flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full hover:bg-emerald-100 transition-all disabled:opacity-50"
+                      >
+                        <FileText size={10} />
+                        Gerar Ata Automática
+                      </button>
                       <button
                         type="button"
                         onClick={handleImproveObservations}
