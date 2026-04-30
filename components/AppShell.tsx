@@ -791,9 +791,20 @@ function ProfileMenu({
 
     setPwdLoading(true);
     try {
-      // Verificar se existe sessão ativa
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) {
+      // Verificar se é uma sessão mock (localStorage) ou real (Supabase)
+      const sessionData = localStorage.getItem('eecm_session');
+      const sessionParsed = sessionData ? JSON.parse(sessionData) : null;
+      
+      // Se for sessão mock (login como "manoel"), não permite trocar senha
+      if (sessionParsed && sessionParsed.type === 'mock') {
+        setPwdError('A troca de senha só está disponível para usuários autenticados via Supabase. Seu acesso é via modo demo.');
+        setPwdLoading(false);
+        return;
+      }
+
+      // Tentar obter sessão real do Supabase
+      const { data: supabaseSession } = await supabase.auth.getSession();
+      if (!supabaseSession?.session) {
         setPwdError('Sessão expirada. Faça login novamente para alterar a senha.');
         setPwdLoading(false);
         return;
