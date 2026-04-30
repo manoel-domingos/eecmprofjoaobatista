@@ -766,7 +766,7 @@ function ProfileMenu({
   // Carregar perfil salvo e verificar primeiro acesso
   useEffect(() => {
     if (!mounted) return;
-    const userKey = user?.email || user?.id || 'guest';
+    const userKey = user?.email || 'guest';
     const saved = localStorage.getItem(`eecm_profile_${userKey}`);
     if (saved) {
       const p = JSON.parse(saved);
@@ -778,7 +778,7 @@ function ProfileMenu({
     }
   }, [mounted, user]);
 
-  const getProfileKey = () => user?.email || user?.id || 'guest';
+  const getProfileKey = () => user?.email || 'guest';
 
   const saveProfile = (name: string, role: string) => {
     const key = getProfileKey();

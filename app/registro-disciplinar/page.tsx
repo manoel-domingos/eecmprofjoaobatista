@@ -1028,6 +1028,13 @@ function RegistroDisciplinarContent() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
+  // Variaveis pre-computadas para o modal de visualizacao (substitui IIFE)
+  const _vo = viewOccurrence;
+  const _voStudent = _vo ? students.find(s => s.id === _vo.studentId) : null;
+  const _voAllRuleCodes = _vo ? (_vo.ruleCodes && _vo.ruleCodes.length > 0 ? _vo.ruleCodes : [_vo.ruleCode]) : [];
+  const _voRule = _vo ? rules.find(r => r.code === _voAllRuleCodes[0]) : null;
+  const _voAllRules = _vo ? _voAllRuleCodes.map(rc => rules.find(r => r.code === rc)).filter(Boolean) : [];
+
   return (
     <AppShell>
       <div className="space-y-6">
@@ -2049,13 +2056,7 @@ function RegistroDisciplinarContent() {
       )}
 
       {/* Modal Visualização de Ocorrência */}
-      {viewOccurrence && (() => {
-        const o = viewOccurrence;
-        const student = students.find(s => s.id === o.studentId);
-        const allRuleCodes = o.ruleCodes && o.ruleCodes.length > 0 ? o.ruleCodes : [o.ruleCode];
-        const rule = rules.find(r => r.code === allRuleCodes[0]);
-        const allRules = allRuleCodes.map(rc => rules.find(r => r.code === rc)).filter(Boolean);
-        return (
+      {_vo && (
           <div className="fixed inset-0 glass-overlay z-[9990] flex items-center justify-center p-4 animate-in fade-in duration-200">
             <div className="glass-modal max-w-md w-full max-h-[85vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-300">
               {/* Header compacto */}
@@ -2074,11 +2075,11 @@ function RegistroDisciplinarContent() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <span className="text-xs text-slate-400 font-medium uppercase">
-                      {o.studentIds && o.studentIds.length > 1 ? 'Alunos' : 'Aluno'}
+                      {_vo.studentIds && _vo.studentIds.length > 1 ? 'Alunos' : 'Aluno'}
                     </span>
-                    {(o.studentIds && o.studentIds.length > 0 
-                      ? students.filter(s => o.studentIds?.includes(s.id))
-                      : [students.find(s => s.id === o.studentId)].filter((s): s is Student => Boolean(s))
+                    {(_vo.studentIds && _vo.studentIds.length > 0 
+                      ? students.filter(s => _vo.studentIds?.includes(s.id))
+                      : [students.find(s => s.id === _vo.studentId)].filter((s): s is Student => Boolean(s))
                     ).map(s => (
                       <p key={s.id} className="text-slate-800 font-medium truncate">{s.name} <span className="text-slate-400 font-normal">({s.class || '-'})</span></p>
                     ))}
@@ -2089,21 +2090,21 @@ function RegistroDisciplinarContent() {
                 <div className="grid grid-cols-3 gap-3 bg-slate-50 rounded-lg p-2.5">
                   <div>
                     <span className="text-xs text-slate-400 font-medium">Data</span>
-                    <p className="text-slate-700">{formatDate(o.date)}</p>
+                    <p className="text-slate-700">{formatDate(_vo.date)}</p>
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 font-medium">Hora</span>
-                    <p className="text-slate-700">{o.hour || '—'}</p>
+                    <p className="text-slate-700">{_vo.hour || '—'}</p>
                   </div>
                   <div>
                     <span className="text-xs text-slate-400 font-medium">Registrado</span>
-                    <p className="text-slate-700 truncate">{o.registeredBy || 'Sistema'}</p>
+                    <p className="text-slate-700 truncate">{_vo.registeredBy || 'Sistema'}</p>
                   </div>
                 </div>
 
                 {/* Infrações compactas */}
                 <div className="space-y-2">
-                  {(allRules.length > 0 ? allRules : [rule]).map((r: any) => r && (
+                  {(_voAllRules.length > 0 ? _voAllRules : [_voRule]).map((r: any) => r && (
                     <div key={r.code} className="bg-slate-50 border border-slate-200 rounded-lg p-3">
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <span className="font-semibold text-slate-700">Art. {r.code}</span>
@@ -2125,21 +2126,21 @@ function RegistroDisciplinarContent() {
                 </div>
 
                 {/* ATA compacta */}
-                {o.observations && (
+                {_vo.observations && (
                   <div>
                     <span className="text-xs text-slate-400 font-medium uppercase">ATA</span>
                     <p className="text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-100 whitespace-pre-wrap mt-1 max-h-24 overflow-y-auto">
-                      {o.observations}
+                      {_vo.observations}
                     </p>
                   </div>
                 )}
 
                 {/* Evidencias compactas */}
-                {((o.videoUrls && o.videoUrls.length > 0) || (o.videoUrls === undefined && (o as any).videoUrl)) && (
+                {((_vo.videoUrls && _vo.videoUrls.length > 0) || (_vo.videoUrls === undefined && (_vo as any).videoUrl)) && (
                   <div>
                     <span className="text-xs text-slate-400 font-medium uppercase">Evidências</span>
                     <div className="grid grid-cols-3 gap-1.5 mt-1">
-                      {(o.videoUrls || [(o as any).videoUrl]).filter(Boolean).map((url: string, index: number) => {
+                      {(_vo.videoUrls || [(_vo as any).videoUrl]).filter(Boolean).map((url: string, index: number) => {
                         const isImage = /\.(jpg|jpeg|png|webp|gif|avif)($|\?)/i.test(url);
                         return (
                           <div key={index} className="aspect-square bg-slate-900 rounded overflow-hidden border border-slate-200">
@@ -2155,11 +2156,11 @@ function RegistroDisciplinarContent() {
                     </div>
                   </div>
                 )}
-                {((o.signedDocUrls && o.signedDocUrls.length > 0) || (o.signedDocUrls === undefined && (o as any).signedDocUrl)) && (
+                {((_vo.signedDocUrls && _vo.signedDocUrls.length > 0) || (_vo.signedDocUrls === undefined && (_vo as any).signedDocUrl)) && (
                   <div>
                     <span className="text-xs text-slate-400 font-medium uppercase">Docs Assinados</span>
                     <div className="grid grid-cols-3 gap-1.5 mt-1">
-                      {(o.signedDocUrls || [(o as any).signedDocUrl]).filter(Boolean).map((url: string, index: number) => (
+                      {(_vo.signedDocUrls || [(_vo as any).signedDocUrl]).filter(Boolean).map((url: string, index: number) => (
                         <div key={index} className="aspect-square bg-slate-100 rounded overflow-hidden border border-slate-200">
                           <img src={url} className="w-full h-full object-cover cursor-pointer" onClick={() => window.open(url, '_blank')} alt="Assinada" />
                         </div>
@@ -2188,12 +2189,12 @@ function RegistroDisciplinarContent() {
                     <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-slate-200 rounded-xl shadow-2xl p-4 z-[60]">
                       <h4 className="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">Responsáveis</h4>
                       <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {student?.contacts?.length ? (
-                          student.contacts.map((c, i) => (
+                        {_voStudent?.contacts?.length ? (
+                          _voStudent.contacts.map((c, i) => (
                             <button
                               key={i}
                               type="button"
-                              onClick={() => handleWhatsAppRedirect(c.phone, student.name)}
+                              onClick={() => handleWhatsAppRedirect(c.phone, _voStudent.name)}
                               className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-emerald-50 rounded-lg group transition border border-transparent hover:border-emerald-200 text-left"
                             >
                               <div>
@@ -2219,7 +2220,7 @@ function RegistroDisciplinarContent() {
 
                 {currentUserRole !== 'GUEST' && (
                   <button 
-                    onClick={(e) => { setViewOccurrence(null); handleArchive(e, o.id); }}
+                    onClick={(e) => { setViewOccurrence(null); handleArchive(e, _vo.id); }}
                     className="px-3 py-1.5 rounded-lg text-orange-600 hover:bg-orange-100 border border-orange-200 transition text-xs font-medium flex items-center justify-center gap-1"
                   >
                     <Archive className="w-3.5 h-3.5" /> Arquivar
@@ -2229,22 +2230,22 @@ function RegistroDisciplinarContent() {
 
               <div className="flex flex-col gap-1.5">
                 <button 
-                  onClick={() => handleExport(o)}
+                  onClick={() => handleExport(_vo)}
                   className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition text-xs font-medium flex items-center justify-center gap-1"
                 >
                   <FileText className="w-3.5 h-3.5" /> PDF
                 </button>
                 <button 
-                  onClick={() => handleExportDocx(o)}
+                  onClick={() => handleExportDocx(_vo)}
                   className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition text-xs font-medium flex items-center justify-center gap-1"
                 >
                   <FileText className="w-3.5 h-3.5" /> DOCX
                 </button>
               </div>
+              </div>
             </div>
           </div>
-        );
-      })()}
+      )}
 
       {/* Modal Add Quick Guardian */}
       {isAddGuardianModalOpen && (
