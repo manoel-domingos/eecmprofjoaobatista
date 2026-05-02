@@ -10,7 +10,7 @@ import {
   UserPlus, Award, Menu, X, LogOut, ShieldAlert,
   Sun, Moon, RefreshCw, CloudCheck, CloudOff, MessageCircle, Settings,
   PanelsTopLeft, PanelLeft, ChevronDown,
-  GraduationCap, Gavel, Smile, Cog,
+  GraduationCap, Gavel, Smile, Cog, BookOpen, Heart, HelpCircle, Zap,
 } from 'lucide-react';
 import versionData from '@/lib/version.json';
 import ChatWidget from '@/components/ChatWidget';
@@ -47,8 +47,23 @@ const MENU_GROUPS: MenuGroup[] = [
   },
   { label: 'Relatórios', icon: BarChart, href: '/relatorios' },
   {
+    label: 'Acolhimento', icon: Heart,
+    children: [
+      { href: '/acolhimento', label: 'Tickets de Acolhimento', icon: Heart },
+      { href: '/faq', label: 'Perguntas Frequentes', icon: HelpCircle },
+    ],
+  },
+  {
+    label: 'Documentos', icon: BookOpen,
+    children: [
+      { href: '/documentos', label: 'Biblioteca de Documentos', icon: FileText },
+      { href: '/manuais', label: 'Manuais e Regimentos', icon: BookOpen },
+    ],
+  },
+  {
     label: 'Sistema', icon: Cog,
     children: [
+      { href: '/integracoes', label: 'Integrações', icon: Zap },
       { href: '/fechamento', label: 'Fechamento do Ano', icon: Award },
       { href: '/auditoria', label: 'Auditoria de Ações', icon: ShieldAlert },
       { href: '/configuracoes', label: 'Configurações', icon: Settings },
@@ -120,10 +135,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   const toggleLayout = () => {
-    const next: LayoutMode = layoutMode === 'sidebar' ? 'topbar' : 'sidebar';
-    setLayoutMode(next);
-    localStorage.setItem('layoutMode', next);
-    setIsProfileOpen(false);
+    // Layout mode locked to topbar-only
+    return;
   };
 
   if (!user && !isGuest) return null;
@@ -163,7 +176,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-lg z-40 md:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
@@ -343,6 +356,14 @@ function TopbarLayout({
               <p className="text-[11px] text-slate-400 dark:text-slate-500 uppercase tracking-wider mt-0.5">
                 Disciplina e Monitoramento Escolar
               </p>
+            </div>
+            
+            {/* Kallyteros Brand */}
+            <div className="ml-auto hidden md:flex items-center gap-2 pl-4 border-l border-slate-300 dark:border-slate-700">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap">Por</span>
+              <div className="flex items-center gap-1">
+                <span className="text-xs font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Kallyteros</span>
+              </div>
             </div>
           </div>
           {rightControls}
@@ -629,7 +650,7 @@ function RightControls(props: RightControlsProps) {
         </button>
  
         {isProfileOpen && (
-          <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-sm z-[120]">
+          <div className="absolute right-0 mt-2 w-64 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-xl shadow-2xl border border-slate-200/50 dark:border-slate-700/50 overflow-hidden text-sm z-[999] fixed sm:absolute top-16 sm:top-auto right-2 sm:right-0">
             <div className="p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
               <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{userName}</p>
               <p className="text-slate-500 dark:text-slate-400 text-xs truncate">{user?.email || 'Sem e-mail'}</p>
