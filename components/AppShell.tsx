@@ -765,22 +765,25 @@ function ProfileMenu({
 
   // Carregar perfil salvo e verificar primeiro acesso
   useEffect(() => {
-    if (!mounted) return;
-    const userKey = user?.email || 'guest';
+    if (!mounted || !user?.email) return; // aguarda usuario autenticado com email real
+    const userKey = user.email;
     const saved = localStorage.getItem(`eecm_profile_${userKey}`);
     if (saved) {
-      const p = JSON.parse(saved);
-      setProfileName(p.name || '');
-      setProfileRole(p.role || '');
-      // Se nome e cargo já foram preenchidos, não mostra o modal novamente
+      try {
+        const p = JSON.parse(saved);
+        setProfileName(p.name || '');
+        setProfileRole(p.role || '');
+      } catch {
+        // JSON invalido, ignorar
+      }
       setShowFirstAccessModal(false);
-    } else if (user && userKey !== 'guest') {
-      // Primeiro acesso: mostrar popup (só aparece se não houver perfil salvo)
+    } else {
+      // Primeiro acesso real: nenhum perfil salvo para este email
       setShowFirstAccessModal(true);
     }
-  }, [mounted, user]);
+  }, [mounted, user?.email]);
 
-  const getProfileKey = () => user?.email || 'guest';
+  const getProfileKey = () => user?.email ?? 'guest';
 
   const saveProfile = (name: string, role: string) => {
     const key = getProfileKey();
