@@ -8,7 +8,7 @@ import SearchableSelect from '@/components/SearchableSelect';
 import { Occurrence, StaffMember, Student } from '@/lib/data';
 import { getLocalDateString, getLocalTimeString, formatDate, formatPhoneForWhatsApp } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
-import { generateContentWithFallback } from '@/lib/ai';
+import { streamAI } from '@/components/AIChat';
 
 function RegistroDisciplinarContent() {
   const { 
@@ -132,24 +132,18 @@ function RegistroDisciplinarContent() {
       const studentNames = selectedStudents.map(id => students.find(s => s.id === id)?.name).filter(Boolean).join(', ');
       const ruleDescriptions = selectedRules.map(code => rules.find(r => r.code === parseInt(code, 10))?.description).filter(Boolean).join('; ');
 
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'ata',
-          payload: {
-            students: studentNames || 'Não identificado',
-            infractions: ruleDescriptions || 'Não especificada',
-            dateTime: `${date} ${hour}`,
-            location,
-            text: observations,
-          },
-        }),
-      });
-
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setObservations(data.result);
+      setObservations('');
+      await streamAI(
+        'ata',
+        {
+          students: studentNames || 'Não identificado',
+          infractions: ruleDescriptions || 'Não especificada',
+          dateTime: `${date} ${hour}`,
+          location,
+          text: observations,
+        },
+        (delta) => setObservations(prev => prev + delta)
+      );
     } catch (error) {
       console.error("Erro ao melhorar ATA:", error);
       alert("Não foi possível melhorar o texto com IA no momento.");

@@ -5,6 +5,7 @@ import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
 import { FileBadge, Search, Printer, Brain, X, Loader2 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
+import { streamAI } from '@/components/AIChat';
 
 export default function FichaDisciplinar() {
   const { students, getStudentPoints, getStudentOccurrences, rules } = useAppContext();
@@ -27,23 +28,17 @@ export default function FichaDisciplinar() {
         return `- ${formatDate(o.date)}: Art. ${o.ruleCode} - ${rule?.description || 'Desconhecida'} (${rule?.severity || '-'})`;
       }).join('\n');
 
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'analise',
-          payload: {
-            studentName: student.name,
-            class: student.class,
-            totalOccurrences: occurrences.length,
-            currentPoints: getStudentPoints(student.id).toFixed(1),
-            occurrences: occurrencesSummary,
-          },
-        }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setAnalysisResult(data.result);
+      await streamAI(
+        'analise',
+        {
+          studentName: student.name,
+          class: student.class,
+          totalOccurrences: occurrences.length,
+          currentPoints: getStudentPoints(student.id).toFixed(1),
+          occurrences: occurrencesSummary,
+        },
+        (delta) => setAnalysisResult(prev => prev + delta)
+      );
     } catch (error) {
       setAnalysisResult('Não foi possível gerar a análise no momento. Tente novamente.');
     } finally {
