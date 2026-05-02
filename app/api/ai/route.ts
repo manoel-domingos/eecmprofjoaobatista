@@ -4,10 +4,17 @@ import { REGIMENTO_CORPUS, HIERARQUIA_FONTES } from '@/lib/regimento';
 
 export const maxDuration = 60;
 
-const client = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY,
-  baseURL: 'https://api.deepseek.com/v1',
-});
+// Lazy initialization para evitar erro quando env var não está disponível no build
+let _client: OpenAI | null = null;
+function getClient(): OpenAI {
+  if (!_client) {
+    _client = new OpenAI({
+      apiKey: process.env.DEEPSEEK_API_KEY || 'placeholder',
+      baseURL: 'https://api.deepseek.com/v1',
+    });
+  }
+  return _client;
+}
 
 const CONFIGS: Record<string, { maxTokens: number; temperature: number }> = {
   ata:       { maxTokens: 400,  temperature: 0.4 },
@@ -210,7 +217,7 @@ export async function POST(req: NextRequest) {
         }, FIRST_CHUNK_TIMEOUT_MS);
 
         try {
-          const completion = await client.chat.completions.create(
+          const completion = await getClient().chat.completions.create(
             {
               model,
               messages: [
