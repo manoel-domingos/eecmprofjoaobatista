@@ -6,6 +6,7 @@ import { useAppContext } from '@/lib/store';
 import { FileText, Printer, Download, Brain, X, Loader2 } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 import { formatDate } from '@/lib/utils';
+import { streamAI } from '@/components/AIChat';
 
 export default function Relatorios() {
   const { students, occurrences, rules } = useAppContext();
@@ -51,24 +52,18 @@ export default function Relatorios() {
 
       const studentsWithOccurrences = new Set(occurrences.map(o => o.studentId)).size;
 
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'relatorio',
-          payload: {
-            period: selectedMonth !== 'Todos os meses' ? selectedMonth : 'Geral',
-            totalOccurrences: occurrences.length,
-            studentsWithOccurrences,
-            topInfractions,
-            topClasses: topClasses || 'Sem dados',
-            severityDistribution: `Leves: ${leves}, Médias: ${medias}, Graves: ${graves}`,
-          },
-        }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      setAiReport(data.result);
+      await streamAI(
+        'relatorio',
+        {
+          period: selectedMonth !== 'Todos os meses' ? selectedMonth : 'Geral',
+          totalOccurrences: occurrences.length,
+          studentsWithOccurrences,
+          topInfractions,
+          topClasses: topClasses || 'Sem dados',
+          severityDistribution: `Leves: ${leves}, Médias: ${medias}, Graves: ${graves}`,
+        },
+        (delta) => setAiReport(prev => prev + delta)
+      );
     } catch {
       setAiReport('Não foi possível gerar o relatório no momento. Tente novamente.');
     } finally {

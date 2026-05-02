@@ -4,33 +4,36 @@ import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const nvidiaApiKey = process.env.NVIDIA_API_KEY || '';
+  const deepseekApiKey = process.env.DEEPSEEK_API_KEY || '';
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-  // --- NVIDIA DeepSeek validation ---
-  const nvidiaConfigured = !!nvidiaApiKey;
-  let nvidiaReachable = false;
-  let nvidiaError: string | null = null;
+  // --- DeepSeek API oficial validation ---
+  const deepseekConfigured = !!deepseekApiKey;
+  let deepseekReachable = false;
+  let deepseekModels: string[] = [];
+  let deepseekError: string | null = null;
 
-  if (nvidiaConfigured) {
+  if (deepseekConfigured) {
     try {
-      const res = await fetch('https://integrate.api.nvidia.com/v1/models', {
+      const res = await fetch('https://api.deepseek.com/v1/models', {
         headers: {
-          Authorization: `Bearer ${nvidiaApiKey}`,
+          Authorization: `Bearer ${deepseekApiKey}`,
           'Content-Type': 'application/json',
         },
         signal: AbortSignal.timeout(8000),
       });
       if (res.ok) {
-        nvidiaReachable = true;
+        deepseekReachable = true;
+        const data = await res.json();
+        deepseekModels = (data?.data ?? []).map((m: any) => m.id);
       } else {
         const text = await res.text();
-        nvidiaError = `HTTP ${res.status}: ${text.slice(0, 160)}`;
+        deepseekError = `HTTP ${res.status}: ${text.slice(0, 160)}`;
       }
     } catch (err: unknown) {
-      nvidiaError = err instanceof Error ? err.message : String(err);
+      deepseekError = err instanceof Error ? err.message : String(err);
     }
   }
 
@@ -68,10 +71,11 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    nvidia: {
-      configured: nvidiaConfigured,
-      reachable: nvidiaReachable,
-      error: nvidiaError,
+    deepseek: {
+      configured: deepseekConfigured,
+      reachable: deepseekReachable,
+      models: deepseekModels,
+      error: deepseekError,
     },
     supabase: {
       configured: supabaseConfigured,

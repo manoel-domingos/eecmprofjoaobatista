@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 type ServerStatus = {
-  nvidia: { configured: boolean; reachable: boolean; error: string | null };
+  deepseek: { configured: boolean; reachable: boolean; models: string[]; error: string | null };
   supabase: {
     configured: boolean;
     hasServiceKey: boolean;
@@ -127,36 +127,36 @@ export default function StatusPage() {
         : undefined,
   };
 
-  // --- NVIDIA DeepSeek card ---
-  const nvidiaState: CheckState = loading
+  // --- DeepSeek card ---
+  const deepseekState: CheckState = loading
     ? 'loading'
     : !server
     ? 'error'
-    : !server.nvidia.configured
+    : !server.deepseek.configured
     ? 'warn'
-    : server.nvidia.reachable
+    : server.deepseek.reachable
     ? 'ok'
     : 'error';
 
-  const nvidiaDetail = loading
+  const deepseekDetail = loading
     ? 'Verificando…'
     : !server
     ? fetchError || 'Servidor indisponível.'
-    : !server.nvidia.configured
-    ? 'A variável NVIDIA_API_KEY não foi configurada.'
-    : server.nvidia.reachable
-    ? 'Chave válida, modelos DeepSeek acessíveis.'
-    : server.nvidia.error || 'Chave configurada, mas a API recusou a conexão.';
+    : !server.deepseek.configured
+    ? 'A variável DEEPSEEK_API_KEY não foi configurada.'
+    : server.deepseek.reachable
+    ? `Chave válida. Modelos disponíveis: ${server.deepseek.models.join(', ') || '—'}`
+    : server.deepseek.error || 'Chave configurada, mas a API recusou a conexão.';
 
-  const nvidiaCard: Card = {
+  const deepseekCard: Card = {
     icon: <Cpu className="w-5 h-5" />,
-    title: 'NVIDIA AI — DeepSeek',
+    title: 'DeepSeek API',
     subtitle: 'IA para ATA, análise de comportamento e relatórios',
-    state: nvidiaState,
-    detail: nvidiaDetail,
+    state: deepseekState,
+    detail: deepseekDetail,
     hint:
-      nvidiaState === 'warn'
-        ? 'Adicione NVIDIA_API_KEY no painel de Vars para liberar as funcionalidades de IA.'
+      deepseekState === 'warn'
+        ? 'Adicione DEEPSEEK_API_KEY no painel de Vars para liberar as funcionalidades de IA.'
         : undefined,
   };
 
@@ -173,7 +173,7 @@ export default function StatusPage() {
       : fetchError || 'Não foi possível consultar o servidor.',
   };
 
-  const cards = [supaCard, nvidiaCard, serverCard];
+  const cards = [supaCard, deepseekCard, serverCard];
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">

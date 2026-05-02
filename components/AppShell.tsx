@@ -11,7 +11,7 @@ import {
   UserPlus, Award, Menu, X, LogOut, ShieldAlert,
   Sun, Moon, RefreshCw, CloudCheck, CloudOff, MessageCircle, Settings,
   PanelsTopLeft, PanelLeft, ChevronDown,
-  GraduationCap, Gavel, Smile, Cog, Clock, KeyRound, Eye, EyeOff, Loader2,
+  GraduationCap, Gavel, Smile, Cog, Clock, KeyRound, Eye, EyeOff, Loader2, Brain,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import versionData from '@/lib/version.json';
@@ -765,22 +765,25 @@ function ProfileMenu({
 
   // Carregar perfil salvo e verificar primeiro acesso
   useEffect(() => {
-    if (!mounted) return;
-    const userKey = user?.email || 'guest';
+    if (!mounted || !user?.email) return; // aguarda usuario autenticado com email real
+    const userKey = user.email;
     const saved = localStorage.getItem(`eecm_profile_${userKey}`);
     if (saved) {
-      const p = JSON.parse(saved);
-      setProfileName(p.name || '');
-      setProfileRole(p.role || '');
-      // Se nome e cargo já foram preenchidos, não mostra o modal novamente
+      try {
+        const p = JSON.parse(saved);
+        setProfileName(p.name || '');
+        setProfileRole(p.role || '');
+      } catch {
+        // JSON invalido, ignorar
+      }
       setShowFirstAccessModal(false);
-    } else if (user && userKey !== 'guest') {
-      // Primeiro acesso: mostrar popup (só aparece se não houver perfil salvo)
+    } else {
+      // Primeiro acesso real: nenhum perfil salvo para este email
       setShowFirstAccessModal(true);
     }
-  }, [mounted, user]);
+  }, [mounted, user?.email]);
 
-  const getProfileKey = () => user?.email || 'guest';
+  const getProfileKey = () => user?.email ?? 'guest';
 
   const saveProfile = (name: string, role: string) => {
     const key = getProfileKey();
@@ -1003,10 +1006,10 @@ function ProfileMenu({
               <ShieldAlert className="w-4 h-4 text-amber-500" /> Status das Integrações
             </Link>
             <button
-              onClick={() => { setIsChatOpen(true); setIsOpen(false); }}
+              onClick={() => { setIsOpen(false); document.querySelector<HTMLButtonElement>('[aria-label="Abrir assistente ARIA"]')?.click(); }}
               className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-3"
             >
-              <MessageCircle className="w-4 h-4 text-blue-500" /> Suporte
+              <Brain className="w-4 h-4 text-violet-500" /> Assistente ARIA
             </button>
             <button
               onClick={() => { setShowProfileModal(true); setIsOpen(false); }}
