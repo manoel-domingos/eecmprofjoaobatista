@@ -1,13 +1,17 @@
 import { NextRequest } from 'next/server';
-import OpenAI from 'openai';
 import { REGIMENTO_CORPUS, HIERARQUIA_FONTES } from '@/lib/regimento';
 
 export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
-const client = new OpenAI({
-  apiKey: process.env.DEEPSEEK_API_KEY,
-  baseURL: 'https://api.deepseek.com/v1',
-});
+function getClient() {
+  // Lazy initialization to avoid build-time errors
+  const OpenAI = require('openai').default;
+  return new OpenAI({
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseURL: 'https://api.deepseek.com/v1',
+  });
+}
 
 const CONFIGS: Record<string, { maxTokens: number; temperature: number }> = {
   ata:       { maxTokens: 400,  temperature: 0.4 },
@@ -210,6 +214,7 @@ export async function POST(req: NextRequest) {
         }, FIRST_CHUNK_TIMEOUT_MS);
 
         try {
+          const client = getClient();
           const completion = await client.chat.completions.create(
             {
               model,
