@@ -119,44 +119,91 @@ export async function POST(req: NextRequest) {
 
   const { system, user } = buildPrompts(type, payload);
 
+  // Modelos em ordem de prioridade — fallback automatico se o anterior nao responder
+  const MODEL_CHAIN = [
+    'deepseek-ai/deepseek-v4-flash',
+    'deepseek-ai/deepseek-chat',
+  ];
+  const FIRST_CHUNK_TIMEOUT_MS = 20000; // 20s sem nenhum chunk = timeout
+
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       const send = (data: object) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`)); } catch { /* fechado */ }
       };
 
-      try {
-        const completion = await client.chat.completions.create({
-          model: 'deepseek-ai/deepseek-v4-flash',
-          messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: user },
-          ],
-          temperature: cfg.temperature,
-          max_tokens: cfg.maxTokens,
-          stream: true,
-        });
+      let lastError: { httpStatus: number; rawMsg: string } | null = null;
 
-        let full = '';
-        for await (const chunk of completion) {
-          const delta = chunk.choices[0]?.delta?.content;
-          if (delta) {
-            full += delta;
-            send({ delta });
+      for (const model of MODEL_CHAIN) {
+        send({ meta: { model, attempt: MODEL_CHAIN.indexOf(model) + 1 } });
+
+        // AbortController para timeout do primeiro chunk
+        const abort = new AbortController();
+        let firstChunkReceived = false;
+        const timeoutId = setTimeout(() => {
+          if (!firstChunkReceived) {
+            console.error(`[v0] Timeout ${FIRST_CHUNK_TIMEOUT_MS}ms sem resposta do modelo ${model}`);
+            abort.abort();
           }
+        }, FIRST_CHUNK_TIMEOUT_MS);
+
+        try {
+          const completion = await client.chat.completions.create(
+            {
+              model,
+              messages: [
+                { role: 'system', content: system },
+                { role: 'user', content: user },
+              ],
+              temperature: cfg.temperature,
+              max_tokens: cfg.maxTokens,
+              stream: true,
+            },
+            { signal: abort.signal }
+          );
+
+          let full = '';
+          for await (const chunk of completion) {
+            if (!firstChunkReceived) {
+              firstChunkReceived = true;
+              clearTimeout(timeoutId);
+              send({ meta: { model, firstChunkMs: Date.now() } });
+            }
+            const delta = chunk.choices[0]?.delta?.content;
+            if (delta) {
+              full += delta;
+              send({ delta, model });
+            }
+          }
+          clearTimeout(timeoutId);
+          send({ done: true, result: full.trim(), model });
+          return; // sucesso — sai do loop
+        } catch (err: any) {
+          clearTimeout(timeoutId);
+          const isTimeout = err?.name === 'AbortError' || err?.code === 'ETIMEDOUT';
+          const httpStatus: number = isTimeout ? 504 : (err?.status ?? 500);
+          const rawMsg: string = isTimeout
+            ? `Modelo ${model} nao respondeu em ${FIRST_CHUNK_TIMEOUT_MS / 1000}s`
+            : (err?.message ?? 'Erro desconhecido.');
+
+          lastError = { httpStatus, rawMsg };
+          console.error(`[v0] Erro modelo ${model}:`, httpStatus, rawMsg);
+
+          const isLastModel = model === MODEL_CHAIN[MODEL_CHAIN.length - 1];
+          if (!isLastModel) {
+            const nextModel = MODEL_CHAIN[MODEL_CHAIN.indexOf(model) + 1];
+            send({ meta: { fallback: true, from: model, to: nextModel, reason: rawMsg } });
+            continue; // tenta proximo modelo
+          }
+
+          // Todos os modelos falharam
+          const friendlyMsg = deepseekErrorMessage(httpStatus, rawMsg);
+          send({ error: friendlyMsg, httpStatus, raw: rawMsg });
         }
-        send({ done: true, result: full.trim() });
-      } catch (err: any) {
-        const httpStatus: number = err?.status ?? 500;
-        const rawMsg: string = err?.message ?? 'Erro desconhecido.';
-        const friendlyMsg = deepseekErrorMessage(httpStatus, rawMsg);
-        console.error('[v0] DeepSeek API Error', httpStatus, rawMsg);
-        // Envia o erro com status HTTP real para o cliente poder exibir no painel de logs
-        send({ error: friendlyMsg, httpStatus, raw: rawMsg });
-      } finally {
-        controller.close();
       }
+
+      controller.close();
     },
   });
 

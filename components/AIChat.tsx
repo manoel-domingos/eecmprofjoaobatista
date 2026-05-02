@@ -123,12 +123,27 @@ export async function streamAI(
         if (!line.startsWith('data: ')) continue;
         try {
           const json = JSON.parse(line.slice(6));
+
+          // Eventos de metadados — modelo tentado, fallback, tempo do 1o chunk
+          if (json.meta) {
+            const m = json.meta;
+            if (m.fallback) {
+              updateLog(logId, {
+                model: m.to,
+                error: `Fallback: ${m.from} → ${m.to} (${m.reason})`,
+                status: 'streaming',
+              });
+            } else if (m.model) {
+              updateLog(logId, { model: m.model });
+            }
+            continue;
+          }
+
           if (json.error) {
-            // json.httpStatus e json.raw vêm da rota quando é erro DeepSeek real
             updateLog(logId, {
               status: 'error',
               error: json.error,
-              httpStatus: json.httpStatus ?? logId,
+              httpStatus: json.httpStatus ?? null,
               output: json.raw ? `RAW: ${json.raw}` : full,
               durationMs: Date.now() - start,
             });
@@ -142,7 +157,13 @@ export async function streamAI(
           }
           if (json.done) {
             const finalResult = json.result ?? full;
-            updateLog(logId, { output: finalResult, tokensDelta: tokens, status: 'ok', durationMs: Date.now() - start });
+            updateLog(logId, {
+              output: finalResult,
+              tokensDelta: tokens,
+              status: 'ok',
+              httpStatus: 200,
+              durationMs: Date.now() - start,
+            });
             return finalResult;
           }
         } catch (e: any) {
@@ -478,10 +499,15 @@ export default function AIChat() {
                             {typeLabel[log.type] ?? log.type}
                           </span>
 
+                          {/* Modelo */}
+                          <span className="text-[10px] text-slate-400 font-mono truncate max-w-[80px]" title={log.model}>
+                            {log.model.replace('deepseek-ai/', '')}
+                          </span>
+
                           {/* Tempo */}
                           <span className="text-[10px] text-slate-400 font-mono shrink-0">
                             {log.status === 'streaming' || log.status === 'pending'
-                              ? <span className="text-amber-500 animate-pulse">...</span>
+                              ? <span className="text-amber-500 animate-pulse">aguardando...</span>
                               : `${(log.durationMs / 1000).toFixed(1)}s`}
                           </span>
 
