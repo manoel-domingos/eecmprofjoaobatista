@@ -3,12 +3,19 @@
 import React, { useState, useRef, useEffect, Suspense } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
-import { Search, Plus, X, Edit2, Archive, Video, FileText, Camera, Clock, MapPin, UserPlus, Trash2, MessageSquare, Phone, Printer, Sparkles, AlertTriangle } from 'lucide-react';
+import { Search, Plus, X, Edit2, Archive, Video, FileText, Camera, Clock, MapPin, UserPlus, Trash2, MessageSquare, Phone, Printer, Sparkles, AlertTriangle, ChevronDown } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 import { Occurrence, StaffMember, Student } from '@/lib/data';
 import { getLocalDateString, getLocalTimeString, formatDate, formatPhoneForWhatsApp } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import { streamAI } from '@/components/AIChat';
+import OccurrenceChecklist, {
+  OccurrenceTask,
+  ChecklistItem,
+  addOccurrenceTask,
+  loadChecklists,
+  autocompleteWhatsapp,
+} from '@/components/OccurrenceChecklist';
 
 function RegistroDisciplinarContent() {
   const { 
@@ -64,7 +71,31 @@ function RegistroDisciplinarContent() {
   const [attenuatingFactors, setAttenuatingFactors] = useState<string[]>([]);
   const [aggravatingFactors, setAggravatingFactors] = useState<string[]>([]);
   const [graveMeasureType, setGraveMeasureType] = useState<'Suspensão Escolar' | 'Suspensão de Recreação' | 'Ação Educativa' | 'Transferência Educativa'>('Suspensão Escolar');
+  const [measureOverride, setMeasureOverride] = useState<string | null>(null);
+  const [measurePanelOpen, setMeasurePanelOpen] = useState<Record<string, boolean>>({});
   const [isImproving, setIsImproving] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestions, setSuggestions] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Checklist flutuante de pendências pós-ocorrência
+  const [checklistTasks, setChecklistTasks] = useState<OccurrenceTask[]>([]);
+  const userId = user?.email ?? 'guest';
+
+  // Carrega o checklist do localStorage ao montar (persistência cross-session)
+  useEffect(() => {
+    setChecklistTasks(loadChecklists(userId));
+  }, [userId]);
+
+  // Modal de alerta pós-salvar
+  const [postSaveAlert, setPostSaveAlert] = useState<{
+    occurrenceId: string;
+    occurrenceNum: string;
+    studentName: string;
+    measure: string;
+    isViolence: boolean;
+    checklistItems: ChecklistItem[];
+  } | null>(null);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
 
   const handleGenerateAta = () => {
@@ -123,6 +154,46 @@ function RegistroDisciplinarContent() {
     const ata = `Aos ${diaNum} dias do mês de ${mesExtenso} do ano de ${year}, às ${hour}, ${alunoStr} ${verboStr} no(a) ${location}${locatedByStr}, incorrendo em infração ao Art. ${ruleCode} do Regimento Interno (${ruleDesc}).${agravantesStr}${atenuantesStr}${reincidenteStr} O presente registro foi lavrado por ${registradoPor}.`;
 
     setObservations(ata.trim());
+  };
+
+  const handleGetSuggestions = async () => {
+    if (!selectedRules.length || !selectedStudents.length) return;
+    setIsSuggesting(true);
+    setShowSuggestions(true);
+    setSuggestions('');
+    try {
+      const studentNames = selectedStudents.map(id => students.find(s => s.id === id)?.name).filter(Boolean).join(', ');
+      const ruleDescriptions = selectedRules.map(code => {
+        const r = rules.find(ru => ru.code === parseInt(code, 10));
+        return r ? `Art. ${r.code} — ${r.description} (${r.severity})` : '';
+      }).filter(Boolean).join('; ');
+      const primaryRule = rules.find(r => r.code === parseInt(selectedRules[0], 10));
+      const primaryStudentId = selectedStudents[0];
+      const student = students.find(s => s.id === primaryStudentId);
+      const studentOccurrences = occurrences.filter(o => o.studentId === primaryStudentId);
+      const escalation = selectedStudents.length > 0
+        ? getEscalationStatus(primaryStudentId, parseInt(selectedRules[0], 10), editingOccurrence ?? undefined)
+        : null;
+
+      await streamAI(
+        'sugestao',
+        {
+          students: studentNames,
+          infractions: ruleDescriptions,
+          severity: primaryRule?.severity ?? '',
+          measure: measureOverride ?? escalation?.measure ?? primaryRule?.measure ?? '',
+          isReincidente: escalation?.isEscalated ?? false,
+          totalOccurrences: studentOccurrences.length,
+          currentPoints: student?.points ?? '',
+          ataText: observations,
+        },
+        (delta) => setSuggestions(prev => prev + delta)
+      );
+    } catch {
+      setSuggestions('Erro ao gerar sugestões. Tente novamente.');
+    } finally {
+      setIsSuggesting(false);
+    }
   };
 
   const handleImproveObservations = async () => {
@@ -558,9 +629,11 @@ function RegistroDisciplinarContent() {
       const primaryRuleCode = ruleCodesInt[0];
       // Ao editar, exclui a própria ocorrência do cálculo de reincidência
       const escalation = getEscalationStatus(primaryStudentId, primaryRuleCode, editingOccurrence ?? undefined);
-      const measureToSave = escalation.severity === 'Grave'
-        ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType)
-        : escalation.measure;
+      const measureToSave = measureOverride
+        ? measureOverride
+        : escalation.severity === 'Grave'
+          ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType)
+          : escalation.measure;
 
       if (editingOccurrence) {
         // Ao editar nunca exibe alerta de reincidência — a escalação já foi decidida na criação
@@ -590,7 +663,7 @@ function RegistroDisciplinarContent() {
           if (!confirmed) return;
         }
 
-        await addOccurrence({
+        const savedId = await addOccurrence({
           studentId: primaryStudentId,
           studentIds: selectedStudents,
           date,
@@ -608,11 +681,72 @@ function RegistroDisciplinarContent() {
           attenuatingFactors,
           aggravatingFactors
         });
+
+        // Códigos de infrações que envolvem violência física / bullying / agressão
+        const VIOLENCIA_CODES = [64, 65, 69, 75, 76, 78, 80, 83, 84, 89];
+        const isViolence = ruleCodesInt.some(c => VIOLENCIA_CODES.includes(c));
+
+        const studentName = students.find(s => s.id === primaryStudentId)?.name ?? 'Aluno';
+        const occurrenceNum = savedId ?? 'Nova';
+
+        // Monta os itens do checklist
+        const baseItems: ChecklistItem[] = [
+          {
+            id: 'comunicar_pais',
+            label: 'Comunicar os responsáveis / pais',
+            done: false,
+            autoCompleteTrigger: 'whatsapp',
+          },
+          {
+            id: 'realizar_medida',
+            label: `Realizar a medida sugerida: ${measureToSave}`,
+            done: false,
+          },
+          {
+            id: 'importar_doc',
+            label: 'Importar foto do documento assinado',
+            done: false,
+          },
+        ];
+
+        const violenceItems: ChecklistItem[] = isViolence
+          ? [
+              { id: 'ficha_ficai', label: 'Preencher Ficha FICAI', done: false },
+              { id: 'ficha_sigeduca', label: 'Preencher Ficha SIGEDUCA', done: false },
+              { id: 'boletim', label: 'Registrar Boletim de Ocorrência (BO)', done: false },
+            ]
+          : [];
+
+        const allItems = [...baseItems, ...violenceItems];
+
+        // Fecha o modal de criação e exibe o alerta pós-salvar
+        setIsModalOpen(false);
+        setEditingOccurrence(null);
+        setMeasureOverride(null);
+        setMeasurePanelOpen({});
+        setSuggestions('');
+        setShowSuggestions(false);
+        setSelectedStudents([]);
+        setSelectedRules([]);
+
+        setPostSaveAlert({
+          occurrenceId: savedId ?? occurrenceNum,
+          occurrenceNum,
+          studentName,
+          measure: measureToSave,
+          isViolence,
+          checklistItems: allItems,
+        });
+        return; // sai cedo — reset já feito acima
       }
 
+      // Reset do form para o caminho de edição
       setIsModalOpen(false);
       setEditingOccurrence(null);
-      // Reset form
+      setMeasureOverride(null);
+      setMeasurePanelOpen({});
+      setSuggestions('');
+      setShowSuggestions(false);
       setSelectedStudents([]);
       setSelectedRules([]);
       setRuleSearch('');
@@ -761,9 +895,21 @@ function RegistroDisciplinarContent() {
     }
   };
 
-  const handleWhatsAppRedirect = (phone: string, studentName: string) => {
+  const handleWhatsAppRedirect = (phone: string, studentName: string, studentId?: string) => {
     const url = formatPhoneForWhatsApp(phone, studentName);
     if (!url) return;
+
+    // Autocompleta "Comunicar pais" no checklist para ocorrências pendentes deste aluno
+    if (studentId) {
+      const pending = checklistTasks.filter(t =>
+        occurrences.find(o => o.id === t.occurrenceId && o.studentId === studentId)
+      );
+      let updated = checklistTasks;
+      pending.forEach(t => {
+        updated = autocompleteWhatsapp(userId, t.occurrenceId);
+      });
+      if (pending.length > 0) setChecklistTasks(updated);
+    }
 
     // If we are in the main modal (new/edit), auto-save before redirecting
     if (isModalOpen && selectedStudents.length > 0 && selectedRules.length > 0) {
@@ -1350,33 +1496,125 @@ function RegistroDisciplinarContent() {
                           ? getEscalationStatus(selectedStudents[0], r.code, editingOccurrence ?? undefined)
                           : { isEscalated: false, reason: '', measure: r.measure, severity: r.severity };
 
+                        const isPanelOpen = !!measurePanelOpen[ruleCode];
+                        const activeMeasure = measureOverride ?? escalation.measure;
+                        const isOverriding = !!measureOverride;
+
+                        const ALTERNATIVE_MEASURES = [
+                          { label: 'Atividade Pedagógica', color: 'emerald' },
+                          { label: 'Retenção do Recreio', color: 'amber' },
+                          { label: 'Suspensão', color: 'red' },
+                        ] as const;
+
                         return (
-                          <div key={ruleCode} className="bg-white border border-slate-200 rounded-lg p-4 flex justify-between items-center relative">
-                            <button 
-                              type="button"
-                              onClick={() => setSelectedRules(prev => prev.filter(x => x !== ruleCode))}
-                              className="absolute top-2 right-2 text-slate-500 hover:text-slate-800"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                            <div className="pr-6 w-full">
-                              <p className="text-slate-800 text-sm font-medium mb-1">Cód. {r.code} - {r.description}</p>
-                              
+                          <div key={ruleCode} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                            {/* Cabeçalho do card */}
+                            <div className="p-4 relative">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedRules(prev => prev.filter(x => x !== ruleCode))}
+                                className="absolute top-2 right-2 text-slate-400 hover:text-slate-700 transition-colors"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                              <p className="text-slate-800 text-sm font-medium pr-6">Cód. {r.code} — {r.description}</p>
+
                               {escalation.isEscalated && selectedStudents.length === 1 && (
-                                <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-[11px] text-orange-700 font-bold flex flex-col gap-1">
-                                   <div className="flex items-center gap-2">⚠️ ATENÇÃO: {escalation.reason}!</div>
+                                <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-lg text-[11px] text-orange-700 font-bold flex items-center gap-1.5">
+                                  <span>⚠</span> ATENÇÃO: {escalation.reason}!
                                 </div>
                               )}
-                              
-                              <div className="flex items-center gap-2 mt-2">
-                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${escalation.severity === 'Grave' ? 'bg-red-100 text-red-700' : escalation.severity === 'Media' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
-                                  {escalation.measure}
-                                </span>
-                                <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded">
-                                  {Math.abs(r.points)} pts
-                                </span>
+
+                              {/* Medida ativa em destaque */}
+                              <div className="mt-3 flex items-center justify-between">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <div className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold border-2 ${
+                                    isOverriding
+                                      ? 'bg-violet-50 border-violet-400 text-violet-700'
+                                      : escalation.severity === 'Grave'
+                                        ? 'bg-red-50 border-red-400 text-red-700'
+                                        : escalation.severity === 'Media'
+                                          ? 'bg-yellow-50 border-yellow-400 text-yellow-700'
+                                          : 'bg-blue-50 border-blue-400 text-blue-700'
+                                  }`}>
+                                    {isOverriding && (
+                                      <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">Alterada</span>
+                                    )}
+                                    {activeMeasure}
+                                  </div>
+                                  <span className="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-1 rounded-lg">
+                                    {Math.abs(r.points).toFixed(2)} pts
+                                  </span>
+                                  {isOverriding && (
+                                    <button
+                                      type="button"
+                                      onClick={() => { setMeasureOverride(null); setMeasurePanelOpen(p => ({ ...p, [ruleCode]: false })); }}
+                                      className="text-[11px] text-slate-400 hover:text-slate-600 underline transition-colors"
+                                    >
+                                      restaurar recomendação
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Botão outras medidas */}
+                                <button
+                                  type="button"
+                                  onClick={() => setMeasurePanelOpen(p => ({ ...p, [ruleCode]: !p[ruleCode] }))}
+                                  className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-all ${
+                                    isPanelOpen
+                                      ? 'bg-slate-100 border-slate-300 text-slate-600'
+                                      : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                                  }`}
+                                >
+                                  Outras medidas
+                                  <ChevronDown className={`w-3 h-3 transition-transform ${isPanelOpen ? 'rotate-180' : ''}`} />
+                                </button>
                               </div>
                             </div>
+
+                            {/* Painel colapsável de outras medidas */}
+                            {isPanelOpen && (
+                              <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-150">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Selecionar medida alternativa</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {/* Medida recomendada como opção */}
+                                  <button
+                                    type="button"
+                                    onClick={() => { setMeasureOverride(null); setMeasurePanelOpen(p => ({ ...p, [ruleCode]: false })); }}
+                                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${
+                                      !isOverriding
+                                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                                        : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600'
+                                    }`}
+                                  >
+                                    {!isOverriding && <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />}
+                                    {escalation.measure}
+                                    <span className="text-[10px] opacity-70">(recomendada)</span>
+                                  </button>
+
+                                  {/* Alternativas */}
+                                  {ALTERNATIVE_MEASURES.filter(m => m.label !== escalation.measure).map(({ label, color }) => (
+                                    <button
+                                      key={label}
+                                      type="button"
+                                      onClick={() => { setMeasureOverride(label); setMeasurePanelOpen(p => ({ ...p, [ruleCode]: false })); }}
+                                      className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${
+                                        measureOverride === label
+                                          ? color === 'emerald' ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                                            : color === 'amber' ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
+                                            : 'bg-red-600 border-red-600 text-white shadow-sm'
+                                          : color === 'emerald' ? 'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                                            : color === 'amber' ? 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50'
+                                            : 'bg-white border-red-200 text-red-700 hover:bg-red-50'
+                                      }`}
+                                    >
+                                      {measureOverride === label && <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />}
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -1520,6 +1758,15 @@ function RegistroDisciplinarContent() {
                         <Sparkles size={10} className={isImproving ? "animate-spin" : ""} />
                         {isImproving ? "Melhorando..." : "Melhorar com IA"}
                       </button>
+                      <button
+                        type="button"
+                        onClick={handleGetSuggestions}
+                        disabled={isSuggesting || !selectedRules.length || !selectedStudents.length}
+                        className="flex items-center gap-1 text-[10px] bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full hover:bg-violet-100 transition-all disabled:opacity-50 border border-violet-200"
+                      >
+                        <Sparkles size={10} className={isSuggesting ? "animate-spin" : ""} />
+                        {isSuggesting ? "Consultando regimento..." : "Sugestões do Regimento"}
+                      </button>
                     </div>
                     <span className="text-[10px] text-slate-400 font-normal uppercase tracking-wider">Ajuste o tamanho se necessário</span>
                   </label>
@@ -1538,6 +1785,35 @@ function RegistroDisciplinarContent() {
                     className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[120px] text-sm overflow-hidden"
                     placeholder="Descreva o que ocorreu..."
                   />
+
+                  {/* Painel de sugestões baseado no Regimento */}
+                  {showSuggestions && (
+                    <div className="mt-2 rounded-xl border border-violet-200 bg-violet-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="flex items-center justify-between px-3 py-2 border-b border-violet-200 bg-violet-100">
+                        <div className="flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-violet-600" />
+                          <span className="text-[11px] font-bold text-violet-700 uppercase tracking-wider">Sugestões do Regimento Interno</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowSuggestions(false)}
+                          className="text-violet-400 hover:text-violet-700 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="px-3 py-3">
+                        {isSuggesting && !suggestions ? (
+                          <div className="flex items-center gap-2 text-violet-600 text-xs">
+                            <Sparkles className="w-3.5 h-3.5 animate-spin" />
+                            Consultando Regimento Interno e Manual Disciplinar...
+                          </div>
+                        ) : (
+                          <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{suggestions}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
@@ -1803,7 +2079,7 @@ function RegistroDisciplinarContent() {
                                       <button
                                         key={i}
                                         type="button"
-                                        onClick={() => handleWhatsAppRedirect(c.phone, student.name)}
+                                        onClick={() => handleWhatsAppRedirect(c.phone, student.name, student.id)}
                                         className="w-full flex items-center justify-between p-2 bg-slate-50 hover:bg-emerald-50 rounded-lg group transition border border-transparent hover:border-emerald-200 text-left"
                                       >
                                         <div>
@@ -2228,7 +2504,7 @@ function RegistroDisciplinarContent() {
                               <button
                                 key={i}
                                 type="button"
-                                onClick={() => handleWhatsAppRedirect(c.phone, _voStudent.name)}
+                                onClick={() => handleWhatsAppRedirect(c.phone, _voStudent.name, _voStudent.id)}
                                 className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-emerald-50 rounded-lg group transition border border-transparent hover:border-emerald-200 text-left"
                               >
                                 <div>
@@ -2307,6 +2583,80 @@ function RegistroDisciplinarContent() {
           </div>
         </div>
       )}
+      {/* Modal de alerta pós-salvar */}
+      {postSaveAlert && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            {/* Header */}
+            <div className={`px-5 py-4 ${postSaveAlert.isViolence ? 'bg-red-600' : 'bg-blue-600'}`}>
+              <p className="text-white font-bold text-sm">
+                {postSaveAlert.isViolence ? 'Atencao — Caso de Violencia' : 'Ocorrencia Registrada'}
+              </p>
+              <p className="text-white/80 text-xs mt-0.5">
+                {postSaveAlert.occurrenceNum} — {postSaveAlert.studentName}
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="px-5 py-4 space-y-3">
+              <p className="text-sm text-slate-700 font-medium">
+                As seguintes acoes sao necessarias:
+              </p>
+              <ul className="space-y-2">
+                {postSaveAlert.checklistItems.map(item => (
+                  <li key={item.id} className="flex items-start gap-2.5 text-sm text-slate-700">
+                    <span className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${
+                      postSaveAlert.isViolence && ['ficha_ficai','ficha_sigeduca','boletim'].includes(item.id)
+                        ? 'bg-red-500'
+                        : 'bg-blue-500'
+                    }`} />
+                    {item.label}
+                  </li>
+                ))}
+              </ul>
+              {postSaveAlert.isViolence && (
+                <div className="mt-1 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-medium">
+                  Por se tratar de caso de violencia, briga ou bullying, e obrigatorio registrar Ficha FICAI, Ficha SIGEDUCA e Boletim de Ocorrencia.
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 pb-5">
+              <button
+                onClick={() => {
+                  // Adiciona ao checklist flutuante e fecha o alerta
+                  const task: OccurrenceTask = {
+                    occurrenceId: postSaveAlert.occurrenceId,
+                    occurrenceNum: postSaveAlert.occurrenceNum,
+                    studentName: postSaveAlert.studentName,
+                    items: postSaveAlert.checklistItems,
+                    createdAt: new Date().toISOString(),
+                  };
+                  const updated = addOccurrenceTask(userId, task);
+                  setChecklistTasks(updated);
+                  setPostSaveAlert(null);
+                }}
+                className={`w-full py-2.5 rounded-xl text-white font-semibold text-sm transition-colors ${
+                  postSaveAlert.isViolence
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                Ok, entendido — adicionar a lista de pendencias
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checklist flutuante persistente */}
+      <OccurrenceChecklist
+        userId={userId}
+        tasks={checklistTasks}
+        onUpdate={setChecklistTasks}
+      />
+
     </AppShell>
 
   );

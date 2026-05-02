@@ -11,7 +11,7 @@ import {
   UserPlus, Award, Menu, X, LogOut, ShieldAlert,
   Sun, Moon, RefreshCw, CloudCheck, CloudOff, MessageCircle, Settings,
   PanelsTopLeft, PanelLeft, ChevronDown,
-  GraduationCap, Gavel, Smile, Cog, Clock, KeyRound, Eye, EyeOff, Loader2, Brain,
+  GraduationCap, Gavel, Smile, Cog, Clock, KeyRound, Eye, EyeOff, Loader2, Brain, FolderOpen,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import versionData from '@/lib/version.json';
@@ -37,6 +37,7 @@ const MENU_GROUPS: MenuGroup[] = [
       { href: '/faltas', label: 'Faltas Disciplinares', icon: CheckSquare },
       { href: '/termo', label: 'Termo de Conduta', icon: FileText },
       { href: '/convocacao', label: 'Convocação de Pais', icon: UserPlus },
+      { href: '/disciplina/documentos', label: 'Documentos', icon: FolderOpen },
     ],
   },
   {
