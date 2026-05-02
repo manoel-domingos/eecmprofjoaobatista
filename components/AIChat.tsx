@@ -124,7 +124,14 @@ export async function streamAI(
         try {
           const json = JSON.parse(line.slice(6));
           if (json.error) {
-            updateLog(logId, { status: 'error', error: json.error, output: full, durationMs: Date.now() - start });
+            // json.httpStatus e json.raw vêm da rota quando é erro DeepSeek real
+            updateLog(logId, {
+              status: 'error',
+              error: json.error,
+              httpStatus: json.httpStatus ?? logId,
+              output: json.raw ? `RAW: ${json.raw}` : full,
+              durationMs: Date.now() - start,
+            });
             throw new Error(json.error);
           }
           if (json.delta) {
@@ -514,18 +521,30 @@ export default function AIChat() {
                                   <span className="text-[9px] text-amber-500 animate-pulse font-semibold">recebendo...</span>
                                 )}
                               </div>
-                              <p className={`text-xs rounded-lg px-3 py-2 font-mono leading-relaxed break-all max-h-40 overflow-y-auto ${
-                                hasError
-                                  ? 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800'
-                                  : 'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800'
-                              }`}>
-                                {hasError
-                                  ? (log.error || `HTTP ${log.httpStatus}`)
-                                  : (log.output || '...')}
-                                {log.status === 'streaming' && (
-                                  <span className="inline-block w-1 h-3 bg-amber-400 rounded-sm ml-0.5 animate-pulse align-middle" />
-                                )}
-                              </p>
+
+                              {hasError ? (
+                                <div className="rounded-lg border border-rose-200 dark:border-rose-800 overflow-hidden">
+                                  {/* Mensagem formatada DeepSeek */}
+                                  <div className="px-3 py-2 bg-rose-50 dark:bg-rose-900/20">
+                                    <p className="text-xs text-rose-700 dark:text-rose-300 font-mono leading-relaxed break-all">
+                                      {log.error || `HTTP ${log.httpStatus}`}
+                                    </p>
+                                  </div>
+                                  {/* RAW se disponivel */}
+                                  {log.output?.startsWith('RAW:') && (
+                                    <div className="px-3 py-1.5 bg-slate-800 border-t border-rose-200 dark:border-rose-800">
+                                      <p className="text-[10px] text-slate-400 font-mono break-all">{log.output}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-2 font-mono leading-relaxed break-all max-h-40 overflow-y-auto">
+                                  {log.output || '...'}
+                                  {log.status === 'streaming' && (
+                                    <span className="inline-block w-1 h-3 bg-amber-400 rounded-sm ml-0.5 animate-pulse align-middle" />
+                                  )}
+                                </p>
+                              )}
                             </div>
                           </div>
                         )}

@@ -42,10 +42,58 @@ function buildPrompts(type: string, payload: Record<string, any>): { system: str
   }
 }
 
+// Mapeamento oficial de erros HTTP da API DeepSeek
+// Fonte: https://api-docs.deepseek.com/quick_start/error_codes
+const DEEPSEEK_ERRORS: Record<number, { label: string; cause: string; solution: string }> = {
+  400: {
+    label: 'Formato Inválido',
+    cause: 'Corpo da requisição em formato inválido.',
+    solution: 'Verifique o payload enviado à API.',
+  },
+  401: {
+    label: 'Falha de Autenticação',
+    cause: 'API Key incorreta ou ausente.',
+    solution: 'Verifique a variável NVIDIA_API_KEY no painel de variáveis.',
+  },
+  402: {
+    label: 'Saldo Insuficiente',
+    cause: 'Créditos da conta NVIDIA esgotados.',
+    solution: 'Adicione saldo em https://integrate.api.nvidia.com.',
+  },
+  422: {
+    label: 'Parâmetros Inválidos',
+    cause: 'Parâmetros fora do esperado (max_tokens, temperature, etc.).',
+    solution: 'Revise os parâmetros enviados na requisição.',
+  },
+  429: {
+    label: 'Rate Limit Atingido',
+    cause: 'Muitas requisições em pouco tempo.',
+    solution: 'Aguarde alguns segundos e tente novamente.',
+  },
+  500: {
+    label: 'Erro no Servidor DeepSeek',
+    cause: 'Falha interna nos servidores da NVIDIA/DeepSeek.',
+    solution: 'Tente novamente em instantes. Se persistir, contate o suporte.',
+  },
+  503: {
+    label: 'Servidor Sobrecarregado',
+    cause: 'Alto tráfego nos servidores DeepSeek.',
+    solution: 'Tente novamente após breve espera.',
+  },
+};
+
+function deepseekErrorMessage(status: number, rawMessage: string): string {
+  const known = DEEPSEEK_ERRORS[status];
+  if (known) {
+    return `[HTTP ${status}] ${known.label} — ${known.cause} | Solução: ${known.solution}`;
+  }
+  return `[HTTP ${status}] ${rawMessage}`;
+}
+
 export async function POST(req: NextRequest) {
   if (!process.env.NVIDIA_API_KEY) {
     return new Response(
-      JSON.stringify({ error: 'NVIDIA_API_KEY não configurada.' }),
+      JSON.stringify({ error: deepseekErrorMessage(401, 'NVIDIA_API_KEY não configurada.') }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -54,18 +102,23 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: 'JSON inválido.' }), { status: 400 });
+    return new Response(
+      JSON.stringify({ error: deepseekErrorMessage(400, 'JSON inválido no corpo da requisição.') }),
+      { status: 400 }
+    );
   }
 
   const { type, payload } = body;
   const cfg = CONFIGS[type];
   if (!cfg) {
-    return new Response(JSON.stringify({ error: 'Tipo inválido.' }), { status: 400 });
+    return new Response(
+      JSON.stringify({ error: deepseekErrorMessage(422, `Tipo "${type}" não reconhecido.`) }),
+      { status: 400 }
+    );
   }
 
   const { system, user } = buildPrompts(type, payload);
 
-  // Stream SSE para o cliente
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -95,8 +148,12 @@ export async function POST(req: NextRequest) {
         }
         send({ done: true, result: full.trim() });
       } catch (err: any) {
-        console.error('[AI API Error]', err?.status, err?.message);
-        send({ error: err?.message || 'Erro interno na IA.' });
+        const httpStatus: number = err?.status ?? 500;
+        const rawMsg: string = err?.message ?? 'Erro desconhecido.';
+        const friendlyMsg = deepseekErrorMessage(httpStatus, rawMsg);
+        console.error('[v0] DeepSeek API Error', httpStatus, rawMsg);
+        // Envia o erro com status HTTP real para o cliente poder exibir no painel de logs
+        send({ error: friendlyMsg, httpStatus, raw: rawMsg });
       } finally {
         controller.close();
       }
