@@ -2,11 +2,27 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle2, XCircle, AlertCircle, Loader2, RefreshCw, ArrowLeft, Database, Sparkles, Server } from 'lucide-react';
+import {
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Loader2,
+  RefreshCw,
+  ArrowLeft,
+  Database,
+  Cpu,
+  Server,
+} from 'lucide-react';
 
 type ServerStatus = {
-  gemini: { configured: boolean; reachable: boolean; error: string | null };
-  database: { configured: boolean };
+  nvidia: { configured: boolean; reachable: boolean; error: string | null };
+  supabase: {
+    configured: boolean;
+    hasServiceKey: boolean;
+    reachable: boolean;
+    queryTest: { success: boolean; error?: string } | null;
+    error: string | null;
+  };
   server: { nodeEnv: string; timestamp: string };
 };
 
@@ -52,132 +68,112 @@ type Card = {
 
 export default function StatusPage() {
   const [server, setServer] = useState<ServerStatus | null>(null);
-  const [serverLoading, setServerLoading] = useState(true);
-  const [serverError, setServerError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const [supaReachable, setSupaReachable] = useState<CheckState>('loading');
-  const [supaDetail, setSupaDetail] = useState<string>('');
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-
-  async function loadServer() {
-    setServerLoading(true);
-    setServerError(null);
+  async function refresh() {
+    setLoading(true);
+    setFetchError(null);
     try {
       const res = await fetch('/api/status', { cache: 'no-store' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = (await res.json()) as ServerStatus;
       setServer(json);
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : String(err));
+      setFetchError(err instanceof Error ? err.message : String(err));
     } finally {
-      setServerLoading(false);
+      setLoading(false);
     }
-  }
-
-  async function loadSupabase() {
-    setSupaReachable('loading');
-    setSupaDetail('');
-    if (!supabaseUrl || !supabaseAnonKey) {
-      setSupaReachable('warn');
-      setSupaDetail('Variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY ainda não foram preenchidas.');
-      return;
-    }
-    let url = supabaseUrl;
-    if (!url.startsWith('http')) url = `https://${url}`;
-    try {
-      const res = await fetch(`${url.replace(/\/$/, '')}/auth/v1/health`, {
-        headers: { apikey: supabaseAnonKey },
-      });
-      if (res.ok) {
-        setSupaReachable('ok');
-        setSupaDetail(`Endpoint respondeu OK em ${url.replace(/^https?:\/\//, '')}`);
-      } else {
-        setSupaReachable('error');
-        setSupaDetail(`Resposta HTTP ${res.status} de ${url}`);
-      }
-    } catch (err) {
-      setSupaReachable('error');
-      setSupaDetail(err instanceof Error ? err.message : String(err));
-    }
-  }
-
-  function refreshAll() {
-    loadServer();
-    loadSupabase();
   }
 
   useEffect(() => {
-    setTimeout(refreshAll, 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    refresh();
   }, []);
 
-  const supabaseCard: Card = {
+  // --- Supabase card ---
+  const supaState: CheckState = loading
+    ? 'loading'
+    : !server
+    ? 'error'
+    : !server.supabase.configured
+    ? 'warn'
+    : !server.supabase.reachable
+    ? 'error'
+    : server.supabase.queryTest?.success === false
+    ? 'warn'
+    : 'ok';
+
+  const supaDetail = loading
+    ? 'Verificando…'
+    : !server
+    ? fetchError || 'Servidor indisponível.'
+    : !server.supabase.configured
+    ? 'Variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY não configuradas.'
+    : !server.supabase.reachable
+    ? server.supabase.error || 'Não foi possível alcançar o Supabase.'
+    : server.supabase.queryTest?.success === false
+    ? `Conexão OK, mas consulta falhou: ${server.supabase.queryTest.error}`
+    : `Conexão e consulta bem-sucedidas.${server.supabase.hasServiceKey ? ' Service key presente.' : ''}`;
+
+  const supaCard: Card = {
     icon: <Database className="w-5 h-5" />,
     title: 'Supabase',
     subtitle: 'Banco de dados e autenticação',
-    state: supaReachable,
-    detail: supaDetail || (supaReachable === 'loading' ? 'Verificando…' : ''),
+    state: supaState,
+    detail: supaDetail,
     hint:
-      supaReachable === 'warn'
-        ? 'Adicione NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no painel de Secrets.'
+      supaState === 'warn' && !server?.supabase.configured
+        ? 'Adicione NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no painel de Vars.'
         : undefined,
   };
 
-  const geminiState: CheckState = serverLoading
+  // --- NVIDIA DeepSeek card ---
+  const nvidiaState: CheckState = loading
     ? 'loading'
     : !server
-      ? 'error'
-      : !server.gemini.configured
-        ? 'warn'
-        : server.gemini.reachable
-          ? 'ok'
-          : 'error';
+    ? 'error'
+    : !server.nvidia.configured
+    ? 'warn'
+    : server.nvidia.reachable
+    ? 'ok'
+    : 'error';
 
-  const geminiCard: Card = {
-    icon: <Sparkles className="w-5 h-5" />,
-    title: 'Gemini AI',
-    subtitle: 'Assistente inteligente do sistema',
-    state: geminiState,
-    detail: serverLoading
-      ? 'Verificando…'
-      : !server
-        ? serverError || 'Não foi possível consultar o servidor.'
-        : !server.gemini.configured
-          ? 'A variável GEMINI_API_KEY ainda não foi configurada.'
-          : server.gemini.reachable
-            ? 'Chave válida, modelos acessíveis.'
-            : server.gemini.error || 'Chave configurada mas a API recusou.',
+  const nvidiaDetail = loading
+    ? 'Verificando…'
+    : !server
+    ? fetchError || 'Servidor indisponível.'
+    : !server.nvidia.configured
+    ? 'A variável NVIDIA_API_KEY não foi configurada.'
+    : server.nvidia.reachable
+    ? 'Chave válida, modelos DeepSeek acessíveis.'
+    : server.nvidia.error || 'Chave configurada, mas a API recusou a conexão.';
+
+  const nvidiaCard: Card = {
+    icon: <Cpu className="w-5 h-5" />,
+    title: 'NVIDIA AI — DeepSeek',
+    subtitle: 'IA para ATA, análise de comportamento e relatórios',
+    state: nvidiaState,
+    detail: nvidiaDetail,
     hint:
-      geminiState === 'warn'
-        ? 'Adicione GEMINI_API_KEY no painel de Secrets para liberar o assistente.'
+      nvidiaState === 'warn'
+        ? 'Adicione NVIDIA_API_KEY no painel de Vars para liberar as funcionalidades de IA.'
         : undefined,
   };
 
-  const dbState: CheckState = serverLoading
-    ? 'loading'
-    : !server
-      ? 'error'
-      : server.database.configured
-        ? 'ok'
-        : 'warn';
-
-  const dbCard: Card = {
+  // --- Server card ---
+  const serverCard: Card = {
     icon: <Server className="w-5 h-5" />,
-    title: 'Banco interno',
-    subtitle: 'PostgreSQL do Replit (DATABASE_URL)',
-    state: dbState,
-    detail: serverLoading
+    title: 'Servidor',
+    subtitle: 'Ambiente de execução Next.js',
+    state: loading ? 'loading' : server ? 'ok' : 'error',
+    detail: loading
       ? 'Verificando…'
-      : !server
-        ? 'Servidor indisponível.'
-        : server.database.configured
-          ? 'Disponível para uso, caso futuramente queiramos migrar do Supabase.'
-          : 'Nenhuma conexão configurada.',
+      : server
+      ? `Ambiente: ${server.server.nodeEnv}`
+      : fetchError || 'Não foi possível consultar o servidor.',
   };
 
-  const cards = [supabaseCard, geminiCard, dbCard];
+  const cards = [supaCard, nvidiaCard, serverCard];
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
@@ -190,7 +186,7 @@ export default function StatusPage() {
             <ArrowLeft className="w-4 h-4" /> voltar
           </Link>
           <button
-            onClick={refreshAll}
+            onClick={refresh}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-white border border-slate-200 hover:bg-slate-50 transition-colors text-slate-700"
           >
             <RefreshCw className="w-3.5 h-3.5" /> atualizar
@@ -238,19 +234,20 @@ export default function StatusPage() {
 
         {server?.server && (
           <p className="mt-8 text-xs text-slate-400 text-center">
-            Servidor: {server.server.nodeEnv} · última verificação{' '}
-            {new Date(server.server.timestamp).toLocaleTimeString('pt-BR')}
+            Última verificação: {new Date(server.server.timestamp).toLocaleTimeString('pt-BR')}
           </p>
         )}
 
         <div className="mt-10 p-5 rounded-xl bg-slate-100 border border-slate-200">
-          <h3 className="text-sm font-semibold text-slate-800 mb-2">
-            Como adicionar as chaves
-          </h3>
+          <h3 className="text-sm font-semibold text-slate-800 mb-2">Como adicionar as chaves</h3>
           <ol className="text-sm text-slate-600 space-y-1.5 list-decimal list-inside">
-            <li>Abra o painel <strong>Secrets</strong> aqui no Replit.</li>
-            <li>Adicione, uma por uma, as chaves marcadas como <em>não configurado</em> acima.</li>
-            <li>Volte aqui e clique em <strong>atualizar</strong> para conferir.</li>
+            <li>
+              Abra o painel <strong>Vars</strong> nas configurações do projeto.
+            </li>
+            <li>Adicione, uma por uma, as chaves marcadas como não configurado acima.</li>
+            <li>
+              Volte aqui e clique em <strong>atualizar</strong> para conferir.
+            </li>
           </ol>
         </div>
       </div>

@@ -4,69 +4,61 @@ import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const v0ApiKey = process.env.V0_API_KEY || '';
-  const databaseUrl = process.env.DATABASE_URL || '';
+  const nvidiaApiKey = process.env.NVIDIA_API_KEY || '';
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
-  // v0 API validation
-  const v0ApiConfigured = !!v0ApiKey && v0ApiKey !== 'MY_V0_API_KEY';
-  let v0ApiOk = false;
-  let v0ApiError: string | null = null;
+  // --- NVIDIA DeepSeek validation ---
+  const nvidiaConfigured = !!nvidiaApiKey;
+  let nvidiaReachable = false;
+  let nvidiaError: string | null = null;
 
-  if (v0ApiConfigured) {
+  if (nvidiaConfigured) {
     try {
-      const res = await fetch('https://api.v0.dev/user', {
-        method: 'GET',
+      const res = await fetch('https://integrate.api.nvidia.com/v1/models', {
         headers: {
-          'Authorization': `Bearer ${v0ApiKey}`,
+          Authorization: `Bearer ${nvidiaApiKey}`,
           'Content-Type': 'application/json',
         },
+        signal: AbortSignal.timeout(8000),
       });
       if (res.ok) {
-        v0ApiOk = true;
+        nvidiaReachable = true;
       } else {
         const text = await res.text();
-        v0ApiError = `HTTP ${res.status}: ${text.slice(0, 160)}`;
+        nvidiaError = `HTTP ${res.status}: ${text.slice(0, 160)}`;
       }
     } catch (err: unknown) {
-      v0ApiError = err instanceof Error ? err.message : String(err);
+      nvidiaError = err instanceof Error ? err.message : String(err);
     }
   }
 
-  // Supabase validation
+  // --- Supabase validation ---
   const supabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
   let supabaseReachable = false;
   let supabaseError: string | null = null;
-  let supabaseQueryTest: { success: boolean; tableCount?: number; error?: string } | null = null;
+  let supabaseQueryTest: { success: boolean; error?: string } | null = null;
 
   if (supabaseConfigured) {
     try {
-      // Test health endpoint
       let url = supabaseUrl;
       if (!url.startsWith('http')) url = `https://${url}`;
       const healthRes = await fetch(`${url.replace(/\/$/, '')}/auth/v1/health`, {
         headers: { apikey: supabaseAnonKey },
+        signal: AbortSignal.timeout(8000),
       });
-      
+
       if (healthRes.ok) {
         supabaseReachable = true;
-        
-        // Test query using service role key if available
         const keyToUse = supabaseServiceKey || supabaseAnonKey;
         const supabase = createClient(url, keyToUse);
-        
-        // Simple query to list tables (test database connectivity)
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('students')
           .select('id', { count: 'exact', head: true });
-        
-        if (error) {
-          supabaseQueryTest = { success: false, error: error.message };
-        } else {
-          supabaseQueryTest = { success: true, tableCount: data?.length ?? 0 };
-        }
+        supabaseQueryTest = error
+          ? { success: false, error: error.message }
+          : { success: true };
       } else {
         supabaseError = `Health check failed: HTTP ${healthRes.status}`;
       }
@@ -76,10 +68,10 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    v0Api: {
-      configured: v0ApiConfigured,
-      reachable: v0ApiOk,
-      error: v0ApiError,
+    nvidia: {
+      configured: nvidiaConfigured,
+      reachable: nvidiaReachable,
+      error: nvidiaError,
     },
     supabase: {
       configured: supabaseConfigured,
@@ -87,9 +79,6 @@ export async function GET() {
       reachable: supabaseReachable,
       queryTest: supabaseQueryTest,
       error: supabaseError,
-    },
-    database: {
-      configured: !!databaseUrl,
     },
     server: {
       nodeEnv: process.env.NODE_ENV || 'unknown',

@@ -150,8 +150,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const matched = appUsers.find(u => u.email.toLowerCase() === emailLower);
       if (matched) return matched.role as AppUserRole;
       
-      // Permitir todos os outros usuários logados como MONITOR por padrão
-      return 'MONITOR';
+      // Todos os usuarios logados recebem permissao de GESTOR por padrao
+      return 'GESTOR';
     }
     return 'GUEST';
   }, [user, isGuest, appUsers]);
