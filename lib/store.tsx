@@ -376,41 +376,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     initAuthAndData();
   }, []);
 
+  // Pasta central de documentos no Google Drive
+  const DRIVE_FOLDER_ID = '1_aj5b9ukcApeUzSs2dFgIdgHclW4uYbk';
+  const DRIVE_FOLDER_URL = `https://drive.google.com/drive/folders/${DRIVE_FOLDER_ID}`;
+
   const uploadFile = async (file: File, bucket: string): Promise<string | null> => {
-    if (!supabase || !isSupabaseConnected) {
-      console.warn("Supabase not connected. Can't upload file.");
-      return null;
-    }
+    // Tenta o Supabase Storage primeiro
+    if (supabase && isSupabaseConnected) {
+      try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
 
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-      const filePath = fileName;
+        const { data, error } = await supabase.storage
+          .from(bucket)
+          .upload(fileName, file);
 
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, file);
-
-      if (error) {
-        console.error("Storage upload error:", error);
-        // Se o erro for bucket não encontrado, tentamos usar 'general' ou informar
-        if (error.message.includes('bucket not found')) {
-           alert(`O balde de armazenamento '${bucket}' não existe. Por favor, crie-o no Supabase (Storage).`);
-        } else {
-           alert(`Erro no upload: ${error.message}`);
+        if (!error) {
+          const { data: { publicUrl } } = supabase.storage
+            .from(bucket)
+            .getPublicUrl(fileName);
+          return publicUrl;
         }
-        return null;
+
+        // Bucket não existe — cai para o Drive
+        console.warn('Supabase storage indisponível, redirecionando para Google Drive:', error.message);
+      } catch (err: any) {
+        console.warn('Erro no Supabase storage, usando Drive:', err);
       }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from(bucket)
-        .getPublicUrl(filePath);
-
-      return publicUrl;
-    } catch (err: any) {
-      console.error("Upload exception:", err);
-      return null;
     }
+
+    // Fallback: abre o Google Drive na pasta correta para upload manual
+    const confirmed = window.confirm(
+      `O armazenamento automático não está disponível.\n\nClique em OK para abrir a pasta do Google Drive e fazer o upload de "${file.name}" manualmente.`
+    );
+    if (confirmed) {
+      window.open(DRIVE_FOLDER_URL, '_blank', 'noopener,noreferrer');
+    }
+    // Retorna o link da pasta como referência para que o campo não fique vazio
+    return DRIVE_FOLDER_URL;
   };
 
   const logAction = async (action: AuditLog['action'], entityName: string, entityId: string, details: string) => {
