@@ -2177,7 +2177,7 @@ function RegistroDisciplinarContent() {
                     </button>
                     <button
                       onClick={() => { handleExportDocx(_vo); setIsPrintPanelOpen(false); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition text-xs font-semibold"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 text-white transition text-xs font-semibold"
                     >
                       <FileText className="w-3.5 h-3.5" /> DOC
                     </button>
