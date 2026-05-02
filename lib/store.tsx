@@ -1279,7 +1279,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 // Recidivism in same media rule -> Suspensão (0.5 * days)
                 pointsToDeduct = 0.50 * (o.durationDays || 1);
             } else {
-                // 1st time media -> Repreensão (0.3)
+                // 1st time media -> Advertência Escrita (0.3)
                 pointsToDeduct = 0.30;
             }
         } else if (rule.severity === 'Grave') {
