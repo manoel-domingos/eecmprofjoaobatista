@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAppContext } from '@/lib/store';
@@ -10,10 +11,11 @@ import {
   UserPlus, Award, Menu, X, LogOut, ShieldAlert,
   Sun, Moon, RefreshCw, CloudCheck, CloudOff, MessageCircle, Settings,
   PanelsTopLeft, PanelLeft, ChevronDown,
-  GraduationCap, Gavel, Smile, Cog, BookOpen, Heart, HelpCircle, Zap,
+  GraduationCap, Gavel, Smile, Cog, Clock, KeyRound, Eye, EyeOff, Loader2, Brain, FolderOpen,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import versionData from '@/lib/version.json';
-import ChatWidget from '@/components/ChatWidget';
+import AIChat from '@/components/AIChat';
 
 type MenuItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 type MenuGroup = { label: string; icon: React.ComponentType<{ className?: string }>; href?: string; children?: MenuItem[] };
@@ -35,6 +37,7 @@ const MENU_GROUPS: MenuGroup[] = [
       { href: '/faltas', label: 'Faltas Disciplinares', icon: CheckSquare },
       { href: '/termo', label: 'Termo de Conduta', icon: FileText },
       { href: '/convocacao', label: 'Convocação de Pais', icon: UserPlus },
+      { href: '/disciplina/documentos', label: 'Documentos', icon: FolderOpen },
     ],
   },
   {
@@ -47,23 +50,8 @@ const MENU_GROUPS: MenuGroup[] = [
   },
   { label: 'Relatórios', icon: BarChart, href: '/relatorios' },
   {
-    label: 'Acolhimento', icon: Heart,
-    children: [
-      { href: '/acolhimento', label: 'Tickets de Acolhimento', icon: Heart },
-      { href: '/faq', label: 'Perguntas Frequentes', icon: HelpCircle },
-    ],
-  },
-  {
-    label: 'Documentos', icon: BookOpen,
-    children: [
-      { href: '/documentos', label: 'Biblioteca de Documentos', icon: FileText },
-      { href: '/manuais', label: 'Manuais e Regimentos', icon: BookOpen },
-    ],
-  },
-  {
     label: 'Sistema', icon: Cog,
     children: [
-      { href: '/integracoes', label: 'Integrações', icon: Zap },
       { href: '/fechamento', label: 'Fechamento do Ano', icon: Award },
       { href: '/auditoria', label: 'Auditoria de Ações', icon: ShieldAlert },
       { href: '/configuracoes', label: 'Configurações', icon: Settings },

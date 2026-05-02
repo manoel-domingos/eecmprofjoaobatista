@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import AppShell from '@/components/AppShell';
 import CustomSelect from '@/components/CustomSelect';
 import { useAppContext } from '@/lib/store';
-import { FileText, AlertTriangle, Users, Star, ArrowRight, Award, TrendingUp, ChevronDown } from 'lucide-react';
+import { FileText, AlertTriangle, Users, Star, ArrowRight, HeartPulse, Award, TrendingUp, ChevronDown } from 'lucide-react';
 import { PieChart, Pie, Cell, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend } from 'recharts';
 import Link from 'next/link';
 
@@ -310,6 +310,47 @@ export default function Dashboard() {
 
             <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/60 flex justify-center items-center text-xs">
               <span className="text-slate-500 dark:text-slate-400">{praises?.length > 0 ? `${praises.length} elogios no período` : 'Nenhum elogio no período'}</span>
+            </div>
+          </div>
+
+          {/* Acidentes */}
+          <div className="glass-card p-5 flex flex-col group hover:-translate-y-1 transition-all duration-300 shadow-sm hover:shadow-md">
+            <div className="flex justify-between items-start mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-50 dark:bg-slate-800/50 rounded-lg">
+                   <HeartPulse className="text-orange-500 dark:text-orange-400 w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-slate-800 dark:text-white font-bold">Acidentes</h3>
+                  <p className="text-slate-500 dark:text-slate-400 text-xs">Registros de segurança</p>
+                </div>
+              </div>
+              <Link 
+                href={`/acidentes?year=${selectedYear}&month=${selectedMonth}&shift=${selectedShift}&class=${selectedClass}`}
+                className="bg-orange-50 dark:bg-orange-500/10 border border-orange-100 dark:border-orange-500/20 px-3 py-1.5 rounded-lg text-orange-600 dark:text-orange-400 font-bold text-[10px] uppercase tracking-wider flex items-center gap-1.5 transition-all hover:bg-orange-100 dark:hover:bg-orange-500/20"
+              >
+                Ver tudo <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-2 flex-1 items-center">
+              <div className="bg-slate-50 dark:bg-[#28211b] p-3 rounded-xl flex flex-col items-center justify-center">
+                <span className="text-xl font-bold text-orange-600 dark:text-orange-400">2</span>
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold mt-1">Total</span>
+              </div>
+              <div className="bg-slate-50 dark:bg-[#281a1d] p-3 rounded-xl flex flex-col items-center justify-center">
+                <span className="text-xl font-bold text-red-400 dark:text-red-400">0</span>
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold mt-1">C/ Colégios</span>
+              </div>
+              <div className="bg-slate-50 dark:bg-[#1c212e] p-3 rounded-xl flex flex-col items-center justify-center">
+                <span className="text-xl font-bold text-blue-400 dark:text-blue-400">1</span>
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold mt-1">Médico</span>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/60 flex justify-between items-center text-xs">
+              <span className="text-slate-500 dark:text-slate-400 flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span> Pátio Gramado</span>
+              <span className="font-bold text-slate-700 dark:text-slate-300">2</span>
             </div>
           </div>
 
