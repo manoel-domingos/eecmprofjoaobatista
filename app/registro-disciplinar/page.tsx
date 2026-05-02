@@ -2171,7 +2171,7 @@ function RegistroDisciplinarContent() {
                     <span className="text-xs text-slate-500 font-medium mr-auto">Exportar como:</span>
                     <button
                       onClick={() => { handleExport(_vo); setIsPrintPanelOpen(false); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white transition text-xs font-semibold"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white transition text-xs font-semibold"
                     >
                       <FileText className="w-3.5 h-3.5" /> PDF
                     </button>
