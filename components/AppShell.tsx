@@ -544,7 +544,7 @@ function GroupPill({
 
       {open && (
         <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-[200] min-w-[240px] animate-in fade-in slide-in-from-top-2 duration-200">
-          <div className="glass-dropdown flex flex-col py-1.5 overflow-hidden">
+          <div className="glass-dropdown flex flex-col py-1.5">
             {group.children!.map((item) => {
               const active = pathname === item.href;
               return (

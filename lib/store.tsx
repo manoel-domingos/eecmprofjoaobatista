@@ -376,43 +376,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     initAuthAndData();
   }, []);
 
-  // Pasta central de documentos no Google Drive
+  // Pasta central de documentos no Google Drive — repositório principal
   const DRIVE_FOLDER_ID = '1_aj5b9ukcApeUzSs2dFgIdgHclW4uYbk';
   const DRIVE_FOLDER_URL = `https://drive.google.com/drive/folders/${DRIVE_FOLDER_ID}`;
 
-  const uploadFile = async (file: File, bucket: string): Promise<string | null> => {
-    // Tenta o Supabase Storage primeiro
-    if (supabase && isSupabaseConnected) {
-      try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2)}-${Date.now()}.${fileExt}`;
-
-        const { data, error } = await supabase.storage
-          .from(bucket)
-          .upload(fileName, file);
-
-        if (!error) {
-          const { data: { publicUrl } } = supabase.storage
-            .from(bucket)
-            .getPublicUrl(fileName);
-          return publicUrl;
-        }
-
-        // Bucket não existe — cai para o Drive
-        console.warn('Supabase storage indisponível, redirecionando para Google Drive:', error.message);
-      } catch (err: any) {
-        console.warn('Erro no Supabase storage, usando Drive:', err);
-      }
-    }
-
-    // Fallback: abre o Google Drive na pasta correta para upload manual
-    const confirmed = window.confirm(
-      `O armazenamento automático não está disponível.\n\nClique em OK para abrir a pasta do Google Drive e fazer o upload de "${file.name}" manualmente.`
-    );
-    if (confirmed) {
-      window.open(DRIVE_FOLDER_URL, '_blank', 'noopener,noreferrer');
-    }
-    // Retorna o link da pasta como referência para que o campo não fique vazio
+  const uploadFile = async (file: File, _bucket: string): Promise<string | null> => {
+    // Google Drive é o repositório principal de todos os arquivos (fotos, vídeos, docs assinados)
+    // Abre a pasta do Drive em nova aba para o usuário fazer o upload
+    window.open(DRIVE_FOLDER_URL, '_blank', 'noopener,noreferrer');
+    // Retorna o link da pasta para registrar como referência na ocorrência
     return DRIVE_FOLDER_URL;
   };
 

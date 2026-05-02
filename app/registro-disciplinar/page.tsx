@@ -1898,41 +1898,14 @@ function RegistroDisciplinarContent() {
                       ))}
                       <button
                         type="button"
-                        disabled={isUploadingFiles}
                         onClick={() => {
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = 'video/*,image/*';
-                          input.capture = 'environment';
-                          input.onchange = async (e: any) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                               setIsUploadingFiles(true);
-                               try {
-                                 const publicUrl = await uploadFile(file, 'evidence');
-                                 if (publicUrl) {
-                                   setVideoUrls(prev => [...prev, publicUrl]);
-                                 }
-                               } finally {
-                                 setIsUploadingFiles(false);
-                               }
-                            }
-                          };
-                          input.click();
+                          window.open('https://drive.google.com/drive/folders/1_aj5b9ukcApeUzSs2dFgIdgHclW4uYbk', '_blank', 'noopener,noreferrer');
+                          setVideoUrls(prev => [...prev, 'https://drive.google.com/drive/folders/1_aj5b9ukcApeUzSs2dFgIdgHclW4uYbk']);
                         }}
-                        className={`w-full aspect-video bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-slate-100 hover:border-blue-300 transition-all text-slate-400 hover:text-blue-500 ${isUploadingFiles ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className="w-full aspect-video bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-slate-100 hover:border-blue-300 transition-all text-slate-400 hover:text-blue-500"
                       >
-                        {isUploadingFiles ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-center">Enviando...</span>
-                          </div>
-                        ) : (
-                          <>
-                            <Camera className="w-5 h-5" />
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-center px-1">Adicionar Foto/Vídeo</span>
-                          </>
-                        )}
+                        <Camera className="w-5 h-5" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-center px-1">Adicionar no Drive</span>
                       </button>
                     </div>
                   </div>
@@ -1955,41 +1928,14 @@ function RegistroDisciplinarContent() {
                       ))}
                       <button
                         type="button"
-                        disabled={isUploadingFiles}
                         onClick={() => {
-                          const input = document.createElement('input');
-                          input.type = 'file';
-                          input.accept = 'image/*';
-                          input.capture = 'environment';
-                          input.onchange = async (e: any) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                               setIsUploadingFiles(true);
-                               try {
-                                 const publicUrl = await uploadFile(file, 'signs');
-                                 if (publicUrl) {
-                                   setSignedDocUrls(prev => [...prev, publicUrl]);
-                                 }
-                               } finally {
-                                 setIsUploadingFiles(false);
-                               }
-                            }
-                          };
-                          input.click();
+                          window.open('https://drive.google.com/drive/folders/1_aj5b9ukcApeUzSs2dFgIdgHclW4uYbk', '_blank', 'noopener,noreferrer');
+                          setSignedDocUrls(prev => [...prev, 'https://drive.google.com/drive/folders/1_aj5b9ukcApeUzSs2dFgIdgHclW4uYbk']);
                         }}
-                        className={`w-full aspect-video bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-slate-100 hover:border-blue-300 transition-all text-slate-400 hover:text-blue-500 ${isUploadingFiles ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className="w-full aspect-video bg-slate-50 border-2 border-dashed border-slate-200 rounded-lg flex flex-col items-center justify-center gap-1 hover:bg-slate-100 hover:border-blue-300 transition-all text-slate-400 hover:text-blue-500"
                       >
-                        {isUploadingFiles ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-center">Enviando...</span>
-                          </div>
-                        ) : (
-                          <>
-                            <FileText className="w-5 h-5" />
-                            <span className="text-[9px] font-bold uppercase tracking-widest text-center px-1">Anexar documento assinado</span>
-                          </>
-                        )}
+                        <FileText className="w-5 h-5" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-center px-1">Enviar para o Drive</span>
                       </button>
                     </div>
                   </div>
