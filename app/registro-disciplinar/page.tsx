@@ -1116,7 +1116,9 @@ function RegistroDisciplinarContent() {
                   <th className="px-6 py-3 font-medium">Infração</th>
                   <th className="px-6 py-3 font-medium">Gravidade</th>
                   <th className="px-6 py-3 font-medium">Medida</th>
-                  <th className="px-6 py-3 font-medium w-24 text-center">Aç����es</th>
+                  <th className="px-6 py-3 font-medium w-12 text-center">
+                    <Printer className="w-3.5 h-3.5 mx-auto text-slate-400" />
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-600">
@@ -1174,25 +1176,14 @@ function RegistroDisciplinarContent() {
                         <td className="px-6 py-4">
                           {allOccRules.map((r: any) => <div key={r.code} className="text-xs">{r.measure}</div>)}
                         </td>
-                        <td className="px-6 py-4">
-                           <div className="flex items-center justify-center gap-2">
-                             {currentUserRole !== 'GUEST' && (
-                               <button 
-                                 onClick={(e) => openEditModal(e, o)}
-                                 className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors"
-                                 title="Editar"
-                               >
-                                  <Edit2 className="w-4 h-4" />
-                               </button>
-                             )}
-                             <button 
-                               onClick={(e) => { e.stopPropagation(); handleExport(o); }}
-                               className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors"
-                               title="Imprimir / Exportar PDF"
-                             >
-                                <Printer className="w-4 h-4" />
-                             </button>
-                           </div>
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleExport(o); }}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors rounded-lg hover:bg-blue-50"
+                            title="Imprimir / Exportar PDF"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
                         </td>
                       </tr>
                     );
@@ -2166,78 +2157,86 @@ function RegistroDisciplinarContent() {
                 )}
               </div>
 
-              {/* Footer compacto com botoes equalizados */}
-              <div className="border-t border-slate-200 px-4 py-3 bg-slate-50 flex items-end gap-2 mt-auto">
-              <div className="flex flex-col gap-1.5">
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsGuardianListOpen(!isGuardianListOpen)}
-                    className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border border-emerald-200 transition text-xs font-medium"
-                  >
-                    <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                    </svg>
-                    WhatsApp
-                  </button>
-
-                  {isGuardianListOpen && (
-                    <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-slate-200 rounded-xl shadow-2xl p-4 z-[60]">
-                      <h4 className="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">Responsáveis</h4>
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {_voStudent?.contacts?.length ? (
-                          _voStudent.contacts.map((c, i) => (
-                            <button
-                              key={i}
-                              type="button"
-                              onClick={() => handleWhatsAppRedirect(c.phone, _voStudent.name)}
-                              className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-emerald-50 rounded-lg group transition border border-transparent hover:border-emerald-200 text-left"
-                            >
-                              <div>
-                                <p className="text-sm font-bold text-slate-700 group-hover:text-emerald-700">{c.name || 'Responsável'}</p>
-                                <p className="text-xs text-slate-500">{c.phone}</p>
-                              </div>
-                              <Phone className="w-4 h-4 text-emerald-500" />
-                            </button>
-                          ))
-                        ) : <p className="text-xs text-slate-500 text-center py-4">Sem responsáveis cadastrados</p>
-                        }
-                      </div>
-                    </div>
+              {/* Footer reestruturado */}
+              <div className="border-t border-slate-200 px-4 py-3 bg-slate-50 mt-auto space-y-2">
+                {/* Linha principal: Editar + Exportar */}
+                <div className="flex items-center gap-2">
+                  {currentUserRole !== 'GUEST' && (
+                    <button
+                      onClick={(e) => { setViewOccurrence(null); setIsGuardianListOpen(false); openEditModal(e, _vo); }}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition text-xs font-semibold"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" /> Editar
+                    </button>
                   )}
+                  <button
+                    onClick={() => handleExport(_vo)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white transition text-xs font-semibold"
+                  >
+                    <FileText className="w-3.5 h-3.5" /> PDF
+                  </button>
+                  <button
+                    onClick={() => handleExportDocx(_vo)}
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition text-xs font-semibold"
+                  >
+                    <FileText className="w-3.5 h-3.5" /> DOCX
+                  </button>
                 </div>
 
-                <button 
-                  onClick={() => { setViewOccurrence(null); setIsGuardianListOpen(false); }}
-                  className="px-3 py-1.5 rounded-lg text-slate-600 hover:bg-slate-200 border border-slate-200 transition text-xs font-medium flex items-center justify-center"
-                >
-                  Fechar
-                </button>
+                {/* Linha secundaria: WhatsApp + Arquivar + Fechar */}
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsGuardianListOpen(!isGuardianListOpen)}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition text-xs font-medium"
+                    >
+                      <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current shrink-0" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                      </svg>
+                      WhatsApp
+                    </button>
+                    {isGuardianListOpen && (
+                      <div className="absolute bottom-full left-0 mb-2 w-72 bg-white border border-slate-200 rounded-xl shadow-2xl p-4 z-[60]">
+                        <h4 className="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">Responsáveis</h4>
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                          {_voStudent?.contacts?.length ? (
+                            _voStudent.contacts.map((c, i) => (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => handleWhatsAppRedirect(c.phone, _voStudent.name)}
+                                className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-emerald-50 rounded-lg group transition border border-transparent hover:border-emerald-200 text-left"
+                              >
+                                <div>
+                                  <p className="text-sm font-bold text-slate-700 group-hover:text-emerald-700">{c.name || 'Responsável'}</p>
+                                  <p className="text-xs text-slate-500">{c.phone}</p>
+                                </div>
+                                <Phone className="w-4 h-4 text-emerald-500" />
+                              </button>
+                            ))
+                          ) : <p className="text-xs text-slate-500 text-center py-4">Sem responsáveis cadastrados</p>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-                {currentUserRole !== 'GUEST' && (
-                  <button 
-                    onClick={(e) => { setViewOccurrence(null); handleArchive(e, _vo.id); }}
-                    className="px-3 py-1.5 rounded-lg text-orange-600 hover:bg-orange-100 border border-orange-200 transition text-xs font-medium flex items-center justify-center gap-1"
+                  {currentUserRole !== 'GUEST' && (
+                    <button
+                      onClick={(e) => { setViewOccurrence(null); handleArchive(e, _vo.id); }}
+                      className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-orange-600 hover:bg-orange-50 border border-orange-200 transition text-xs font-medium"
+                    >
+                      <Archive className="w-3.5 h-3.5" /> Arquivar
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => { setViewOccurrence(null); setIsGuardianListOpen(false); }}
+                    className="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-slate-200 border border-slate-200 transition text-xs font-medium"
                   >
-                    <Archive className="w-3.5 h-3.5" /> Arquivar
+                    Fechar
                   </button>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <button 
-                  onClick={() => handleExport(_vo)}
-                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition text-xs font-medium flex items-center justify-center gap-1"
-                >
-                  <FileText className="w-3.5 h-3.5" /> PDF
-                </button>
-                <button 
-                  onClick={() => handleExportDocx(_vo)}
-                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition text-xs font-medium flex items-center justify-center gap-1"
-                >
-                  <FileText className="w-3.5 h-3.5" /> DOCX
-                </button>
-              </div>
+                </div>
               </div>
             </div>
           </div>
