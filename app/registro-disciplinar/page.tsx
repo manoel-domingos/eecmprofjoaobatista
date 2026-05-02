@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, Suspense } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
-import { Search, Plus, X, Edit2, Archive, Video, FileText, Camera, Clock, MapPin, UserPlus, Trash2, MessageSquare, Phone, Printer, Sparkles, AlertTriangle } from 'lucide-react';
+import { Search, Plus, X, Edit2, Archive, Video, FileText, Camera, Clock, MapPin, UserPlus, Trash2, MessageSquare, Phone, Printer, Sparkles, AlertTriangle, ChevronDown } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 import { Occurrence, StaffMember, Student } from '@/lib/data';
 import { getLocalDateString, getLocalTimeString, formatDate, formatPhoneForWhatsApp } from '@/lib/utils';
@@ -64,6 +64,8 @@ function RegistroDisciplinarContent() {
   const [attenuatingFactors, setAttenuatingFactors] = useState<string[]>([]);
   const [aggravatingFactors, setAggravatingFactors] = useState<string[]>([]);
   const [graveMeasureType, setGraveMeasureType] = useState<'Suspensão Escolar' | 'Suspensão de Recreação' | 'Ação Educativa' | 'Transferência Educativa'>('Suspensão Escolar');
+  const [measureOverride, setMeasureOverride] = useState<string | null>(null);
+  const [measurePanelOpen, setMeasurePanelOpen] = useState<Record<string, boolean>>({});
   const [isImproving, setIsImproving] = useState(false);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
 
@@ -558,9 +560,11 @@ function RegistroDisciplinarContent() {
       const primaryRuleCode = ruleCodesInt[0];
       // Ao editar, exclui a própria ocorrência do cálculo de reincidência
       const escalation = getEscalationStatus(primaryStudentId, primaryRuleCode, editingOccurrence ?? undefined);
-      const measureToSave = escalation.severity === 'Grave'
-        ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType)
-        : escalation.measure;
+      const measureToSave = measureOverride
+        ? measureOverride
+        : escalation.severity === 'Grave'
+          ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType)
+          : escalation.measure;
 
       if (editingOccurrence) {
         // Ao editar nunca exibe alerta de reincidência — a escalação já foi decidida na criação
@@ -612,6 +616,8 @@ function RegistroDisciplinarContent() {
 
       setIsModalOpen(false);
       setEditingOccurrence(null);
+      setMeasureOverride(null);
+      setMeasurePanelOpen({});
       // Reset form
       setSelectedStudents([]);
       setSelectedRules([]);
@@ -1350,33 +1356,125 @@ function RegistroDisciplinarContent() {
                           ? getEscalationStatus(selectedStudents[0], r.code, editingOccurrence ?? undefined)
                           : { isEscalated: false, reason: '', measure: r.measure, severity: r.severity };
 
+                        const isPanelOpen = !!measurePanelOpen[ruleCode];
+                        const activeMeasure = measureOverride ?? escalation.measure;
+                        const isOverriding = !!measureOverride;
+
+                        const ALTERNATIVE_MEASURES = [
+                          { label: 'Atividade Pedagógica', color: 'emerald' },
+                          { label: 'Retenção do Recreio', color: 'amber' },
+                          { label: 'Suspensão', color: 'red' },
+                        ] as const;
+
                         return (
-                          <div key={ruleCode} className="bg-white border border-slate-200 rounded-lg p-4 flex justify-between items-center relative">
-                            <button 
-                              type="button"
-                              onClick={() => setSelectedRules(prev => prev.filter(x => x !== ruleCode))}
-                              className="absolute top-2 right-2 text-slate-500 hover:text-slate-800"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                            <div className="pr-6 w-full">
-                              <p className="text-slate-800 text-sm font-medium mb-1">Cód. {r.code} - {r.description}</p>
-                              
+                          <div key={ruleCode} className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                            {/* Cabeçalho do card */}
+                            <div className="p-4 relative">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedRules(prev => prev.filter(x => x !== ruleCode))}
+                                className="absolute top-2 right-2 text-slate-400 hover:text-slate-700 transition-colors"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                              <p className="text-slate-800 text-sm font-medium pr-6">Cód. {r.code} — {r.description}</p>
+
                               {escalation.isEscalated && selectedStudents.length === 1 && (
-                                <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-[11px] text-orange-700 font-bold flex flex-col gap-1">
-                                   <div className="flex items-center gap-2">⚠️ ATENÇÃO: {escalation.reason}!</div>
+                                <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded-lg text-[11px] text-orange-700 font-bold flex items-center gap-1.5">
+                                  <span>⚠</span> ATENÇÃO: {escalation.reason}!
                                 </div>
                               )}
-                              
-                              <div className="flex items-center gap-2 mt-2">
-                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${escalation.severity === 'Grave' ? 'bg-red-100 text-red-700' : escalation.severity === 'Media' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'}`}>
-                                  {escalation.measure}
-                                </span>
-                                <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded">
-                                  {Math.abs(r.points)} pts
-                                </span>
+
+                              {/* Medida ativa em destaque */}
+                              <div className="mt-3 flex items-center justify-between">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <div className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-semibold border-2 ${
+                                    isOverriding
+                                      ? 'bg-violet-50 border-violet-400 text-violet-700'
+                                      : escalation.severity === 'Grave'
+                                        ? 'bg-red-50 border-red-400 text-red-700'
+                                        : escalation.severity === 'Media'
+                                          ? 'bg-yellow-50 border-yellow-400 text-yellow-700'
+                                          : 'bg-blue-50 border-blue-400 text-blue-700'
+                                  }`}>
+                                    {isOverriding && (
+                                      <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">Alterada</span>
+                                    )}
+                                    {activeMeasure}
+                                  </div>
+                                  <span className="text-xs text-slate-500 font-medium bg-slate-100 px-2 py-1 rounded-lg">
+                                    {Math.abs(r.points).toFixed(2)} pts
+                                  </span>
+                                  {isOverriding && (
+                                    <button
+                                      type="button"
+                                      onClick={() => { setMeasureOverride(null); setMeasurePanelOpen(p => ({ ...p, [ruleCode]: false })); }}
+                                      className="text-[11px] text-slate-400 hover:text-slate-600 underline transition-colors"
+                                    >
+                                      restaurar recomendação
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Botão outras medidas */}
+                                <button
+                                  type="button"
+                                  onClick={() => setMeasurePanelOpen(p => ({ ...p, [ruleCode]: !p[ruleCode] }))}
+                                  className={`flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-all ${
+                                    isPanelOpen
+                                      ? 'bg-slate-100 border-slate-300 text-slate-600'
+                                      : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700'
+                                  }`}
+                                >
+                                  Outras medidas
+                                  <ChevronDown className={`w-3 h-3 transition-transform ${isPanelOpen ? 'rotate-180' : ''}`} />
+                                </button>
                               </div>
                             </div>
+
+                            {/* Painel colapsável de outras medidas */}
+                            {isPanelOpen && (
+                              <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 animate-in fade-in slide-in-from-top-1 duration-150">
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Selecionar medida alternativa</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {/* Medida recomendada como opção */}
+                                  <button
+                                    type="button"
+                                    onClick={() => { setMeasureOverride(null); setMeasurePanelOpen(p => ({ ...p, [ruleCode]: false })); }}
+                                    className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${
+                                      !isOverriding
+                                        ? 'bg-blue-600 border-blue-600 text-white shadow-sm'
+                                        : 'bg-white border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600'
+                                    }`}
+                                  >
+                                    {!isOverriding && <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />}
+                                    {escalation.measure}
+                                    <span className="text-[10px] opacity-70">(recomendada)</span>
+                                  </button>
+
+                                  {/* Alternativas */}
+                                  {ALTERNATIVE_MEASURES.filter(m => m.label !== escalation.measure).map(({ label, color }) => (
+                                    <button
+                                      key={label}
+                                      type="button"
+                                      onClick={() => { setMeasureOverride(label); setMeasurePanelOpen(p => ({ ...p, [ruleCode]: false })); }}
+                                      className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${
+                                        measureOverride === label
+                                          ? color === 'emerald' ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                                            : color === 'amber' ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
+                                            : 'bg-red-600 border-red-600 text-white shadow-sm'
+                                          : color === 'emerald' ? 'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                                            : color === 'amber' ? 'bg-white border-amber-200 text-amber-700 hover:bg-amber-50'
+                                            : 'bg-white border-red-200 text-red-700 hover:bg-red-50'
+                                      }`}
+                                    >
+                                      {measureOverride === label && <span className="w-1.5 h-1.5 rounded-full bg-white shrink-0" />}
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
