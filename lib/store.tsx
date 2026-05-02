@@ -1227,8 +1227,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return studentOccurrences.filter(o => o.ruleCode === ruleCode && o.id !== excludeId).length > 0;
   };
 
-  const getEscalationStatus = (studentId: string, ruleCode: number) => {
-    const studentOccurrences = getStudentOccurrences(studentId);
+  const getEscalationStatus = (studentId: string, ruleCode: number, excludeId?: string) => {
+    const allOccurrences = getStudentOccurrences(studentId);
+    // Exclui a própria ocorrência ao editar para não contar como reincidência
+    const studentOccurrences = excludeId
+      ? allOccurrences.filter(o => o.id !== excludeId)
+      : allOccurrences;
+
     const rule = rules.find(r => r.code === ruleCode);
     if (!rule) return { isEscalated: false, reason: '', measure: '', severity: '' };
 
@@ -1239,7 +1244,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     // 1. Check for 3 or more light infractions (Art. 35 § 4º)
-    if (rule.severity === 'Leve' && lightOccurrences.length >= 2) { 
+    if (rule.severity === 'Leve' && lightOccurrences.length >= 2) {
          return { isEscalated: true, reason: 'Acúmulo de 3 ou mais infrações leves (Art. 35 § 4º)', measure: 'Suspensão (Agravada por acúmulo)', severity: 'Grave' };
     }
 

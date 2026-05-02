@@ -556,12 +556,14 @@ function RegistroDisciplinarContent() {
       const primaryStudentId = selectedStudents[0];
       const ruleCodesInt = selectedRules.map(r => parseInt(r, 10));
       const primaryRuleCode = ruleCodesInt[0];
-      const escalation = getEscalationStatus(primaryStudentId, primaryRuleCode);
+      // Ao editar, exclui a própria ocorrência do cálculo de reincidência
+      const escalation = getEscalationStatus(primaryStudentId, primaryRuleCode, editingOccurrence ?? undefined);
       const measureToSave = escalation.severity === 'Grave'
         ? (graveMeasureType === 'Suspensão Escolar' ? `Suspensão (${durationDays}d)` : graveMeasureType)
         : escalation.measure;
 
       if (editingOccurrence) {
+        // Ao editar nunca exibe alerta de reincidência — a escalação já foi decidida na criação
         await updateOccurrence(editingOccurrence, {
           studentId: primaryStudentId,
           studentIds: selectedStudents,
