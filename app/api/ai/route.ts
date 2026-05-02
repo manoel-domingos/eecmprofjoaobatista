@@ -103,7 +103,7 @@ Quando não souber algo específico da escola, oriente o usuário a consultar a 
     }
 
     const completion = await client.chat.completions.create({
-      model: 'deepseek-ai/deepseek-v4-pro',
+      model: 'deepseek-ai/deepseek-v4-flash',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
