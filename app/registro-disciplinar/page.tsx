@@ -9,6 +9,13 @@ import { Occurrence, StaffMember, Student } from '@/lib/data';
 import { getLocalDateString, getLocalTimeString, formatDate, formatPhoneForWhatsApp } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import { streamAI } from '@/components/AIChat';
+import OccurrenceChecklist, {
+  OccurrenceTask,
+  ChecklistItem,
+  addOccurrenceTask,
+  loadChecklists,
+  autocompleteWhatsapp,
+} from '@/components/OccurrenceChecklist';
 
 function RegistroDisciplinarContent() {
   const { 
@@ -70,6 +77,25 @@ function RegistroDisciplinarContent() {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [suggestions, setSuggestions] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+
+  // Checklist flutuante de pendências pós-ocorrência
+  const [checklistTasks, setChecklistTasks] = useState<OccurrenceTask[]>([]);
+  const userId = user?.email ?? 'guest';
+
+  // Carrega o checklist do localStorage ao montar (persistência cross-session)
+  useEffect(() => {
+    setChecklistTasks(loadChecklists(userId));
+  }, [userId]);
+
+  // Modal de alerta pós-salvar
+  const [postSaveAlert, setPostSaveAlert] = useState<{
+    occurrenceId: string;
+    occurrenceNum: string;
+    studentName: string;
+    measure: string;
+    isViolence: boolean;
+    checklistItems: ChecklistItem[];
+  } | null>(null);
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
 
   const handleGenerateAta = () => {
@@ -637,7 +663,7 @@ function RegistroDisciplinarContent() {
           if (!confirmed) return;
         }
 
-        await addOccurrence({
+        const savedId = await addOccurrence({
           studentId: primaryStudentId,
           studentIds: selectedStudents,
           date,
@@ -655,15 +681,72 @@ function RegistroDisciplinarContent() {
           attenuatingFactors,
           aggravatingFactors
         });
+
+        // Códigos de infrações que envolvem violência física / bullying / agressão
+        const VIOLENCIA_CODES = [64, 65, 69, 75, 76, 78, 80, 83, 84, 89];
+        const isViolence = ruleCodesInt.some(c => VIOLENCIA_CODES.includes(c));
+
+        const studentName = students.find(s => s.id === primaryStudentId)?.name ?? 'Aluno';
+        const occurrenceNum = savedId ?? 'Nova';
+
+        // Monta os itens do checklist
+        const baseItems: ChecklistItem[] = [
+          {
+            id: 'comunicar_pais',
+            label: 'Comunicar os responsáveis / pais',
+            done: false,
+            autoCompleteTrigger: 'whatsapp',
+          },
+          {
+            id: 'realizar_medida',
+            label: `Realizar a medida sugerida: ${measureToSave}`,
+            done: false,
+          },
+          {
+            id: 'importar_doc',
+            label: 'Importar foto do documento assinado',
+            done: false,
+          },
+        ];
+
+        const violenceItems: ChecklistItem[] = isViolence
+          ? [
+              { id: 'ficha_ficai', label: 'Preencher Ficha FICAI', done: false },
+              { id: 'ficha_sigeduca', label: 'Preencher Ficha SIGEDUCA', done: false },
+              { id: 'boletim', label: 'Registrar Boletim de Ocorrência (BO)', done: false },
+            ]
+          : [];
+
+        const allItems = [...baseItems, ...violenceItems];
+
+        // Fecha o modal de criação e exibe o alerta pós-salvar
+        setIsModalOpen(false);
+        setEditingOccurrence(null);
+        setMeasureOverride(null);
+        setMeasurePanelOpen({});
+        setSuggestions('');
+        setShowSuggestions(false);
+        setSelectedStudents([]);
+        setSelectedRules([]);
+
+        setPostSaveAlert({
+          occurrenceId: savedId ?? occurrenceNum,
+          occurrenceNum,
+          studentName,
+          measure: measureToSave,
+          isViolence,
+          checklistItems: allItems,
+        });
+        return; // sai cedo — reset já feito acima
       }
 
+      // Reset do form para o caminho de edição
       setIsModalOpen(false);
       setEditingOccurrence(null);
       setMeasureOverride(null);
       setMeasurePanelOpen({});
       setSuggestions('');
       setShowSuggestions(false);
-      // Reset form
       setSelectedStudents([]);
       setSelectedRules([]);
       setRuleSearch('');
@@ -812,9 +895,21 @@ function RegistroDisciplinarContent() {
     }
   };
 
-  const handleWhatsAppRedirect = (phone: string, studentName: string) => {
+  const handleWhatsAppRedirect = (phone: string, studentName: string, studentId?: string) => {
     const url = formatPhoneForWhatsApp(phone, studentName);
     if (!url) return;
+
+    // Autocompleta "Comunicar pais" no checklist para ocorrências pendentes deste aluno
+    if (studentId) {
+      const pending = checklistTasks.filter(t =>
+        occurrences.find(o => o.id === t.occurrenceId && o.studentId === studentId)
+      );
+      let updated = checklistTasks;
+      pending.forEach(t => {
+        updated = autocompleteWhatsapp(userId, t.occurrenceId);
+      });
+      if (pending.length > 0) setChecklistTasks(updated);
+    }
 
     // If we are in the main modal (new/edit), auto-save before redirecting
     if (isModalOpen && selectedStudents.length > 0 && selectedRules.length > 0) {
@@ -1984,7 +2079,7 @@ function RegistroDisciplinarContent() {
                                       <button
                                         key={i}
                                         type="button"
-                                        onClick={() => handleWhatsAppRedirect(c.phone, student.name)}
+                                        onClick={() => handleWhatsAppRedirect(c.phone, student.name, student.id)}
                                         className="w-full flex items-center justify-between p-2 bg-slate-50 hover:bg-emerald-50 rounded-lg group transition border border-transparent hover:border-emerald-200 text-left"
                                       >
                                         <div>
@@ -2409,7 +2504,7 @@ function RegistroDisciplinarContent() {
                               <button
                                 key={i}
                                 type="button"
-                                onClick={() => handleWhatsAppRedirect(c.phone, _voStudent.name)}
+                                onClick={() => handleWhatsAppRedirect(c.phone, _voStudent.name, _voStudent.id)}
                                 className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-emerald-50 rounded-lg group transition border border-transparent hover:border-emerald-200 text-left"
                               >
                                 <div>
@@ -2488,6 +2583,80 @@ function RegistroDisciplinarContent() {
           </div>
         </div>
       )}
+      {/* Modal de alerta pós-salvar */}
+      {postSaveAlert && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            {/* Header */}
+            <div className={`px-5 py-4 ${postSaveAlert.isViolence ? 'bg-red-600' : 'bg-blue-600'}`}>
+              <p className="text-white font-bold text-sm">
+                {postSaveAlert.isViolence ? 'Atencao — Caso de Violencia' : 'Ocorrencia Registrada'}
+              </p>
+              <p className="text-white/80 text-xs mt-0.5">
+                {postSaveAlert.occurrenceNum} — {postSaveAlert.studentName}
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="px-5 py-4 space-y-3">
+              <p className="text-sm text-slate-700 font-medium">
+                As seguintes acoes sao necessarias:
+              </p>
+              <ul className="space-y-2">
+                {postSaveAlert.checklistItems.map(item => (
+                  <li key={item.id} className="flex items-start gap-2.5 text-sm text-slate-700">
+                    <span className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${
+                      postSaveAlert.isViolence && ['ficha_ficai','ficha_sigeduca','boletim'].includes(item.id)
+                        ? 'bg-red-500'
+                        : 'bg-blue-500'
+                    }`} />
+                    {item.label}
+                  </li>
+                ))}
+              </ul>
+              {postSaveAlert.isViolence && (
+                <div className="mt-1 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-medium">
+                  Por se tratar de caso de violencia, briga ou bullying, e obrigatorio registrar Ficha FICAI, Ficha SIGEDUCA e Boletim de Ocorrencia.
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 pb-5">
+              <button
+                onClick={() => {
+                  // Adiciona ao checklist flutuante e fecha o alerta
+                  const task: OccurrenceTask = {
+                    occurrenceId: postSaveAlert.occurrenceId,
+                    occurrenceNum: postSaveAlert.occurrenceNum,
+                    studentName: postSaveAlert.studentName,
+                    items: postSaveAlert.checklistItems,
+                    createdAt: new Date().toISOString(),
+                  };
+                  const updated = addOccurrenceTask(userId, task);
+                  setChecklistTasks(updated);
+                  setPostSaveAlert(null);
+                }}
+                className={`w-full py-2.5 rounded-xl text-white font-semibold text-sm transition-colors ${
+                  postSaveAlert.isViolence
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }`}
+              >
+                Ok, entendido — adicionar a lista de pendencias
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checklist flutuante persistente */}
+      <OccurrenceChecklist
+        userId={userId}
+        tasks={checklistTasks}
+        onUpdate={setChecklistTasks}
+      />
+
     </AppShell>
 
   );

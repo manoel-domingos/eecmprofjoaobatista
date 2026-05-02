@@ -52,7 +52,7 @@ interface AppContextType extends AppState {
   deleteAllStudents: () => Promise<void>;
   refreshData: () => Promise<void>;
 
-  addOccurrence: (o: Omit<Occurrence, 'id'>) => Promise<void>;
+  addOccurrence: (o: Omit<Occurrence, 'id'>) => Promise<string>;
   updateOccurrence: (id: string, o: Partial<Occurrence>) => Promise<void>;
   archiveOccurrence: (id: string) => Promise<void>;
   restoreOccurrence: (id: string) => Promise<void>;
@@ -740,7 +740,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     logAction('DELETE', 'Aluno', 'ALL', 'Todos os alunos foram excluídos');
   };
 
-  const addOccurrence = async (o: Omit<Occurrence, 'id'>) => {
+  const addOccurrence = async (o: Omit<Occurrence, 'id'>): Promise<string> => {
     checkWriteAccess();
     let newId = `O${occurrences.length + 1}`;
     if (supabase && isSupabaseConnected) {
@@ -814,7 +814,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }, ...prev]);
           newId = data.id;
           logAction('CREATE', 'Ocorrência', newId, `Adicionada ocorrência para ${o.studentIds?.length || 1} alunos (Art. ${o.ruleCode})`);
-          return;
+          return newId;
         }
       } catch (err: any) {
         console.error("Occurrence insert error:", err);
@@ -824,6 +824,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const finalId = `O${occurrences.length + 1}`;
     setOccurrences(prev => [{ ...o, id: finalId }, ...prev]);
     logAction('CREATE', 'Ocorrência', finalId, `Adicionada ocorrência (LOCAL) para ${o.studentIds?.length || 1} alunos (Art. ${o.ruleCode})`);
+    return finalId;
   };
 
   const updateOccurrence = async (id: string, o: Partial<Occurrence>) => {
@@ -1140,7 +1141,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     checkWriteAccess();
     if (supabase && isSupabaseConnected) await supabase.from('summons').update({ archived: false }).eq('id', id);
     setSummons(prev => prev.map(item => item.id === id ? { ...item, archived: false } : item));
-    logAction('UPDATE', 'Convocação', id, `Restaurada convocação ${id}`);
+    logAction('UPDATE', 'Convocação', id, `Restaurada convoca��ão ${id}`);
   };
 
   const addConductTerm = async (t: Omit<ConductTerm, 'id'>) => {
