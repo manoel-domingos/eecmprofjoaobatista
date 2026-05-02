@@ -56,12 +56,14 @@ export default function FaltasDisciplinares() {
     [rules, searchTerm]
   );
 
-  // Group by severity in logical order: Leve → Media → Grave
+  // Group by severity in logical order: Leve → Media → Grave, sorted by code asc
   const grouped = useMemo(() => {
     const order: SeverityKey[] = ['Leve', 'Media', 'Grave'];
     return order.map(sev => ({
       severity: sev,
-      items: filteredRules.filter(r => r.severity === sev),
+      items: filteredRules
+        .filter(r => r.severity === sev || r.severity === (sev === 'Media' ? 'Média' : sev))
+        .sort((a, b) => a.code - b.code),
     })).filter(g => g.items.length > 0);
   }, [filteredRules]);
 

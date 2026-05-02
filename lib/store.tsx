@@ -287,7 +287,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
           
           if (rulesData) {
-            setRules(rulesData.map(r => ({ ...r, ruleCode: r.code })));
+            // Normaliza dados legados do banco: corrige medida e pontos por severidade
+            const normalized = rulesData.map(r => {
+              const sev: string = r.severity ?? '';
+              let measure = r.measure ?? '';
+              let points = typeof r.points === 'number' ? r.points : parseFloat(r.points);
+
+              // Corrige "Repreensão" e pontos antigos (-1.00) para o padrão atual
+              if (sev === 'Media' || sev === 'Média') {
+                if (measure === 'Repreensão' || measure === 'Advertência Oral' || points === -1 || points < -0.30) {
+                  measure = 'Advertência Escrita';
+                  points = -0.30;
+                }
+              }
+              if (sev === 'Leve' && (points < -0.10 || points > -0.09)) {
+                points = -0.10;
+                measure = 'Advertência Oral';
+              }
+
+              return { ...r, ruleCode: r.code, measure, points };
+            });
+
+            setRules(normalized);
+
+            // Persiste correções de volta ao Supabase (somente linhas que mudaram)
+            const toFix = normalized.filter((r, i) =>
+              r.measure !== rulesData[i].measure || r.points !== rulesData[i].points
+            );
+            if (toFix.length > 0 && supabase) {
+              toFix.forEach(r => {
+                supabase!.from('rules').update({ measure: r.measure, points: r.points }).eq('code', r.code);
+              });
+            }
           }
           if (occurrencesData) setOccurrences(occurrencesData.map((o: any) => {
             const allCodes = Array.isArray(o.rule_code) ? o.rule_code.map(Number) : [Number(o.rule_code)];
