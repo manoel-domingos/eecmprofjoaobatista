@@ -487,9 +487,17 @@ function GroupPill({
   };
 
   const handleButtonClick = () => {
-    // Sempre abre/fecha o submenu ao clicar — igual ao comportamento do hover
     if (closeTimer.current) clearTimeout(closeTimer.current);
-    setOpen((v) => !v);
+    if (!open) {
+      // Primeiro clique: navega para o primeiro item do submenu e mantém aberto
+      if (group.children && group.children.length > 0) {
+        router.push(group.children[0].href);
+      }
+      setOpen(true);
+    } else {
+      // Submenu já aberto: fecha
+      setOpen(false);
+    }
   };
 
   const isActive = activeGroup === group.label;
