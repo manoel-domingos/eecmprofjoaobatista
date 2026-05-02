@@ -1346,7 +1346,9 @@ function RegistroDisciplinarContent() {
                         const r = rules.find(x => x.code.toString() === ruleCode);
                         if (!r) return null;
                         
-                        const escalation = selectedStudents.length > 0 ? getEscalationStatus(selectedStudents[0], r.code) : { isEscalated: false, reason: '', measure: r.measure, severity: r.severity };
+                        const escalation = selectedStudents.length > 0
+                          ? getEscalationStatus(selectedStudents[0], r.code, editingOccurrence ?? undefined)
+                          : { isEscalated: false, reason: '', measure: r.measure, severity: r.severity };
 
                         return (
                           <div key={ruleCode} className="bg-white border border-slate-200 rounded-lg p-4 flex justify-between items-center relative">
@@ -1415,7 +1417,7 @@ function RegistroDisciplinarContent() {
                                   key={type}
                                   type="button"
                                   onClick={() => {
-                                    if (type === 'Transferência Educativa' && !confirm('⚠️ A Transferência Educativa é uma medida extrema que exige aprovação do Conselho de Ensino Disciplinar. Deseja prosseguir com a solicitação?')) return;
+                                    if (type === 'Transferência Educativa' && !confirm('⚠️ A Transferência Educativa é uma medida extrema que exige aprova��ão do Conselho de Ensino Disciplinar. Deseja prosseguir com a solicitação?')) return;
                                     setGraveMeasureType(type as any);
                                   }}
                                   className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
