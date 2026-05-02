@@ -487,11 +487,16 @@ function GroupPill({
   };
 
   const handleButtonClick = () => {
-    if (group.children && group.children.length > 0) {
-      router.push(group.children[0].href);
-      setOpen(false);
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    if (!open) {
+      // Primeiro clique: navega para o primeiro item do submenu e mantém aberto
+      if (group.children && group.children.length > 0) {
+        router.push(group.children[0].href);
+      }
+      setOpen(true);
     } else {
-      setOpen((v) => !v);
+      // Submenu já aberto: fecha
+      setOpen(false);
     }
   };
 

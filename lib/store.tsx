@@ -89,7 +89,7 @@ interface AppContextType extends AppState {
   getStudentBehavior: (points: number) => string;
   getStudentOccurrences: (studentId: string) => Occurrence[];
   checkRecidivism: (studentId: string, ruleCode: number, excludeId?: string) => boolean;
-  getEscalationStatus: (studentId: string, ruleCode: number) => { isEscalated: boolean, reason: string, measure: string, severity: string };
+  getEscalationStatus: (studentId: string, ruleCode: number, excludeId?: string) => { isEscalated: boolean, reason: string, measure: string, severity: string };
 }
 
 const INITIAL_STAFF: StaffMember[] = [
@@ -287,7 +287,38 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
           
           if (rulesData) {
-            setRules(rulesData.map(r => ({ ...r, ruleCode: r.code })));
+            // Normaliza dados legados do banco: corrige medida e pontos por severidade
+            const normalized = rulesData.map(r => {
+              const sev: string = r.severity ?? '';
+              let measure = r.measure ?? '';
+              let points = typeof r.points === 'number' ? r.points : parseFloat(r.points);
+
+              // Corrige "Repreensão" e pontos antigos (-1.00) para o padrão atual
+              if (sev === 'Media' || sev === 'Média') {
+                if (measure === 'Repreensão' || measure === 'Advertência Oral' || points === -1 || points < -0.30) {
+                  measure = 'Advertência Escrita';
+                  points = -0.30;
+                }
+              }
+              if (sev === 'Leve' && (points < -0.10 || points > -0.09)) {
+                points = -0.10;
+                measure = 'Advertência Oral';
+              }
+
+              return { ...r, ruleCode: r.code, measure, points };
+            });
+
+            setRules(normalized);
+
+            // Persiste correções de volta ao Supabase (somente linhas que mudaram)
+            const toFix = normalized.filter((r, i) =>
+              r.measure !== rulesData[i].measure || r.points !== rulesData[i].points
+            );
+            if (toFix.length > 0 && supabase) {
+              toFix.forEach(r => {
+                supabase!.from('rules').update({ measure: r.measure, points: r.points }).eq('code', r.code);
+              });
+            }
           }
           if (occurrencesData) setOccurrences(occurrencesData.map((o: any) => {
             const allCodes = Array.isArray(o.rule_code) ? o.rule_code.map(Number) : [Number(o.rule_code)];
@@ -1196,8 +1227,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return studentOccurrences.filter(o => o.ruleCode === ruleCode && o.id !== excludeId).length > 0;
   };
 
-  const getEscalationStatus = (studentId: string, ruleCode: number) => {
-    const studentOccurrences = getStudentOccurrences(studentId);
+  const getEscalationStatus = (studentId: string, ruleCode: number, excludeId?: string) => {
+    const allOccurrences = getStudentOccurrences(studentId);
+    // Exclui a própria ocorrência ao editar para não contar como reincidência
+    const studentOccurrences = excludeId
+      ? allOccurrences.filter(o => o.id !== excludeId)
+      : allOccurrences;
+
     const rule = rules.find(r => r.code === ruleCode);
     if (!rule) return { isEscalated: false, reason: '', measure: '', severity: '' };
 
@@ -1208,7 +1244,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
 
     // 1. Check for 3 or more light infractions (Art. 35 § 4º)
-    if (rule.severity === 'Leve' && lightOccurrences.length >= 2) { 
+    if (rule.severity === 'Leve' && lightOccurrences.length >= 2) {
          return { isEscalated: true, reason: 'Acúmulo de 3 ou mais infrações leves (Art. 35 § 4º)', measure: 'Suspensão (Agravada por acúmulo)', severity: 'Grave' };
     }
 
@@ -1279,7 +1315,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 // Recidivism in same media rule -> Suspensão (0.5 * days)
                 pointsToDeduct = 0.50 * (o.durationDays || 1);
             } else {
-                // 1st time media -> Repreensão (0.3)
+                // 1st time media -> Advertência Escrita (0.3)
                 pointsToDeduct = 0.30;
             }
         } else if (rule.severity === 'Grave') {
