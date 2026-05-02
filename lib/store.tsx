@@ -89,7 +89,7 @@ interface AppContextType extends AppState {
   getStudentBehavior: (points: number) => string;
   getStudentOccurrences: (studentId: string) => Occurrence[];
   checkRecidivism: (studentId: string, ruleCode: number, excludeId?: string) => boolean;
-  getEscalationStatus: (studentId: string, ruleCode: number) => { isEscalated: boolean, reason: string, measure: string, severity: string };
+  getEscalationStatus: (studentId: string, ruleCode: number, excludeId?: string) => { isEscalated: boolean, reason: string, measure: string, severity: string };
 }
 
 const INITIAL_STAFF: StaffMember[] = [
