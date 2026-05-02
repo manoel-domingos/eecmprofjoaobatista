@@ -4,8 +4,8 @@ import OpenAI from 'openai';
 export const maxDuration = 60;
 
 const client = new OpenAI({
-  apiKey: process.env.NVIDIA_API_KEY,
-  baseURL: 'https://integrate.api.nvidia.com/v1',
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseURL: 'https://api.deepseek.com/v1',
 });
 
 const CONFIGS: Record<string, { maxTokens: number; temperature: number }> = {
@@ -53,12 +53,12 @@ const DEEPSEEK_ERRORS: Record<number, { label: string; cause: string; solution: 
   401: {
     label: 'Falha de Autenticação',
     cause: 'API Key incorreta ou ausente.',
-    solution: 'Verifique a variável NVIDIA_API_KEY no painel de variáveis.',
+    solution: 'Verifique a variável DEEPSEEK_API_KEY no painel de variáveis.',
   },
   402: {
     label: 'Saldo Insuficiente',
-    cause: 'Créditos da conta NVIDIA esgotados.',
-    solution: 'Adicione saldo em https://integrate.api.nvidia.com.',
+    cause: 'Créditos da conta DeepSeek esgotados.',
+    solution: 'Adicione saldo em https://platform.deepseek.com.',
   },
   422: {
     label: 'Parâmetros Inválidos',
@@ -91,9 +91,9 @@ function deepseekErrorMessage(status: number, rawMessage: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  if (!process.env.NVIDIA_API_KEY) {
+  if (!process.env.DEEPSEEK_API_KEY) {
     return new Response(
-      JSON.stringify({ error: deepseekErrorMessage(401, 'NVIDIA_API_KEY não configurada.') }),
+      JSON.stringify({ error: deepseekErrorMessage(401, 'DEEPSEEK_API_KEY não configurada.') }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -119,10 +119,10 @@ export async function POST(req: NextRequest) {
 
   const { system, user } = buildPrompts(type, payload);
 
-  // Modelos em ordem de prioridade — fallback automatico se o anterior nao responder
+  // Modelos nativos DeepSeek — fallback automatico se o primeiro nao responder
   const MODEL_CHAIN = [
-    'deepseek-ai/deepseek-v4-flash',
-    'deepseek-ai/deepseek-chat',
+    'deepseek-chat',    // DeepSeek-V3 — principal, mais rapido
+    'deepseek-reasoner', // DeepSeek-R1 — fallback mais robusto
   ];
   const FIRST_CHUNK_TIMEOUT_MS = 20000; // 20s sem nenhum chunk = timeout
 
