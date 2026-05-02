@@ -28,11 +28,10 @@ export default function AIChat() {
     }
   }, [messages, isOpen]);
 
-  const handleSend = async () => {
-    const text = input.trim();
-    if (!text || isLoading) return;
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return;
 
-    setMessages(prev => [...prev, { role: 'user', content: text }]);
+    setMessages(prev => [...prev, { role: 'user', content: text.trim() }]);
     setInput('');
     setIsLoading(true);
 
@@ -40,12 +39,13 @@ export default function AIChat() {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'chat', payload: { message: text } }),
+        body: JSON.stringify({ type: 'chat', payload: { message: text.trim() } }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setMessages(prev => [...prev, { role: 'assistant', content: data.result }]);
-    } catch {
+    } catch (err: any) {
+      console.error('[v0] AIChat error:', err?.message || err);
       setMessages(prev => [
         ...prev,
         { role: 'assistant', content: 'Desculpe, não consegui processar sua mensagem no momento. Tente novamente.' },
@@ -54,6 +54,8 @@ export default function AIChat() {
       setIsLoading(false);
     }
   };
+
+  const handleSend = () => sendMessage(input);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -127,7 +129,7 @@ export default function AIChat() {
                 {suggestions.map((s, i) => (
                   <button
                     key={i}
-                    onClick={() => { setInput(s); inputRef.current?.focus(); }}
+                    onClick={() => sendMessage(s)}
                     className="w-full text-left text-xs px-3 py-2 rounded-lg bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-100 transition"
                   >
                     {s}
