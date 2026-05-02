@@ -232,6 +232,9 @@ export async function POST(req: NextRequest) {
           );
 
           let full = '';
+          let totalTokens = 0;
+          let promptTokens = 0;
+          let completionTokens = 0;
           for await (const chunk of completion) {
             if (!firstChunkReceived) {
               firstChunkReceived = true;
@@ -243,9 +246,19 @@ export async function POST(req: NextRequest) {
               full += delta;
               send({ delta, model });
             }
+            // Captura tokens do último chunk (DeepSeek envia usage no final)
+            if (chunk.usage) {
+              promptTokens = chunk.usage.prompt_tokens || 0;
+              completionTokens = chunk.usage.completion_tokens || 0;
+              totalTokens = chunk.usage.total_tokens || (promptTokens + completionTokens);
+            }
           }
           clearTimeout(timeoutId);
-          send({ done: true, result: full.trim(), model });
+          
+          // Log de tokens no console do servidor
+          console.log(`[AI] Modelo: ${model} | Tokens: ${totalTokens} (prompt: ${promptTokens}, completion: ${completionTokens})`);
+          
+          send({ done: true, result: full.trim(), model, usage: { totalTokens, promptTokens, completionTokens } });
           return; // sucesso — sai do loop
         } catch (err: any) {
           clearTimeout(timeoutId);
