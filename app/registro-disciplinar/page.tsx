@@ -33,6 +33,7 @@ function RegistroDisciplinarContent() {
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [isGuardianListOpen, setIsGuardianListOpen] = useState(false);
+  const [isPrintPanelOpen, setIsPrintPanelOpen] = useState(false);
   const [isAddGuardianModalOpen, setIsAddGuardianModalOpen] = useState(false);
   const [newGuardianName, setNewGuardianName] = useState('');
   const [newGuardianPhone, setNewGuardianPhone] = useState('');
@@ -1143,7 +1144,7 @@ function RegistroDisciplinarContent() {
                         return (
                           <tr 
                             key={o.id} 
-                            onClick={() => setViewOccurrence(o)}
+                            onClick={() => { setViewOccurrence(o); setIsPrintPanelOpen(false); }}
                             className="hover:bg-slate-50 transition cursor-pointer"
                             title="Clique para ver os detalhes ou exportar"
                           >
@@ -2159,27 +2160,45 @@ function RegistroDisciplinarContent() {
 
               {/* Footer reestruturado */}
               <div className="border-t border-slate-200 px-4 py-3 bg-slate-50 mt-auto space-y-2">
-                {/* Linha principal: Editar + Exportar */}
+
+                {/* Painel de impressao — expande ao clicar em Imprimir */}
+                {isPrintPanelOpen && (
+                  <div className="flex items-center gap-2 p-2.5 bg-white border border-slate-200 rounded-lg animate-in fade-in slide-in-from-bottom-1 duration-150">
+                    <span className="text-xs text-slate-500 font-medium mr-auto">Exportar como:</span>
+                    <button
+                      onClick={() => { handleExport(_vo); setIsPrintPanelOpen(false); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-800 text-white transition text-xs font-semibold"
+                    >
+                      <FileText className="w-3.5 h-3.5" /> PDF
+                    </button>
+                    <button
+                      onClick={() => { handleExportDocx(_vo); setIsPrintPanelOpen(false); }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition text-xs font-semibold"
+                    >
+                      <FileText className="w-3.5 h-3.5" /> DOC
+                    </button>
+                  </div>
+                )}
+
+                {/* Linha principal: Editar + Imprimir */}
                 <div className="flex items-center gap-2">
                   {currentUserRole !== 'GUEST' && (
                     <button
-                      onClick={(e) => { setViewOccurrence(null); setIsGuardianListOpen(false); openEditModal(e, _vo); }}
+                      onClick={(e) => { setViewOccurrence(null); setIsGuardianListOpen(false); setIsPrintPanelOpen(false); openEditModal(e, _vo); }}
                       className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition text-xs font-semibold"
                     >
                       <Edit2 className="w-3.5 h-3.5" /> Editar
                     </button>
                   )}
                   <button
-                    onClick={() => handleExport(_vo)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white transition text-xs font-semibold"
+                    onClick={() => setIsPrintPanelOpen(v => !v)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg transition text-xs font-semibold border ${
+                      isPrintPanelOpen
+                        ? 'bg-slate-200 text-slate-700 border-slate-300'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                    }`}
                   >
-                    <FileText className="w-3.5 h-3.5" /> PDF
-                  </button>
-                  <button
-                    onClick={() => handleExportDocx(_vo)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition text-xs font-semibold"
-                  >
-                    <FileText className="w-3.5 h-3.5" /> DOCX
+                    <Printer className="w-3.5 h-3.5" /> Imprimir
                   </button>
                 </div>
 
@@ -2231,7 +2250,7 @@ function RegistroDisciplinarContent() {
                   )}
 
                   <button
-                    onClick={() => { setViewOccurrence(null); setIsGuardianListOpen(false); }}
+                    onClick={() => { setViewOccurrence(null); setIsGuardianListOpen(false); setIsPrintPanelOpen(false); }}
                     className="px-3 py-1.5 rounded-lg text-slate-500 hover:bg-slate-200 border border-slate-200 transition text-xs font-medium"
                   >
                     Fechar
