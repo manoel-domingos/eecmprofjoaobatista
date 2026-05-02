@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
+export const maxDuration = 60; // segundos — necessario para modelos DeepSeek com alta latencia
+
 const client = new OpenAI({
   apiKey: process.env.NVIDIA_API_KEY,
   baseURL: 'https://integrate.api.nvidia.com/v1',
@@ -101,13 +103,13 @@ Quando não souber algo específico da escola, oriente o usuário a consultar a 
     }
 
     const completion = await client.chat.completions.create({
-      model: 'deepseek-ai/deepseek-r1-0528',
+      model: 'deepseek-ai/deepseek-v4-pro',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.6,
-      max_tokens: 1500,
+      max_tokens: 800,
     });
 
     const text = completion.choices[0]?.message?.content?.trim() || '';
