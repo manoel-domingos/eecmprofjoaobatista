@@ -125,29 +125,31 @@ function RegistroDisciplinarContent() {
   };
 
   const handleImproveObservations = async () => {
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!apiKey || (!observations.trim() && selectedRules.length === 0)) return;
+    if (!observations.trim() && selectedRules.length === 0) return;
 
     setIsImproving(true);
     try {
-      const studentNames = selectedStudents.map(id => students.find(s => s.id === id)?.name).join(', ');
-      const ruleDescriptions = selectedRules.map(code => rules.find(r => r.code === parseInt(code, 10))?.description).join(', ');
+      const studentNames = selectedStudents.map(id => students.find(s => s.id === id)?.name).filter(Boolean).join(', ');
+      const ruleDescriptions = selectedRules.map(code => rules.find(r => r.code === parseInt(code, 10))?.description).filter(Boolean).join('; ');
 
-      const prompt = `
-        Aja como um gestor escolar profissional. Melhore e formalize o seguinte relato de ocorrência disciplinar para uma ata oficial.
-        O texto deve ser claro, objetivo, imparcial e usar linguagem formal.
-        
-        DADOS:
-        - Aluno(s): ${studentNames || 'Não identificado'}
-        - Infração(ões): ${ruleDescriptions || 'Não especificada'}
-        - Relato original: ${observations || '(O usuário não descreveu, crie um modelo padrão baseado na infração)'}
-        
-        Retorne APENAS o texto melhorado, sem introduções ou explicações.
-      `;
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'ata',
+          payload: {
+            students: studentNames || 'Não identificado',
+            infractions: ruleDescriptions || 'Não especificada',
+            dateTime: `${date} ${hour}`,
+            location,
+            text: observations,
+          },
+        }),
+      });
 
-      const result = await generateContentWithFallback(apiKey, prompt);
-      const response = await result.response;
-      setObservations(response.text().trim());
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setObservations(data.result);
     } catch (error) {
       console.error("Erro ao melhorar ATA:", error);
       alert("Não foi possível melhorar o texto com IA no momento.");

@@ -3,18 +3,78 @@
 import React, { useState } from 'react';
 import AppShell from '@/components/AppShell';
 import { useAppContext } from '@/lib/store';
-import { FileText, Printer, Download } from 'lucide-react';
+import { FileText, Printer, Download, Brain, X, Loader2 } from 'lucide-react';
 import SearchableSelect from '@/components/SearchableSelect';
 import { formatDate } from '@/lib/utils';
 
 export default function Relatorios() {
-  const { students, occurrences } = useAppContext();
+  const { students, occurrences, rules } = useAppContext();
   const [activeTab, setActiveTab] = useState('gerencial');
   const [selectedMonth, setSelectedMonth] = useState('Todos os meses');
   const [selectedClass, setSelectedClass] = useState('Todas as turmas');
+  const [aiReport, setAiReport] = useState('');
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [showAiReport, setShowAiReport] = useState(false);
 
   const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
   const classes = Array.from(new Set(students.map(s => s.class))).sort();
+
+  const handleGenerateAiReport = async () => {
+    setIsGeneratingReport(true);
+    setShowAiReport(true);
+    setAiReport('');
+    try {
+      // Calcular distribuicao de gravidade
+      const leves = occurrences.filter(o => rules.find(r => r.code === o.ruleCode)?.severity === 'Leve').length;
+      const medias = occurrences.filter(o => rules.find(r => r.code === o.ruleCode)?.severity === 'Media').length;
+      const graves = occurrences.filter(o => rules.find(r => r.code === o.ruleCode)?.severity === 'Grave').length;
+
+      // Infrações mais comuns
+      const ruleCount: Record<number, number> = {};
+      occurrences.forEach(o => { ruleCount[o.ruleCode] = (ruleCount[o.ruleCode] || 0) + 1; });
+      const topInfractions = Object.entries(ruleCount)
+        .sort((a, b) => b[1] - a[1]).slice(0, 5)
+        .map(([code, count]) => {
+          const rule = rules.find(r => r.code === parseInt(code));
+          return `Art. ${code}: ${rule?.description?.substring(0, 50) || 'Desconhecida'} (${count}x)`;
+        }).join('\n');
+
+      // Turmas com mais ocorrencias
+      const classCount: Record<string, number> = {};
+      occurrences.forEach(o => {
+        const student = students.find(s => s.id === o.studentId);
+        if (student?.class) classCount[student.class] = (classCount[student.class] || 0) + 1;
+      });
+      const topClasses = Object.entries(classCount)
+        .sort((a, b) => b[1] - a[1]).slice(0, 5)
+        .map(([cls, count]) => `${cls}: ${count} ocorrência(s)`).join(', ');
+
+      const studentsWithOccurrences = new Set(occurrences.map(o => o.studentId)).size;
+
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'relatorio',
+          payload: {
+            period: selectedMonth !== 'Todos os meses' ? selectedMonth : 'Geral',
+            totalOccurrences: occurrences.length,
+            studentsWithOccurrences,
+            topInfractions,
+            topClasses: topClasses || 'Sem dados',
+            severityDistribution: `Leves: ${leves}, Médias: ${medias}, Graves: ${graves}`,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setAiReport(data.result);
+    } catch {
+      setAiReport('Não foi possível gerar o relatório no momento. Tente novamente.');
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
   return (
     <AppShell>
@@ -29,12 +89,22 @@ export default function Relatorios() {
             <p className="text-slate-500 text-sm">Selecione o tipo de relatório e use os filtros</p>
           </div>
           
-          <button 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 transition w-full sm:w-auto"
-            onClick={() => window.print()}
-          >
-            <Printer className="w-4 h-4" /> Imprimir / PDF
-          </button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <button
+              onClick={handleGenerateAiReport}
+              disabled={isGeneratingReport}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition text-sm print:hidden"
+            >
+              {isGeneratingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Brain className="w-4 h-4" />}
+              {isGeneratingReport ? 'Gerando...' : 'Relatório com IA'}
+            </button>
+            <button
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 transition w-full sm:w-auto"
+              onClick={() => window.print()}
+            >
+              <Printer className="w-4 h-4" /> Imprimir / PDF
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -103,6 +173,29 @@ export default function Relatorios() {
              </select>
           </div>
         </div>
+
+        {/* Painel IA */}
+        {showAiReport && (
+          <div className="bg-violet-50 border border-violet-200 rounded-xl p-5 print:hidden">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2 text-violet-700">
+                <Brain className="w-4 h-4" />
+                <span className="font-semibold text-sm">Relatório Gerado por IA — DeepSeek</span>
+              </div>
+              <button onClick={() => setShowAiReport(false)} className="text-violet-400 hover:text-violet-600 transition">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {isGeneratingReport ? (
+              <div className="flex items-center gap-3 text-violet-600 text-sm py-4">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Analisando dados disciplinares com DeepSeek...
+              </div>
+            ) : (
+              <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{aiReport}</p>
+            )}
+          </div>
+        )}
 
         {/* Report Preview */}
         <div className="bg-[#e2e8f0] rounded-xl p-4 sm:p-8 max-w-4xl mx-auto shadow-2xl print:bg-white print:p-0 print:shadow-none min-h-[800px] text-slate-900 font-serif">
