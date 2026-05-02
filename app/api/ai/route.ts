@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
+import { REGIMENTO_CORPUS, HIERARQUIA_FONTES } from '@/lib/regimento';
 
 export const maxDuration = 60;
 
@@ -9,34 +10,94 @@ const client = new OpenAI({
 });
 
 const CONFIGS: Record<string, { maxTokens: number; temperature: number }> = {
-  ata:       { maxTokens: 400, temperature: 0.4 },
-  analise:   { maxTokens: 500, temperature: 0.5 },
-  relatorio: { maxTokens: 600, temperature: 0.4 },
-  chat:      { maxTokens: 250, temperature: 0.5 },
+  ata:       { maxTokens: 400,  temperature: 0.4 },
+  analise:   { maxTokens: 500,  temperature: 0.5 },
+  relatorio: { maxTokens: 600,  temperature: 0.4 },
+  chat:      { maxTokens: 250,  temperature: 0.5 },
+  sugestao:  { maxTokens: 700,  temperature: 0.3 }, // recomendações pós-ATA baseadas no regimento
 };
 
 function buildPrompts(type: string, payload: Record<string, any>): { system: string; user: string } {
   switch (type) {
     case 'ata':
       return {
-        system: 'Gestor escolar. Redija atas disciplinares formais e objetivas. Retorne APENAS o texto da ata.',
+        system: [
+          'Você é um gestor escolar da E.E. Cívico-Militar Prof. João Batista.',
+          'Redija atas disciplinares formais, objetivas e em linguagem institucional.',
+          'Retorne APENAS o texto da ata, sem comentários adicionais.',
+          '',
+          REGIMENTO_CORPUS,
+          '',
+          HIERARQUIA_FONTES,
+        ].join('\n'),
         user: `Formalize para ata:\nAluno(s): ${payload.students}\nInfração: ${payload.infractions}\nData/Hora: ${payload.dateTime} | Local: ${payload.location}\nRelato: ${payload.text || 'Crie modelo padrão baseado na infração.'}`,
       };
+
+    case 'sugestao':
+      return {
+        system: [
+          'Você é um especialista em gestão disciplinar escolar da E.E. Cívico-Militar Prof. João Batista.',
+          'Sua função é gerar recomendações de medidas e próximos passos após o registro de uma ATA disciplinar.',
+          '',
+          '=== FONTE PRIMÁRIA OBRIGATÓRIA ===',
+          REGIMENTO_CORPUS,
+          '',
+          HIERARQUIA_FONTES,
+          '',
+          'FORMATO DA RESPOSTA:',
+          '1. Medida Recomendada: [nome da medida] (Art. XX do Regimento)',
+          '2. Justificativa: [1–2 frases baseadas no regimento]',
+          '3. Próximos Passos: [lista numerada de 3–5 ações concretas]',
+          '4. Intervenção Pedagógica: [1 sugestão prática]',
+          '5. Alerta (se aplicável): [risco de escalada ou necessidade de encaminhamento externo]',
+          '',
+          'Seja conciso, cite artigos do regimento e use linguagem formal institucional.',
+        ].join('\n'),
+        user: [
+          `Aluno(s): ${payload.students}`,
+          `Infração registrada: ${payload.infractions} (Natureza: ${payload.severity ?? 'não informada'})`,
+          `Medida atribuída: ${payload.measure ?? 'não informada'}`,
+          `Reincidente: ${payload.isReincidente ? 'Sim' : 'Não'}`,
+          `Histórico: ${payload.totalOccurrences ?? 0} ocorrência(s) anteriores`,
+          `Pontuação atual: ${payload.currentPoints ?? 'não informada'}`,
+          `Observações da ATA: ${payload.ataText ?? 'não fornecido'}`,
+          '',
+          'Gere as recomendações pós-ATA conforme o Regimento Interno.',
+        ].join('\n'),
+      };
+
     case 'analise':
       return {
-        system: 'Psicopedagogo escolar. Analise histórico disciplinar de forma construtiva e profissional.',
-        user: `Aluno: ${payload.studentName} | Turma: ${payload.class}\nOcorrências: ${payload.totalOccurrences} | Pontos: ${payload.currentPoints}\nDetalhes: ${payload.occurrences}\nForneça: padrão de comportamento, causas prováveis e 3 recomendações práticas.`,
+        system: [
+          'Você é um psicopedagogo escolar da E.E. Cívico-Militar Prof. João Batista.',
+          'Analise o histórico disciplinar de forma construtiva e profissional.',
+          '',
+          REGIMENTO_CORPUS,
+          '',
+          HIERARQUIA_FONTES,
+        ].join('\n'),
+        user: `Aluno: ${payload.studentName} | Turma: ${payload.class}\nOcorrências: ${payload.totalOccurrences} | Pontos: ${payload.currentPoints}\nDetalhes: ${payload.occurrences}\nForneça: padrão de comportamento, causas prováveis e 3 recomendações práticas baseadas no Regimento.`,
       };
+
     case 'relatorio':
       return {
         system: 'Especialista em gestão educacional. Gere relatórios disciplinares concisos com insights acionáveis.',
         user: `Período: ${payload.period} | Total ocorrências: ${payload.totalOccurrences}\nAlunos envolvidos: ${payload.studentsWithOccurrences}\nTop infrações: ${payload.topInfractions}\nTop turmas: ${payload.topClasses}\nGravidade: ${payload.severityDistribution}\nGere: resumo executivo, tendências e recomendações prioritárias.`,
       };
+
     case 'chat':
       return {
-        system: 'Você é ARIA, assistente virtual da E.E. Cívico-Militar Prof. João Batista. Responda de forma curta, direta e cordial em português. Auxilie com regras disciplinares, registro de ocorrências e orientações pedagógicas.',
+        system: [
+          'Você é ARIA, assistente virtual da E.E. Cívico-Militar Prof. João Batista.',
+          'Responda de forma curta, direta e cordial em português.',
+          'Auxilie com regras disciplinares, registro de ocorrências e orientações pedagógicas.',
+          'Quando perguntado sobre infrações ou medidas, consulte o regimento abaixo.',
+          '',
+          REGIMENTO_CORPUS,
+        ].join('\n'),
         user: payload.message,
       };
+
     default:
       return { system: '', user: '' };
   }
