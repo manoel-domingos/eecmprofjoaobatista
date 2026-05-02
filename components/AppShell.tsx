@@ -1006,10 +1006,10 @@ function ProfileMenu({
               <ShieldAlert className="w-4 h-4 text-amber-500" /> Status das Integrações
             </Link>
             <button
-              onClick={() => { setIsChatOpen(true); setIsOpen(false); }}
+              onClick={() => { setIsOpen(false); document.querySelector<HTMLButtonElement>('[aria-label="Abrir assistente ARIA"]')?.click(); }}
               className="w-full text-left px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-3"
             >
-              <MessageCircle className="w-4 h-4 text-blue-500" /> Suporte
+              <Brain className="w-4 h-4 text-violet-500" /> Assistente ARIA
             </button>
             <button
               onClick={() => { setShowProfileModal(true); setIsOpen(false); }}
